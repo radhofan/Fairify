@@ -1,7 +1,19 @@
 # -*- coding: utf-8 -*-
 
 import sys
-sys.path.append('../')
+import os
+
+#sys.path.append('../')
+
+# Dynamically determine the script's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the src directory
+src_dir = os.path.abspath(os.path.join(script_dir, '../'))
+
+# Add the src directory to sys.path
+sys.path.append(src_dir)
+
 # numpy and pandas for data manipulation
 from time import time
 from pathlib import Path
@@ -36,8 +48,8 @@ def load_adult_adf():
     # coding: utf-8
     
     # data = pd.read_csv("adult.csv")
-    train_path = '../../data/adult/adult.data'
-    test_path = '../../data/adult/adult.test'
+    train_path = 'Fairify/data/adult/adult.data'
+    test_path = 'Fairify/data/adult/adult.test'
     
     column_names = ['age', 'workclass', 'fnlwgt', 'education',
                 'education-num', 'marital-status', 'occupation', 'relationship',
@@ -109,8 +121,8 @@ def load_adult_ac1():
     # coding: utf-8
     
     # data = pd.read_csv("adult.csv")
-    train_path = '../../data/adult/adult.data'
-    test_path = '../../data/adult/adult.test'
+    train_path = 'Fairify/data/adult/adult.data'
+    test_path = 'Fairify/data/adult/adult.test'
     
     column_names = ['age', 'workclass', 'fnlwgt', 'education',
                 'education-num', 'marital-status', 'occupation', 'relationship',

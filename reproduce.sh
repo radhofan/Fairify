@@ -25,7 +25,7 @@ mamba activate fairify
 pip install -r Fairify/requirements.txt
 
 # Run normal
-bash Fairify/src/fairify.sh Fairify/src/AC
+bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC.py
 
 # Run stress
 # bash Fairify/stress/fairify-stress.sh AC

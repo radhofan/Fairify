@@ -2,8 +2,17 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+
 #sys.path.append('../../')
-sys.path.append(os.path.abspath('/Fairify/src'))
+
+# Dynamically determine the script's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the src directory
+src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+
+# Add the src directory to sys.path
+sys.path.append(src_dir)
 
 from random import shuffle
 from z3 import *

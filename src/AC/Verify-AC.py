@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import sys
-sys.path.append('../../')
+#sys.path.append('../../')
+sys.path.append(os.path.abspath('/Fairify/src'))
 
 from random import shuffle
 from z3 import *
@@ -18,8 +19,8 @@ single_input = X_test[0].reshape(1, 13)
 #print_metadata(df)
 
 # In[]
-model_dir = '../../models/adult/'
-result_dir = './libra/sex-'
+model_dir = 'Fairify/models/adult/'
+result_dir = 'Fairify/src/AC/libra/sex-'
 PARTITION_THRESHOLD = 10
 
 SOFT_TIMEOUT = 100 

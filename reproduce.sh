@@ -17,7 +17,7 @@ source ~/.bashrc  # Reload shell config
 eval "$(mamba shell hook --shell=bash)"
 
 # Create and activate conda environment
-mamba create -n fairify -y
+mamba create -n fairify python=3.9 -y
 source $HOME/miniconda/bin/activate fairify
 mamba activate fairify
 

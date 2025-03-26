@@ -28,10 +28,10 @@ pip install -r Fairify/requirements.txt
 bash Fairify/src/fairify.sh AC
 
 # Run stress
-bash Fairify/stress/fairify-stress.sh AC
+# bash Fairify/stress/fairify-stress.sh AC
 
 # Run relaxed
-bash Fairify/relaxed/fairify-relaxed.sh AC
+# bash Fairify/relaxed/fairify-relaxed.sh AC
 
 # Run targeted
-bash Fairify/targeted/fairify-targeted.sh AC
+# bash Fairify/targeted/fairify-targeted.sh AC

@@ -26,7 +26,7 @@ pip install -r Fairify/requirements.txt
 pip install tqdm
 
 # Run normal
-bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC.py
+bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC.py
 
 # Run stress
 # bash Fairify/stress/fairify-stress.sh AC

@@ -188,7 +188,7 @@ def load_adult_ac1():
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
 
 def load_german():
-    filepath = '../../data/german/german.data'
+    filepath = 'Fairify/data/data/german/german.data'
     column_names = ['status', 'month', 'credit_history',
                 'purpose', 'credit_amount', 'savings', 'employment',
                 'investment_as_income_percentage', 'personal_status',

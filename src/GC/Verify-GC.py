@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import sys
-sys.path.append('../../')
+import os
 
-from random import shuffle
+# Dynamically determine the script's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the src directory
+src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+
+# Add the src directory to sys.path
+sys.path.append(src_dir)
+
+import time
+import numpy as np
+from tqdm import tqdm  # Import tqdm for progress bars
 from z3 import *
 from utils.input_partition import *
 from utils.verif_utils import *
 from utils.prune import *
 from importlib import import_module
+
+from random import shuffle
 
 # In[]
 
@@ -18,8 +31,8 @@ single_input = X_test[0].reshape(1, 20)
 #print_metadata(df)
 
 # In[]
-model_dir = '../../models/german/'
-result_dir = './age-'
+model_dir = 'Fairify/models/german/'
+result_dir = 'Fairify/src/GC/age-'
 PARTITION_THRESHOLD = 100
 
 SOFT_TIMEOUT = 100 

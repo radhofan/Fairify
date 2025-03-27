@@ -19,7 +19,7 @@ from z3 import *
 from utils.input_partition import *
 from utils.verif_utils import *
 from utils.prune import *
-from import_module import import_module
+from importlib import import_module
 
 
 from random import shuffle

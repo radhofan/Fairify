@@ -2,8 +2,14 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-
-#sys.path.append('../../')
+import time
+import numpy as np
+from tqdm import tqdm  # Import tqdm for progress bars
+from z3 import *
+from utils.input_partition import *
+from utils.verif_utils import *
+from utils.prune import *
+from import_module import import_module
 
 # Dynamically determine the script's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,18 +21,12 @@ src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
 sys.path.append(src_dir)
 
 from random import shuffle
-from z3 import *
-from utils.input_partition import *
-from utils.verif_utils import *
-from utils.prune import *
-from importlib import import_module
 
 # In[]
-
 df, X_train, y_train, X_test, y_test = load_adult_ac1()
 X = np.r_[X_train, X_test]
 single_input = X_test[0].reshape(1, 13)
-#print_metadata(df)
+# print_metadata(df)
 
 # In[]
 model_dir = 'Fairify/models/adult/'
@@ -34,7 +34,7 @@ result_dir = 'Fairify/src/AC/libra/sex-'
 PARTITION_THRESHOLD = 10
 
 SOFT_TIMEOUT = 100 
-HARD_TIMEOUT = 30*60
+HARD_TIMEOUT = 30 * 60
 HEURISTIC_PRUNE_THRESHOLD = 5
 
 # In[]
@@ -65,17 +65,17 @@ sim_size = 1 * 1000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
-#p_density = p_list_density(range_dict, p_list, df)
+# p_density = p_list_density(range_dict, p_list, df)
 print('Number of partitions: ', len(p_list))
-# In[]
+
+# Shuffle partitions
 shuffle(p_list)
 
-# In[]
-
+# Process each model file with a progress bar
 model_files = os.listdir(model_dir)
-for model_file in model_files:
+for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
     if not model_file.endswith('.h5'):
-        continue;
+        continue
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]
     if model_name == '':
@@ -103,18 +103,17 @@ for model_file in model_files:
     unk_count = 0
     cumulative_time = 0
     
-    for p in p_list:
+    # Process each partition with a progress bar
+    for p in tqdm(p_list, desc="Processing Partitions", total=len(p_list)):  # tqdm for partitions loop
         heuristic_attempted = 0
         result = []
         start_time = time.time()
     
         partition_id += 1
-        simulation_size = 1*1000
+        simulation_size = 1 * 1000
     
-        
-        # In[]
-    #    sd = s
-        neuron_bounds, candidates, s_candidates, b_deads, s_deads, st_deads, pos_prob, sim_X_df  = \
+        # Perform sound pruning
+        neuron_bounds, candidates, s_candidates, b_deads, s_deads, st_deads, pos_prob, sim_X_df = \
             sound_prune(df, w, b, simulation_size, layer_net, p)
     
         b_compression = compression_ratio(b_deads)
@@ -123,8 +122,6 @@ for model_file in model_files:
     
         pr_w, pr_b = prune_neurons(w, b, st_deads)
 
-    
-        # In[]
         # Create properties
         in_props = []
         out_props = []
@@ -132,27 +129,23 @@ for model_file in model_files:
         x = np.array([Int('x%s' % i) for i in range(13)]) 
         x_ = np.array([Int('x_%s' % i) for i in range(13)])
     
-        y = z3_net(x, pr_w, pr_b) # y is an array of size 1
+        y = z3_net(x, pr_w, pr_b)  # y is an array of size 1
         y_ = z3_net(x_, pr_w, pr_b)
     
         # Basic fairness property - must include
         for attr in A:
-            if(attr in PA):
+            if attr in PA:
                 in_props.extend(in_const_adult(df, x, attr, 'neq', x_))
             else:
                 in_props.extend(in_const_adult(df, x, attr, 'eq', x_))
 
         in_props.extend(in_const_domain_adult(df, x, x_, p, PA))
     
-        # In[]
         s = Solver()
-        #s.reset()
-    
-        if(len(sys.argv) > 1):
-            s.set("timeout", int(sys.argv[1]) * 1000) # X seconds
+        if len(sys.argv) > 1:
+            s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
         else:
             s.set("timeout", SOFT_TIMEOUT * 1000)
-    
     
         for i in in_props:
             s.add(i)
@@ -171,7 +164,7 @@ for model_file in model_files:
         s_end_time = time.time()
         s_time = compute_time(start_time, s_end_time)
         hv_time = 0
-        # In[]
+        
         h_compression = 0
         t_compression = st_compression
         h_success = 0
@@ -186,17 +179,17 @@ for model_file in model_files:
     
             pr_w, pr_b = prune_neurons(w, b, deads)
             h_compression = compression_ratio(h_deads)
-            print(round(h_compression*100, 2), '% HEURISTIC PRUNING')
+            print(round(h_compression * 100, 2), '% HEURISTIC PRUNING')
             t_compression = compression_ratio(deads)
-            print(round(t_compression*100, 2), '% TOTAL PRUNING')
+            print(round(t_compression * 100, 2), '% TOTAL PRUNING')
     
-            y = z3_net(x, pr_w, pr_b) # y is an array of size 1
+            y = z3_net(x, pr_w, pr_b)  # y is an array of size 1
             y_ = z3_net(x_, pr_w, pr_b)
     
             s = Solver()
     
-            if(len(sys.argv) > 1):
-                s.set("timeout", int(sys.argv[1]) * 1000) # X seconds
+            if len(sys.argv) > 1:
+                s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
             else:
                 s.set("timeout", SOFT_TIMEOUT * 1000)
     
@@ -260,9 +253,8 @@ for model_file in model_files:
         elif res == unsat:
             unsat_count += 1
         else:
-            unk_count +=1
+            unk_count += 1
             
-    
         d = X_test[0]
         res1 = net(d, pr_w, pr_b)
         pred1 = sigmoid(res1)
@@ -276,7 +268,6 @@ for model_file in model_files:
         sim_y_orig = get_y_pred(net, w, b, sim_X)    
         sim_y = get_y_pred(net, pr_w, pr_b, sim_X)
         
-       
         orig_acc = accuracy_score(y_test, get_y_pred(net, w, b, X_test))
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
 
@@ -307,10 +298,9 @@ for model_file in model_files:
         result.append(round(orig_acc, 4))
         result.append(round(pruned_acc, 4))
         result.append('-')
-        #result.append(round(orig_acc - pruned_acc, 4))
+        # result.append(round(orig_acc - pruned_acc, 4))
         result.append(d1)
         result.append(d2)
-    
     
         import csv
         file_exists = os.path.isfile(file)
@@ -323,6 +313,6 @@ for model_file in model_files:
             wr.writerow(result)
         print('******************')
         
-        if(cumulative_time > HARD_TIMEOUT):
+        if cumulative_time > HARD_TIMEOUT:
             print('==================  COMPLETED MODEL ' + model_file)
             break

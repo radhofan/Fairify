@@ -23,7 +23,7 @@ mamba activate fairify
 
 # install requirements
 pip install -r Fairify/requirements.txt
-pip install tdqm
+pip install tqdm
 
 # Run normal
 bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC.py

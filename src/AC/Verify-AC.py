@@ -2,14 +2,6 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-import time
-import numpy as np
-from tqdm import tqdm  # Import tqdm for progress bars
-from z3 import *
-from utils.input_partition import *
-from utils.verif_utils import *
-from utils.prune import *
-from import_module import import_module
 
 # Dynamically determine the script's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,6 +11,16 @@ src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
 
 # Add the src directory to sys.path
 sys.path.append(src_dir)
+
+import time
+import numpy as np
+from tqdm import tqdm  # Import tqdm for progress bars
+from z3 import *
+from utils.input_partition import *
+from utils.verif_utils import *
+from utils.prune import *
+from import_module import import_module
+
 
 from random import shuffle
 

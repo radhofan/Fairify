@@ -3,13 +3,8 @@
 import sys
 import os
 
-# Dynamically determine the script's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Construct the path to the src directory
 src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
-
-# Add the src directory to sys.path
 sys.path.append(src_dir)
 
 import time

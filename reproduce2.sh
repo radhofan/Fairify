@@ -24,3 +24,7 @@ mamba activate fairify
 # install requirements
 pip install -r Fairify/requirements.txt
 pip install tqdm
+sudo apt install csvtool
+
+# Run stress
+bash Fairify/stress/fairify-stress.sh Fairify/stress/GC/Verify-GC.py

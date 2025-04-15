@@ -26,5 +26,5 @@ pip install -r Fairify/requirements.txt
 pip install tqdm
 sudo apt install csvtool
 
-# Run stress
-bash Fairify/stress/fairify-stress.sh Fairify/stress/GC/Verify-GC.py
+# Run fairify experiment
+bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py

@@ -244,6 +244,16 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             class_1_orig = pred1_orig > 0.5
             class_2_orig = pred2_orig > 0.5
 
+            # Exp line
+            print("pred1: ", pred1)
+            print("pred2: ", pred2)
+            print("class_1: ", class_1)
+            print("class_2: ", class_2)
+            print("pred1_orig: ", pred1_orig)
+            print("pred2_orig: ", pred2_orig)
+            print("class_1_orig: ", class_1_orig)
+            print("class_2_orig: ", class_2_orig)
+
             if class_1_orig != class_2_orig:
                 accurate = 1
             if class_1 == class_1_orig and class_2 == class_2_orig:

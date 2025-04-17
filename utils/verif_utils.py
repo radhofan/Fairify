@@ -227,6 +227,12 @@ def load_german():
     #pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
     #df.loc[pos, label_name] = favorable_label
     #df.loc[~pos, label_name] = unfavorable_label
+
+    # add counterexamples
+    counter_filepath = 'Fairify/data/german/german-counterexample-fixed.csv'
+    counter_df = pd.read_csv(counter_filepath, header=None)
+    counter_df.columns = df.columns  # match column names
+    df = pd.concat([df, counter_df], ignore_index=True)
 #    
     X = df.drop(labels = [label_name], axis = 1, inplace = False)
     y = df[label_name]

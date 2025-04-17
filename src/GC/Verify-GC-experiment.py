@@ -254,6 +254,27 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print("class_1_orig: ", class_1_orig)
             print("class_2_orig: ", class_2_orig)
 
+            # csv line
+            import csv
+            cols = ['status', 'month', 'credit_history', 'purpose', 'credit_amount',
+                    'savings', 'employment', 'investment_as_income_percentage',
+                    'other_debtors', 'residence_since', 'property', 'age',
+                    'installment_plans', 'housing', 'number_of_credits', 'skill_level',
+                    'people_liable_for', 'telephone', 'foreign_worker', 'sex', 'class']
+            file_name =  result_dir + 'counterexample.csv'
+            file_exists = os.path.isfile(file_name)
+            with open(file_name, "a", newline='') as fp:
+                if not file_exists:
+                    wr = csv.writer(fp, dialect='excel')
+                    wr.writerow(cols)
+                wr = csv.writer(fp)
+                csv_row1 = copy.deepcopy(inp1)
+                csv_row2 = copy.deepcopy(inp2)
+                csv_row1.append(int(class_1))
+                csv_row2.append(int(class_2))
+                wr.writerow(csv_row1)
+                wr.writerow(csv_row2)
+
             if class_1_orig != class_2_orig:
                 accurate = 1
             if class_1 == class_1_orig and class_2 == class_2_orig:

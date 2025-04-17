@@ -229,13 +229,13 @@ def load_german():
     #df.loc[~pos, label_name] = unfavorable_label
 
     # add counterexamples
-    counter_filepath = 'Fairify/data/german/german-counterexample-fixed.csv'
-    counter_df = pd.read_csv(counter_filepath, header=None)
-    counter_df.columns = df.columns  # match column names
-    df = pd.concat([df, counter_df], ignore_index=True)
-#    
-    X = df.drop(labels = [label_name], axis = 1, inplace = False)
-    y = df[label_name]
+#     counter_filepath = 'Fairify/data/german/german-counterexample-fixed.csv'
+#     counter_df = pd.read_csv(counter_filepath, header=None)
+#     counter_df.columns = df.columns  # match column names
+#     df = pd.concat([df, counter_df], ignore_index=True)
+# #    
+#     X = df.drop(labels = [label_name], axis = 1, inplace = False)
+#     y = df[label_name]
 #    
 #    
     seed = 42 # randrange(100)

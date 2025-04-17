@@ -261,7 +261,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                     'other_debtors', 'residence_since', 'property', 'age',
                     'installment_plans', 'housing', 'number_of_credits', 'skill_level',
                     'people_liable_for', 'telephone', 'foreign_worker', 'sex', 'class']
-            file_name =  result_dir + 'counterexample.csv'
+            file_name =  result_dir + 'german-counterexample.csv'
             file_exists = os.path.isfile(file_name)
             with open(file_name, "a", newline='') as fp:
                 if not file_exists:

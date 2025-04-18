@@ -27,7 +27,7 @@ pip install tqdm
 sudo apt install csvtool
 
 # Retrain existing model with counterexamples + synthethic data
-# python Fairify/src/GC/new_model.py
+python Fairify/src/GC/new_model.py
 
 # Run fairify experiment
 bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py

@@ -77,7 +77,9 @@ shuffle(p_list)
 # Process each model file with a progress bar
 model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
-    if not model_file.endswith('.h5'):
+    # if not model_file.endswith('.h5'):
+    #     continue
+    if not model_file.startswith("GC-6"):
         continue
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]

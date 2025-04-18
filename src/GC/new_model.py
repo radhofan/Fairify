@@ -5,7 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 
 
 model = load_model('Fairify/models/german/GC-1.h5')
-df = pd.read_csv('Fairify/data/german/synthetic-german-ctgan.csv')
+df = pd.read_csv('Fairify/experimentData/synthetic-german-ctgan.csv')
 
 X = df.drop(columns=['credit'])  
 y = df['credit']

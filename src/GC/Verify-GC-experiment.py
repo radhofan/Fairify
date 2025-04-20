@@ -77,10 +77,19 @@ shuffle(p_list)
 # Process each model file with a progress bar
 model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
+
+    # standard
     # if not model_file.endswith('.h5'):
     #     continue
-    if not model_file.startswith("GC-6"):
+
+    # sdg ctgan
+    # if not model_file.startswith("GC-6"):
+    #     continue
+
+    # distill gpt2
+    if not model_file.startswith("GC-7"):
         continue
+
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]
     model_funcs = 'utils.' + model_name + '-Model-Functions'

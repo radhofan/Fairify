@@ -87,7 +87,11 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     #     continue
 
     # distill gpt2
-    if not model_file.startswith("GC-7"):
+    # if not model_file.startswith("GC-7"):
+    #     continue
+
+    # gpt2
+    if not model_file.startswith("GC-8"):
         continue
 
     print('==================  STARTING MODEL ' + model_file)

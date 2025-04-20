@@ -6,7 +6,8 @@ from sklearn.preprocessing import LabelEncoder
 
 model = load_model('Fairify/models/german/GC-1.h5')
 # df = pd.read_csv('Fairify/experimentData/synthetic-german-ctgan.csv') # sdg ctgan
-df = pd.read_csv('Fairify/experimentData/synthetic-german-DisGreat.csv') # great distill gpt2
+# df = pd.read_csv('Fairify/experimentData/synthetic-german-distilgpt2.csv') # great distill gpt2
+df = pd.read_csv('Fairify/experimentData/synthetic-german-gpt2.csv') # great gpt2
 
 X = df.drop(columns=['credit'])  
 y = df['credit']
@@ -27,5 +28,9 @@ model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y
 # print("Model retrained and saved as GC-6.h5")
 
 # for distill gpt2
-model.save('Fairify/models/german/GC-7.h5')
-print("Model retrained and saved as GC-7.h5")
+# model.save('Fairify/models/german/GC-7.h5')
+# print("Model retrained and saved as GC-7.h5")
+
+# for gpt2
+model.save('Fairify/models/german/GC-8.h5')
+print("Model retrained and saved as GC-8.h5")

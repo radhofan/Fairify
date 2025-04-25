@@ -18,6 +18,14 @@ from importlib import import_module
 
 from random import shuffle
 
+# Import AIF360 Metrics
+from aif360.sklearn.metrics import disparate_impact_ratio
+from aif360.sklearn.metrics import statistical_parity_difference
+from aif360.sklearn.metrics import equal_opportunity_difference
+from aif360.sklearn.metrics import average_odds_difference
+from aif360.sklearn.metrics import consistency_score
+from aif360.sklearn.metrics import theil_index
+
 # In[]
 
 df, X_train, y_train, X_test, y_test = load_german()
@@ -259,7 +267,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             class_1_orig = pred1_orig > 0.5
             class_2_orig = pred2_orig > 0.5
 
-            # Exp line
+            # Debug prediction
             print("pred1: ", pred1)
             print("pred2: ", pred2)
             print("class_1: ", class_1)
@@ -269,14 +277,14 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print("class_1_orig: ", class_1_orig)
             print("class_2_orig: ", class_2_orig)
 
-            # csv line
+            # Save counterexamples to csv
             import csv
             cols = ['status', 'month', 'credit_history', 'purpose', 'credit_amount',
                     'savings', 'employment', 'investment_as_income_percentage',
                     'other_debtors', 'residence_since', 'property', 'age',
                     'installment_plans', 'housing', 'number_of_credits', 'skill_level',
                     'people_liable_for', 'telephone', 'foreign_worker', 'sex', 'class']
-            file_name =  result_dir + 'german-counterexample.csv'
+            file_name =  result_dir + 'counterexample-german-new.csv'
             file_exists = os.path.isfile(file_name)
             with open(file_name, "a", newline='') as fp:
                 if not file_exists:
@@ -313,6 +321,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         sim_y = get_y_pred(net, pr_w, pr_b, sim_X)
 
         orig_acc = accuracy_score(y_test, get_y_pred(net, w, b, X_test))
+        orig_f1 = f1_score(y_test, get_y_pred(net, w, b, X_test))
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
 
         res_cols = ['Partition_ID', 'Verification', 'SAT_count', 'UNSAT_count', 'UNK_count', 'h_attempt', 'h_success', \
@@ -354,6 +363,99 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             wr = csv.writer(fp)
             wr.writerow(result)
         print('******************')
+
+
+        # AIF360 Metrics
+        y_true = y_test 
+        y_pred = get_y_pred(net, w, b, X_test)
+        prot_attr = X_test['age']
+
+        y_true = pd.Series(y_true.ravel())  
+        y_pred = pd.Series(y_pred.ravel())  
+        prot_attr = pd.Series(prot_attr.ravel())  
+
+        # DI 
+        di = disparate_impact_ratio(
+            y_true=y_true,
+            y_pred=y_pred,
+            prot_attr=prot_attr,
+            priv_group=1,  
+            pos_label=1    
+        )
+
+        # SPD
+        spd = statistical_parity_difference(
+            y_true=y_true,
+            y_pred=y_pred,
+            prot_attr=prot_attr,
+            priv_group=1,  
+            pos_label=1    
+        )
+
+        # EOD
+        eod = equal_opportunity_difference(
+            y_true=y_true,
+            y_pred=y_pred,
+            prot_attr=prot_attr,
+            priv_group=1,
+            pos_label=1
+        )
+
+        # AOD
+        aod = average_odds_difference(
+            y_true=y_true,
+            y_pred=y_pred,
+            prot_attr=prot_attr,
+            priv_group=1,  
+            pos_label=1   
+        )
+
+        # ERD
+        def error_rate_difference(y_true, y_pred, prot_attr, priv_group=1):
+            y_true = np.array(y_true)
+            y_pred = np.array(y_pred)
+            prot_attr = np.array(prot_attr)
+            
+            priv_mask = (prot_attr == priv_group)
+            unpriv_mask = ~priv_mask
+            
+            priv_error = np.mean(y_true[priv_mask] != y_pred[priv_mask])
+            unpriv_error = np.mean(y_true[unpriv_mask] != y_pred[unpriv_mask])
+            
+            return abs(unpriv_error - priv_error)
+        
+        erd = error_rate_difference(
+            y_true=y_true,
+            y_pred=y_pred,
+            prot_attr=prot_attr,
+            priv_group=1  
+        )
+
+        # CNT
+        cnt = consistency_score(
+            X=X,
+            y=y,
+            n_neighbors=5 
+        )
+
+        # TI
+        ti = theil_index(y_pred)
+
+        # Save metric to csv
+        file_name =  result_dir + 'synthethic-german-predicted-gpt2-metrics.csv'
+        file_exists = os.path.isfile(file_name)
+        with open(file_name, "a", newline='') as fp:
+            wr = csv.writer(fp, dialect='excel')
+            
+            if not file_exists:
+                wr.writerow(cols + ['class', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT'])  # write header
+            
+            csv_row = copy.deepcopy(inp)
+            csv_row.append(int(class_label))  # append class label
+            csv_row += [di, spd, eod, aod, erd, cnt]  # append fairness metrics
+
+            wr.writerow(csv_row)
+
 
         if cumulative_time > HARD_TIMEOUT:
             print('==================  COMPLETED MODEL ' + model_file)

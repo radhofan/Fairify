@@ -37,7 +37,7 @@ from tensorflow.keras import backend as K
 from z3 import *
 import numpy as np 
 import pandas as pd 
-from sklearn.metrics import accuracy_score,confusion_matrix,roc_auc_score
+from sklearn.metrics import accuracy_score,confusion_matrix,roc_auc_score,f1_score
 from sklearn import metrics
 import collections
 import time
@@ -206,7 +206,6 @@ def load_german():
     cat_feat = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans', 
                 'housing', 'skill_level', 'telephone', 'foreign_worker']
     
-    
     for f in cat_feat:
         label = LabelEncoder()
         df[f] = label.fit_transform(df[f])      
@@ -222,7 +221,6 @@ def load_german():
     favorable_label = 1
     unfavorable_label = 0
     #favorable_classes=['>50K', '>50K.']
-    
     
     #pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
     #df.loc[pos, label_name] = favorable_label

@@ -323,6 +323,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         orig_acc = accuracy_score(y_test, get_y_pred(net, w, b, X_test))
         orig_f1 = f1_score(y_test, get_y_pred(net, w, b, X_test))
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
+        pruned_f1 = f1_score(sim_y_orig, sim_y)
 
         res_cols = ['Partition_ID', 'Verification', 'SAT_count', 'UNSAT_count', 'UNK_count', 'h_attempt', 'h_success', \
                     'B_compression', 'S_compression', 'ST_compression', 'H_compression', 'T_compression', 'SV-time', 'S-time', 'HV-Time', 'H-Time', 'Total-Time', 'C-check', \
@@ -376,9 +377,14 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_pred = pd.Series(np.array(y_pred).ravel())  
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
+        print("y_true")
         print(y_true)
+        print("y_pred")
         print(y_pred)
-        print(prot_attr)  
+        print("prot_attr")
+        print(prot_attr)
+        print("Column 12 name")  
+        print(X_test.columns[age_index])
 
         # DI 
         di = disparate_impact_ratio(

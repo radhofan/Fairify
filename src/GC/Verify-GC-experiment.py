@@ -372,9 +372,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         age_index = 12  
         prot_attr = X_test[:, age_index]
 
-        y_true = pd.Series(y_true.ravel())  
-        y_pred = pd.Series(y_pred.ravel())  
-        prot_attr = pd.Series(prot_attr.ravel())  
+        y_true = pd.Series(np.array(y_true).ravel())  
+        y_pred = pd.Series(np.array(y_pred).ravel())  
+        prot_attr = pd.Series(np.array(prot_attr).ravel())  
 
         # DI 
         di = disparate_impact_ratio(

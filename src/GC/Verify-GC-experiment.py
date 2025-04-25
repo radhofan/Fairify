@@ -384,7 +384,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print("prot_attr")
         print(prot_attr)
         print("Column 12 name")  
-        print(X_test.columns[age_index])
+        print(pd.DataFrame(X_test).columns[12])
 
         # DI 
         di = disparate_impact_ratio(

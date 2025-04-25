@@ -102,7 +102,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.startswith("GC-8"):
     #     continue
 
-    if not model_file.startswith("GC-1"):
+    if not (model_file.startswith("GC-1") or model_file.startswith("GC-8")):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -382,12 +382,20 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         print("y_true")
         print(y_true)
+
         print("y_pred")
         print(y_pred)
         print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
+
         print("prot_attr")
         print(prot_attr)
 
+        print("sim_y_orig")
+        print(sim_y_orig)
+
+        print("sim_y")
+        print(sim_y)
+        
         # DI 
         di = disparate_impact_ratio(
             y_true=y_true,
@@ -457,8 +465,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         # Save metric to csv
         file_name = result_dir + 'synthethic-german-predicted-gpt2-metrics.csv'
-        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
-        data_row = [partition_id, orig_acc, orig_f1, di, spd, eod, aod, erd, cnt, ti]
+        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
+        data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')

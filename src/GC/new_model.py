@@ -26,7 +26,7 @@ for column in categorical_columns:
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
+model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_test, y_test))
 
 
 # for sdg ctgan

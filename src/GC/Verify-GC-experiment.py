@@ -374,7 +374,11 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         y_true = pd.Series(np.array(y_true).ravel())  
         y_pred = pd.Series(np.array(y_pred).ravel())  
-        prot_attr = pd.Series(np.array(prot_attr).ravel())  
+        prot_attr = pd.Series(np.array(prot_attr).ravel())
+
+        print(y_true)
+        print(y_pred)
+        print(prot_attr)  
 
         # DI 
         di = disparate_impact_ratio(

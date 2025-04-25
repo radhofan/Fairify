@@ -435,8 +435,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         # CNT
         cnt = consistency_score(
-            X=X,
-            y=y,
+            X=X_test,
+            y=y_pred,
             n_neighbors=5 
         )
 

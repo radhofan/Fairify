@@ -368,6 +368,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         # AIF360 Metrics
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
+
+        age_index = 12  
+        rot_attr = X_test[:, age_index]
         prot_attr = X_test['age']
 
         y_true = pd.Series(y_true.ravel())  

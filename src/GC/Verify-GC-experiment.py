@@ -370,8 +370,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_pred = get_y_pred(net, w, b, X_test)
 
         age_index = 12  
-        rot_attr = X_test[:, age_index]
-        prot_attr = X_test['age']
+        prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(y_true.ravel())  
         y_pred = pd.Series(y_pred.ravel())  

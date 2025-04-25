@@ -383,8 +383,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print(y_pred)
         print("prot_attr")
         print(prot_attr)
-        print("Column 12 name")  
-        print(pd.DataFrame(X_test).columns[12])
+        print("Column 12 name: ", pd.DataFrame(X_test).columns[11])  
 
         # DI 
         di = disparate_impact_ratio(

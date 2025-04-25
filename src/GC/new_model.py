@@ -6,9 +6,14 @@ from sklearn.preprocessing import LabelEncoder
 
 model = load_model('Fairify/models/german/GC-1.h5')
 
+# One
 # df = pd.read_csv('Fairify/experimentData/synthetic-german-one-ctgan.csv') # sdg ctgan
 # df = pd.read_csv('Fairify/experimentData/synthetic-german-one-distilgpt2.csv') # great distill gpt2
-df = pd.read_csv('Fairify/experimentData/synthetic-german-one-gpt2.csv') # great gpt2
+# df = pd.read_csv('Fairify/experimentData/synthetic-german-one-gpt2.csv') # great gpt2
+
+# Predicted
+# df = pd.read_csv('Fairify/experimentData/synthetic-german-predicted-distilgpt2.csv') # great distill gpt2
+df = pd.read_csv('Fairify/experimentData/synthetic-german-predicted-gpt2.csv') # great gpt2
 
 X = df.drop(columns=['credit'])  
 y = df['credit']

@@ -448,11 +448,11 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             wr = csv.writer(fp, dialect='excel')
             
             if not file_exists:
-                wr.writerow(cols + ['class', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT'])  # write header
+                wr.writerow(cols + ['Partiton ID', 'Original Accuracy', 'Original F1 Score', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI'])  
             
             csv_row = copy.deepcopy(inp)
-            csv_row.append(int(class_label))  # append class label
-            csv_row += [di, spd, eod, aod, erd, cnt]  # append fairness metrics
+            csv_row.append(int(class_label))  
+            csv_row += [partition_id, orig_acc, orig_f1, di, spd, eod, aod, erd, cnt, ti]  
 
             wr.writerow(csv_row)
 

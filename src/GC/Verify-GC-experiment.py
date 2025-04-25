@@ -99,7 +99,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     #     continue
 
     # gpt2
-    if not model_file.startswith("GC-8"):
+    # if not model_file.startswith("GC-8"):
+    #     continue
+
+    if not model_file.startswith("GC-1"):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -384,8 +387,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
         print("prot_attr")
         print(prot_attr)
-        print("X_test")
-        print(X_test)  
 
         # DI 
         di = disparate_impact_ratio(

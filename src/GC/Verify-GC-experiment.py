@@ -370,7 +370,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        age_index = 12  
+        age_index = 11  
         prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
@@ -383,7 +383,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print(y_pred)
         print("prot_attr")
         print(prot_attr)
-        print("Column 12 name: ", pd.DataFrame(X_test).columns[11])  
+        print("X_test")
+        print(X_test)  
 
         # DI 
         di = disparate_impact_ratio(

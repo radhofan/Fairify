@@ -391,10 +391,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print(prot_attr)
 
         print("sim_y_orig")
-        print("True:", (sim_y_orig == True).sum(), "| False:", (sim_y_orig == False).sum())
+        print("True:", (sim_y_orig == "True").sum(), "| False:", (sim_y_orig == "False").sum())
 
         print("sim_y")
-        print("True:", (sim_y_orig == True).sum(), "| False:", (sim_y_orig == False).sum())
+        print("True:", (sim_y_orig == "True").sum(), "| False:", (sim_y_orig == "False").sum())
         
         # DI 
         di = disparate_impact_ratio(

@@ -444,19 +444,16 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = theil_index(y_pred)
 
         # Save metric to csv
-        file_name =  result_dir + 'synthethic-german-predicted-gpt2-metrics.csv'
+        file_name = result_dir + 'synthethic-german-predicted-gpt2-metrics.csv'
+        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
+        data_row = [partition_id, orig_acc, orig_f1, di, spd, eod, aod, erd, cnt, ti]
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')
-            
             if not file_exists:
-                wr.writerow(cols + ['Partiton ID', 'Original Accuracy', 'Original F1 Score', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI'])  
+                wr.writerow(cols)
             
-            csv_row = copy.deepcopy(inp)
-            csv_row.append(int(class_label))  
-            csv_row += [partition_id, orig_acc, orig_f1, di, spd, eod, aod, erd, cnt, ti]  
-
-            wr.writerow(csv_row)
+            wr.writerow(data_row)
 
 
         if cumulative_time > HARD_TIMEOUT:

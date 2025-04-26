@@ -325,7 +325,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         orig_acc = accuracy_score(y_test, get_y_pred(net, w, b, X_test))
         orig_f1 = f1_score(y_test, get_y_pred(net, w, b, X_test))
-        
+
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
         pruned_f1 = f1_score(sim_y_orig, sim_y)
 
@@ -372,7 +372,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         # AIF360 Metrics
         y_true = y_test 
-        y_pred = get_y_pred(net, pr_w, pr_b, X_test)
+        y_pred = get_y_pred(net, w, b, X_test)
 
         age_index = 11  
         prot_attr = X_test[:, age_index]

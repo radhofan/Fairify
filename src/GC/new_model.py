@@ -26,7 +26,7 @@ for column in categorical_columns:
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-optimizer = Adam(learning_rate=0.01)
+optimizer = Adam(learning_rate=0.0001)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)

@@ -1,11 +1,12 @@
 import pandas as pd
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model, Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import make_scorer
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 
 # Load model
 model = load_model('Fairify/models/german/GC-2.h5')
@@ -29,12 +30,20 @@ for column in categorical_columns:
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-# Define model function to be used in GridSearchCV
+# Define the model creation function
 def create_model(learning_rate=0.001):
-    model = load_model('Fairify/models/german/GC-2.h5')
+    model = Sequential()
+    model.add(Dense(64, input_dim=X_train.shape[1], activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+    
     optimizer = Adam(learning_rate=learning_rate)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    
     return model
+
+# Create KerasClassifier wrapper for use with GridSearchCV
+model_wrapper = KerasClassifier(build_fn=create_model, epochs=100, batch_size=32, verbose=0)
 
 # Prepare KFold and GridSearchCV
 kfold = KFold(n_splits=3, shuffle=True, random_state=42)
@@ -43,7 +52,7 @@ param_grid = {'learning_rate': [0.0001, 0.001, 0.005, 0.01]}
 # Use accuracy as the scoring metric
 accuracy_scorer = make_scorer(lambda y_true, y_pred: (y_true == y_pred).mean())
 
-grid_search = GridSearchCV(estimator=create_model(), param_grid=param_grid, cv=kfold, n_jobs=-1, scoring=accuracy_scorer)
+grid_search = GridSearchCV(estimator=model_wrapper, param_grid=param_grid, cv=kfold, n_jobs=-1, scoring=accuracy_scorer)
 grid_search.fit(X_train, y_train)
 
 # Best learning rate found
@@ -51,10 +60,7 @@ best_lr = grid_search.best_params_['learning_rate']
 print(f"Best Learning Rate: {best_lr}")
 
 # Recompile model with the best learning rate
-model = load_model('Fairify/models/german/GC-2.h5')
-optimizer = Adam(learning_rate=best_lr)
-model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-
+model = create_model(learning_rate=best_lr)
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
 model.fit(

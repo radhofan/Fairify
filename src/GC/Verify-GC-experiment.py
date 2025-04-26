@@ -383,6 +383,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         print("y_true")
         print(y_true)
+        print("True:", (y_true == True).sum(), "| False:", (y_true == False).sum())
 
         print("y_pred")
         print(y_pred)

@@ -2,9 +2,11 @@ import pandas as pd
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import GridSearchCV
 
+# Load model
 model = load_model('Fairify/models/german/GC-2.h5')
 
 # One
@@ -26,7 +28,27 @@ for column in categorical_columns:
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-optimizer = Adam(learning_rate=0.005)
+# Define model function to be used in GridSearchCV
+def create_model(learning_rate=0.001):
+    model = load_model('Fairify/models/german/GC-2.h5')
+    optimizer = Adam(learning_rate=learning_rate)
+    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    return model
+
+# Prepare KFold and GridSearchCV
+kfold = KFold(n_splits=3, shuffle=True, random_state=42)
+param_grid = {'learning_rate': [0.0001, 0.001, 0.005, 0.01]}
+
+grid_search = GridSearchCV(estimator=create_model(), param_grid=param_grid, cv=kfold, n_jobs=-1)
+grid_search.fit(X_train, y_train)
+
+# Best learning rate found
+best_lr = grid_search.best_params_['learning_rate']
+print(f"Best Learning Rate: {best_lr}")
+
+# Recompile model with the best learning rate
+model = load_model('Fairify/models/german/GC-2.h5')
+optimizer = Adam(learning_rate=best_lr)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)

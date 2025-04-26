@@ -1,5 +1,6 @@
 import pandas as pd
 from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
@@ -18,7 +19,6 @@ df = pd.read_csv('Fairify/experimentData/synthetic-german-predicted-gpt2.csv') #
 X = df.drop(columns=['credit'])  
 y = df['credit']
 
-
 categorical_columns = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans', 'housing', 'skill_level', 'telephone', 'foreign_worker']
 for column in categorical_columns:
     label_encoder = LabelEncoder()
@@ -26,8 +26,16 @@ for column in categorical_columns:
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
+# Add EarlyStopping
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
+model.fit(
+    X_train, y_train,
+    epochs=100,   # max limit
+    batch_size=32,
+    validation_data=(X_test, y_test),
+    callbacks=[early_stopping]
+)
 
 # for sdg ctgan
 # model.save('Fairify/models/german/GC-6.h5')

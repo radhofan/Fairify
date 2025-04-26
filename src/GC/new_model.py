@@ -5,6 +5,7 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
 
 # Load model
 model = load_model('Fairify/models/german/GC-2.h5')
@@ -39,7 +40,10 @@ def create_model(learning_rate=0.001):
 kfold = KFold(n_splits=3, shuffle=True, random_state=42)
 param_grid = {'learning_rate': [0.0001, 0.001, 0.005, 0.01]}
 
-grid_search = GridSearchCV(estimator=create_model(), param_grid=param_grid, cv=kfold, n_jobs=-1)
+# Use accuracy as the scoring metric
+accuracy_scorer = make_scorer(lambda y_true, y_pred: (y_true == y_pred).mean())
+
+grid_search = GridSearchCV(estimator=create_model(), param_grid=param_grid, cv=kfold, n_jobs=-1, scoring=accuracy_scorer)
 grid_search.fit(X_train, y_train)
 
 # Best learning rate found

@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 
-model = load_model('Fairify/models/german/GC-1.h5')
+model = load_model('Fairify/models/german/GC-2.h5')
 
 # One
 # df = pd.read_csv('Fairify/experimentData/synthetic-german-one-ctgan.csv') # sdg ctgan

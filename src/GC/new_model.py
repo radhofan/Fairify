@@ -1,9 +1,9 @@
 import pandas as pd
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-
 
 model = load_model('Fairify/models/german/GC-2.h5')
 
@@ -26,12 +26,14 @@ for column in categorical_columns:
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-# Add EarlyStopping
+optimizer = Adam(learning_rate=0.005)
+model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
 model.fit(
     X_train, y_train,
-    epochs=100,   # max limit
+    epochs=100,
     batch_size=32,
     validation_data=(X_test, y_test),
     callbacks=[early_stopping]

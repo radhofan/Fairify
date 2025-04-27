@@ -377,7 +377,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_pred = pd.Series(np.array(y_pred).ravel())  
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
-        X_test_copy = pd.Series(X_test)
+        X_test_copy = pd.DataFrame(X_test)
         dataset = pd.concat([X_test_copy , y_true], axis=1)
         dataset_pred = pd.concat([X_test_copy , y_pred], axis=1)
         unprivileged_groups = [{'age': 0}]

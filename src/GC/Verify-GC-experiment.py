@@ -381,7 +381,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         X_test_copy = pd.DataFrame(X_test)
         print('10th column')
         print(X_test_copy.iloc[:, 10])
-        X_test_copy.columns.values[10] = 'age'
+        X_test_copy.rename(columns={X_test_copy.columns[10]: 'age'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('credit')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('credit')], axis=1)
         dataset = BinaryLabelDataset(df=dataset, label_names=['credit'], protected_attribute_names=['age'])

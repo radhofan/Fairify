@@ -20,6 +20,7 @@ from random import shuffle
 
 # Import AIF360 Metrics
 from aif360.metrics import *
+from aif360.datasets import *
 
 # In[]
 

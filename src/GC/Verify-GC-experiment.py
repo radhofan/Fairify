@@ -19,12 +19,7 @@ from importlib import import_module
 from random import shuffle
 
 # Import AIF360 Metrics
-from aif360.sklearn.metrics import disparate_impact_ratio
-from aif360.sklearn.metrics import statistical_parity_difference
-from aif360.sklearn.metrics import equal_opportunity_difference
-from aif360.sklearn.metrics import average_odds_difference
-from aif360.sklearn.metrics import consistency_score
-from aif360.sklearn.metrics import theil_index
+from aif360.metrics import *
 
 # In[]
 

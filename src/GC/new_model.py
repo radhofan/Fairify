@@ -32,7 +32,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # 0.01 - kek taik
 # 0.0001 - mayan
 # 0.0005 - sama aja
-optimizer = Adam(learning_rate=0.0005)
+optimizer = Adam(learning_rate=0.001)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)

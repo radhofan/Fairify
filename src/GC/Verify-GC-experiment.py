@@ -371,6 +371,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
 
         # AIF360 Metrics
+        
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
@@ -380,6 +381,18 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_true = pd.Series(np.array(y_true).ravel())  
         y_pred = pd.Series(np.array(y_pred).ravel())  
         prot_attr = pd.Series(np.array(prot_attr).ravel())
+
+        dataset = pd.concat([X_test, y_true], axis=1)
+        dataset_pred = pd.concat([X_test, y_pred], axis=1)
+        unprivileged_groups = [{'age': 0}]
+        privileged_groups = [{'age': 1}]
+        classified_metric = ClassificationMetric(dataset,
+                                                 dataset_pred,
+                                                 unprivileged_groups=unprivileged_groups,
+                                                 privileged_groups=privileged_groups)
+        metric_pred = BinaryLabelDatasetMetric(dataset_pred,
+                                                unprivileged_groups=unprivileged_groups,
+                                                privileged_groups=privileged_groups)
 
         print("y_true")
         print(y_true)
@@ -391,79 +404,81 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         print("prot_attr")
         print(prot_attr)
-
-        # print("sim_y_orig")
-        # print("True:", (sim_y_orig == "True").sum(), "| False:", (sim_y_orig == "False").sum())
-
-        # print("sim_y")
-        # print("True:", (sim_y_orig == "True").sum(), "| False:", (sim_y_orig == "False").sum())
         
         # DI 
-        di = disparate_impact_ratio(
-            y_true=y_true,
-            y_pred=y_pred,
-            prot_attr=prot_attr,
-            priv_group=1,  
-            pos_label=1    
-        )
+        # di = disparate_impact_ratio(
+        #     y_true=y_true,
+        #     y_pred=y_pred,
+        #     prot_attr=prot_attr,
+        #     priv_group=1,  
+        #     pos_label=1    
+        # )
+        di = classified_metric.disparate_impact()
 
         # SPD
-        spd = statistical_parity_difference(
-            y_true=y_true,
-            y_pred=y_pred,
-            prot_attr=prot_attr,
-            priv_group=1,  
-            pos_label=1    
-        )
+        # spd = statistical_parity_difference(
+        #     y_true=y_true,
+        #     y_pred=y_pred,
+        #     prot_attr=prot_attr,
+        #     priv_group=1,  
+        #     pos_label=1    
+        # )
+        spd =  classified_metric.mean_difference()
 
         # EOD
-        eod = equal_opportunity_difference(
-            y_true=y_true,
-            y_pred=y_pred,
-            prot_attr=prot_attr,
-            priv_group=1,
-            pos_label=1
-        )
+        # eod = equal_opportunity_difference(
+        #     y_true=y_true,
+        #     y_pred=y_pred,
+        #     prot_attr=prot_attr,
+        #     priv_group=1,
+        #     pos_label=1
+        # )
+        eod = classified_metric.equal_opportunity_difference()
 
         # AOD
-        aod = average_odds_difference(
-            y_true=y_true,
-            y_pred=y_pred,
-            prot_attr=prot_attr,
-            priv_group=1,  
-            pos_label=1   
-        )
+        # aod = average_odds_difference(
+        #     y_true=y_true,
+        #     y_pred=y_pred,
+        #     prot_attr=prot_attr,
+        #     priv_group=1,  
+        #     pos_label=1   
+        # )
+        aod = classified_metric.average_odds_difference()
 
         # ERD
-        def error_rate_difference(y_true, y_pred, prot_attr, priv_group=1):
-            y_true = np.array(y_true)
-            y_pred = np.array(y_pred)
-            prot_attr = np.array(prot_attr)
+        # def error_rate_difference(y_true, y_pred, prot_attr, priv_group=1):
+        #     y_true = np.array(y_true)
+        #     y_pred = np.array(y_pred)
+        #     prot_attr = np.array(prot_attr)
             
-            priv_mask = (prot_attr == priv_group)
-            unpriv_mask = ~priv_mask
+        #     priv_mask = (prot_attr == priv_group)
+        #     unpriv_mask = ~priv_mask
             
-            priv_error = np.mean(y_true[priv_mask] != y_pred[priv_mask])
-            unpriv_error = np.mean(y_true[unpriv_mask] != y_pred[unpriv_mask])
+        #     priv_error = np.mean(y_true[priv_mask] != y_pred[priv_mask])
+        #     unpriv_error = np.mean(y_true[unpriv_mask] != y_pred[unpriv_mask])
             
-            return abs(unpriv_error - priv_error)
+        #     return abs(unpriv_error - priv_error)
         
-        erd = error_rate_difference(
-            y_true=y_true,
-            y_pred=y_pred,
-            prot_attr=prot_attr,
-            priv_group=1  
-        )
+        # erd = error_rate_difference(
+        #     y_true=y_true,
+        #     y_pred=y_pred,
+        #     prot_attr=prot_attr,
+        #     priv_group=1  
+        # )
+
+        erd = classified_metric.error_rate_difference()
 
         # CNT
-        cnt = consistency_score(
-            X=X_test,
-            y=y_pred,
-            n_neighbors=5 
-        )
+        # cnt = consistency_score(
+        #     X=X_test,
+        #     y=y_pred,
+        #     n_neighbors=5 
+        # )
+        cnt = metric_pred.consistency()
 
         # TI
-        ti = theil_index(y_pred)
+        # ti = theil_index(y_pred)
+        ti = classified_metric.theil_index()
 
         # Save metric to csv
         model_prefix = next((prefix for prefix in ["GC-2", "GC-8"] if model_file.startswith(prefix)), "unknown")

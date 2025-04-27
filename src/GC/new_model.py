@@ -31,7 +31,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # 0.001 - jlek
 # 0.01 - kek taik
 # 0.0001 - mayan
-# 0.0005
+# 0.0005 - sama aja
 optimizer = Adam(learning_rate=0.0005)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 

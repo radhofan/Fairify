@@ -379,10 +379,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        dataset = pd.concat([X_test_copy , y_true], axis=1)
-        dataset_pred = pd.concat([X_test_copy , y_pred], axis=1)
-        print("Columns in dataset:", dataset.columns)
-        print("Columns in dataset_pred:", dataset_pred.columns)
+        dataset = pd.concat([X_test_copy, y_true.rename('credit')], axis=1)
+        dataset_pred = pd.concat([X_test_copy, y_pred.rename('credit')], axis=1)
         dataset = BinaryLabelDataset(df=dataset, label_names=['credit'], protected_attribute_names=['age'])
         dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['credit'], protected_attribute_names=['age'])
         unprivileged_groups = [{'age': 0}]

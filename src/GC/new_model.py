@@ -31,7 +31,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # 0.001 - jlek
 # 0.01 - kek taik
 # 0.0001 - mayan
-# 0.0005 - sama aja
+# 0.0005 - mantap
 optimizer = Adam(learning_rate=0.0005)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
@@ -61,4 +61,4 @@ print("Model retrained and saved as GC-8.h5")
 # sample - epoch - acc
 # 2000 / 200 / 0.72
 # 1000 / 100 / 0.74
-# 2000 / 100 / 
+# 2000 / 100 / 0.72

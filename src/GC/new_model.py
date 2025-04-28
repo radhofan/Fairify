@@ -58,5 +58,7 @@ model.save('Fairify/models/german/GC-8.h5')
 print("Model retrained and saved as GC-8.h5")
 
 
-# 2000 / 200 / best
-# 1000 / 100
+# sample - epoch - acc
+# 2000 / 200 / 0.72
+# 1000 / 100 / 0.74
+# 2000 / 100 / 

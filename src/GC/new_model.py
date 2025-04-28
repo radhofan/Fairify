@@ -56,3 +56,7 @@ model.fit(
 # for gpt2
 model.save('Fairify/models/german/GC-8.h5')
 print("Model retrained and saved as GC-8.h5")
+
+
+# 2000 / 200 / best
+# 1000 / 100

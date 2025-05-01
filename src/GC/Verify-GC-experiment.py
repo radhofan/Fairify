@@ -113,16 +113,20 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     alpha = 0.7
     def kd_loss(y_true, y_pred):
         # Split the combined target
-        true_labels = y_true[:, 0:1]  # True binary labels
-        teacher_logits = y_true[:, 1:]  # Teacher soft labels
+        true_labels = y_true[:, 0]  # True binary labels (shape: [batch_size])
+        teacher_logits = y_true[:, 1]  # Teacher soft labels (shape: [batch_size])
         
         # Standard binary cross-entropy loss
         ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred)
         
-        # Distillation loss (KL divergence between teacher and student logits)
-        student_logits = tf.math.log(tf.concat([1 - y_pred, y_pred], axis=1)) / temperature
+        # Distillation loss - KL divergence between teacher and student logits
+        student_logits = tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1-1e-7)) / temperature
+        
+        # For binary classification, we can compute KL divergence directly
         kl_loss = tf.reduce_mean(
-            tf.keras.losses.kl_divergence(teacher_logits, student_logits)) * (temperature ** 2)
+            teacher_probs * (teacher_logits - student_logits) + 
+            (1 - teacher_probs) * (-teacher_logits - tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7))/temperature
+        ))
         
         return alpha * ce_loss + (1 - alpha) * kl_loss
 

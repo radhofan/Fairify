@@ -97,7 +97,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # Precompute teacher soft labels with temperature
 temperature = 3.0
 teacher_probs = teacher.predict(X_train)
-teacher_soft = np.log(np.vstack([1 - teacher_probs[:, 0], teacher_probs[:, 0]]).T) / temperature
+teacher_soft = np.log(np.clip(teacher_probs, 1e-7, 1-1e-7)) / temperature  # Only need the positive class logits
 
 # Clone student model
 student = clone_model(teacher)
@@ -108,33 +108,35 @@ alpha = 0.7
 
 def kd_loss(y_true, y_pred):
     # Split the combined target
-    true_labels = y_true[:, 0:1]  # True binary labels
-    teacher_logits = y_true[:, 1:]  # Teacher soft labels
+    true_labels = y_true[:, 0]  # True binary labels (shape: [batch_size])
+    teacher_logits = y_true[:, 1]  # Teacher soft labels (shape: [batch_size])
     
     # Standard binary cross-entropy loss
     ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred)
     
-    # Distillation loss (KL divergence between teacher and student logits)
-    student_logits = tf.math.log(tf.concat([1 - y_pred, y_pred], axis=1)) / temperature
+    # Distillation loss - KL divergence between teacher and student logits
+    student_logits = tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1-1e-7)) / temperature
+    
+    # For binary classification, we can compute KL divergence directly
     kl_loss = tf.reduce_mean(
-        tf.keras.losses.kl_divergence(teacher_logits, student_logits)) * (temperature ** 2)
+        teacher_probs * (teacher_logits - student_logits) + 
+        (1 - teacher_probs) * (-teacher_logits - tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7))/temperature
+    ))
     
     return alpha * ce_loss + (1 - alpha) * kl_loss
 
 # Combine hard and soft labels
-y_train_combined = np.hstack([
-    np.array(y_train).reshape(-1, 1),  # True labels
-    teacher_soft  # Teacher soft labels
-])
+y_train_combined = np.column_stack([y_train, teacher_soft.flatten()])
 
 # Create tf.data.Dataset
 train_ds = tf.data.Dataset.from_tensor_slices((X_train.values, y_train_combined)).batch(32).shuffle(512)
-val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, np.array(y_test).reshape(-1, 1))).batch(32)
+val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, y_test)).batch(32)
 
 # Compile and train
 student.compile(optimizer=Adam(0.0005), 
                loss=kd_loss, 
-               metrics=['accuracy'])
+               metrics=['accuracy'],
+               run_eagerly=True)  # Keep eager execution for debugging
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 history = student.fit(train_ds, 

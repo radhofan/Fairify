@@ -23,7 +23,11 @@ for column in categorical_columns:
     label_encoder = LabelEncoder()
     X[column] = label_encoder.fit_transform(X[column])
 
+# Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
+
+# Ensure y_train has the correct shape (1D array)
+y_train = y_train.reshape(-1, 1)  # Ensures y_train is a 1D array with shape (num_samples,)
 
 # Get soft targets from teacher model
 teacher_probs = teacher.predict(X_train)
@@ -37,14 +41,16 @@ alpha = 0.7  # weight for soft loss
 temperature = 3.0  # temperature for softening logits
 
 def kd_loss(y_true, y_pred):
-    y_true_onehot = tf.one_hot(tf.cast(tf.squeeze(y_true), tf.int32), depth=2)
-    ce_loss = tf.keras.losses.categorical_crossentropy(y_true_onehot, y_pred)
-    
-    # Soft labels
+    # Binary crossentropy loss for hard targets
+    ce_loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+
+    # Soft labels from the teacher (logits)
     teacher_logits = tf.math.log(teacher_probs + 1e-7) / temperature
     student_logits = tf.math.log(y_pred + 1e-7) / temperature
+
+    # KL divergence between soft labels
     kl_loss = tf.keras.losses.KLDivergence()(teacher_logits, student_logits) * (temperature ** 2)
-    
+
     return alpha * ce_loss + (1 - alpha) * kl_loss
 
 # Compile student model

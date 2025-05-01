@@ -60,5 +60,5 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weig
 student.fit(train_ds, validation_data=val_ds, epochs=100, callbacks=[early_stopping])
 
 # Save model
-student.save('Fairify/models/german/GC-8-distilled.h5')
-print("✅ Distilled model saved as GC-8-distilled.h5")
+student.save('Fairify/models/german/GC-8.h5')
+print("✅ Distilled model saved as GC-8.h5")

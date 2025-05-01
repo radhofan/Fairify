@@ -27,7 +27,7 @@ for column in categorical_columns:
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
 # Ensure y_train has the correct shape (1D array)
-y_train = y_train.reshape(-1, 1)  # Ensures y_train is a 1D array with shape (num_samples,)
+y_train = y_train.values.reshape(-1, 1)  # Convert to NumPy array and reshape
 
 # Get soft targets from teacher model
 teacher_probs = teacher.predict(X_train)

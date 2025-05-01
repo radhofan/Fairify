@@ -97,7 +97,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # Precompute teacher soft labels with temperature
 temperature = 3.0
 teacher_probs = teacher.predict(X_train)
-teacher_soft = np.log(np.clip(teacher_probs, 1e-7, 1-1e-7)) / temperature  # Only need the positive class logits
+teacher_logits = np.log(np.clip(teacher_probs, 1e-7, 1-1e-7)) / temperature
 
 # Clone student model
 student = clone_model(teacher)
@@ -108,11 +108,11 @@ alpha = 0.7
 
 def kd_loss(y_true, y_pred):
     # Split the combined target
-    true_labels = y_true[:, 0]  # True binary labels (shape: [batch_size])
-    teacher_logits = y_true[:, 1]  # Teacher soft labels (shape: [batch_size])
+    true_labels = tf.expand_dims(y_true[:, 0], -1)  # Shape: (batch_size, 1)
+    teacher_logits = tf.expand_dims(y_true[:, 1], -1)  # Shape: (batch_size, 1)
     
     # Standard binary cross-entropy loss
-    ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred)
+    ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred, from_logits=False)
     
     # Distillation loss - KL divergence between teacher and student logits
     student_logits = tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1-1e-7)) / temperature
@@ -126,11 +126,11 @@ def kd_loss(y_true, y_pred):
     return alpha * ce_loss + (1 - alpha) * kl_loss
 
 # Combine hard and soft labels
-y_train_combined = np.column_stack([y_train, teacher_soft.flatten()])
+y_train_combined = np.column_stack([y_train, teacher_logits.flatten()])
 
 # Create tf.data.Dataset
 train_ds = tf.data.Dataset.from_tensor_slices((X_train.values, y_train_combined)).batch(32).shuffle(512)
-val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, y_test)).batch(32)
+val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, np.expand_dims(y_test, -1))).batch(32)
 
 # Compile and train
 student.compile(optimizer=Adam(0.0005), 

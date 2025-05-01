@@ -112,10 +112,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     temperature = 3.0
     alpha = 0.7
     def kd_loss(y_true, y_pred):
-        y_true, teacher_soft = y_true[:, 0:1], y_true[:, 1:2]  # extract both
+        y_true, teacher_soft = y_true[:, 0:1], y_true[:, 1:2]
         ce = tf.keras.losses.binary_crossentropy(y_true, y_pred)
-        student_log = tf.math.log(y_pred + 1e-7) / temperature
-        kl = tf.keras.losses.KLDivergence()(teacher_soft, student_log) * (temperature ** 2)
+        
+        # KL divergence between teacher and student soft predictions
+        teacher_soft = tf.stop_gradient(teacher_soft)
+        kl = tf.keras.losses.KLDivergence()(teacher_soft, y_pred) * (temperature ** 2)
+        
         return alpha * ce + (1 - alpha) * kl
 
     # Conditional loading

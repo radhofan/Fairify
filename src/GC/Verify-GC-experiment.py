@@ -135,7 +135,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
     w = []
     b = []
-    model = load_model(model_dir + model_file)
+    # model = load_model(model_dir + model_file)
 
     for i in range(len(model.layers)):
         w.append(model.layers[i].get_weights()[0])

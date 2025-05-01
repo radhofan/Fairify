@@ -113,22 +113,26 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     alpha = 0.7
     def kd_loss(y_true, y_pred):
         # Split the combined target
-        true_labels = tf.expand_dims(y_true[:, 0], -1)  # Shape: (batch_size, 1)
-        teacher_logits = tf.expand_dims(y_true[:, 1], -1)  # Shape: (batch_size, 1)
+        true_labels = tf.cast(y_true[:, 0:1], tf.float32)  # Shape: (batch_size, 1)
+        teacher_probs = tf.cast(y_true[:, 1:2], tf.float32)  # Shape: (batch_size, 1)
         
         # Standard binary cross-entropy loss
         ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred, from_logits=False)
         
-        # Distillation loss - KL divergence between teacher and student logits
+        # Distillation loss using KL divergence
         student_logits = tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1-1e-7)) / temperature
+        teacher_logits = tf.math.log(tf.clip_by_value(teacher_probs, 1e-7, 1-1e-7)) / temperature
         
-        # For binary classification, we can compute KL divergence directly
-        kl_loss = tf.reduce_mean(
-            teacher_probs * (teacher_logits - student_logits) + 
-            (1 - teacher_probs) * (-teacher_logits - tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7))/temperature
-        ))
+        # Compute KL divergence for binary classification
+        kl_divergence = teacher_probs * (teacher_logits - student_logits) + \
+                    (1 - teacher_probs) * (tf.math.log(1 - tf.clip_by_value(teacher_probs, 1e-7, 1-1e-7)) - 
+                                            tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7)))
         
-        return alpha * ce_loss + (1 - alpha) * kl_loss
+        kl_loss = tf.reduce_mean(kl_divergence) * (temperature ** 2)
+        
+        # Total loss
+        total_loss = alpha * ce_loss + (1 - alpha) * kl_loss
+        return total_loss
 
     # Conditional loading
     if model_file.startswith("GC-8"):

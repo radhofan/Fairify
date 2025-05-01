@@ -97,51 +97,57 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # Precompute teacher soft labels with temperature
 temperature = 3.0
 teacher_probs = teacher.predict(X_train)
-teacher_logits = np.log(np.clip(teacher_probs, 1e-7, 1-1e-7)) / temperature
-
-# Clone student model
-student = clone_model(teacher)
-student.build(input_shape=(None, X_train.shape[1]))
 
 # Custom knowledge distillation loss for binary classification
 alpha = 0.7
-
 def kd_loss(y_true, y_pred):
     # Split the combined target
-    true_labels = tf.expand_dims(y_true[:, 0], -1)  # Shape: (batch_size, 1)
-    teacher_logits = tf.expand_dims(y_true[:, 1], -1)  # Shape: (batch_size, 1)
+    true_labels = tf.cast(y_true[:, 0:1], tf.float32)  # Shape: (batch_size, 1)
+    teacher_probs = tf.cast(y_true[:, 1:2], tf.float32)  # Shape: (batch_size, 1)
     
     # Standard binary cross-entropy loss
     ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred, from_logits=False)
     
-    # Distillation loss - KL divergence between teacher and student logits
+    # Distillation loss using KL divergence
     student_logits = tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1-1e-7)) / temperature
+    teacher_logits = tf.math.log(tf.clip_by_value(teacher_probs, 1e-7, 1-1e-7)) / temperature
     
-    # For binary classification, we can compute KL divergence directly
-    kl_loss = tf.reduce_mean(
-        teacher_probs * (teacher_logits - student_logits) + 
-        (1 - teacher_probs) * (-teacher_logits - tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7))/temperature
-    ))
+    # Compute KL divergence for binary classification
+    kl_divergence = teacher_probs * (teacher_logits - student_logits) + \
+                   (1 - teacher_probs) * (tf.math.log(1 - tf.clip_by_value(teacher_probs, 1e-7, 1-1e-7)) - 
+                                         tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7)))
     
-    return alpha * ce_loss + (1 - alpha) * kl_loss
+    kl_loss = tf.reduce_mean(kl_divergence) * (temperature ** 2)
+    
+    # Total loss
+    total_loss = alpha * ce_loss + (1 - alpha) * kl_loss
+    return total_loss
 
-# Combine hard and soft labels
-y_train_combined = np.column_stack([y_train, teacher_logits.flatten()])
+# Prepare teacher probabilities for training
+y_train_combined = np.column_stack([y_train, teacher_probs.flatten()])
 
 # Create tf.data.Dataset
 train_ds = tf.data.Dataset.from_tensor_slices((X_train.values, y_train_combined)).batch(32).shuffle(512)
 val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, np.expand_dims(y_test, -1))).batch(32)
 
+# Create validation dataset with correct format for the loss function
+# We need to provide dummy teacher probs for validation (won't affect validation metrics)
+dummy_teacher_probs = np.zeros_like(y_test)
+y_val_combined = np.column_stack([y_test, dummy_teacher_probs])
+val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, y_val_combined)).batch(32)
+
 # Compile and train
-student.compile(optimizer=Adam(0.0005), 
-               loss=kd_loss, 
+student = clone_model(teacher)
+student.build(input_shape=(None, X_train.shape[1]))
+student.compile(optimizer=Adam(0.0005),
+               loss=kd_loss,
                metrics=['accuracy'],
                run_eagerly=True)  # Keep eager execution for debugging
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
-history = student.fit(train_ds, 
-                     validation_data=val_ds, 
-                     epochs=100, 
+history = student.fit(train_ds,
+                     validation_data=val_ds,
+                     epochs=100,
                      callbacks=[early_stopping])
 
 # Save model

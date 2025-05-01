@@ -29,6 +29,10 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random
 # Ensure y_train has the correct shape (1D array)
 y_train = y_train.values.reshape(-1, 1)  # Convert to NumPy array and reshape
 
+# Precompute teacher logits for training data (soft labels)
+teacher_probs = teacher.predict(X_train)
+teacher_logits = tf.math.log(teacher_probs + 1e-7) / 3.0  # Apply temperature scaling
+
 # Clone model structure for student
 student = clone_model(teacher)
 student.build(input_shape=(None, X_train.shape[1]))
@@ -41,15 +45,10 @@ def kd_loss(y_true, y_pred):
     # Binary crossentropy loss for hard targets
     ce_loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
 
-    # Soft labels from the teacher (logits)
-    # Since we need teacher logits per batch, get teacher predictions on the current batch
-    teacher_probs_batch = teacher.predict(X_train[:y_pred.shape[0]])  # Ensure teacher_probs match current batch size
-
-    # Apply temperature scaling
-    teacher_logits = tf.math.log(teacher_probs_batch + 1e-7) / temperature
+    # Apply temperature scaling for the student logits
     student_logits = tf.math.log(y_pred + 1e-7) / temperature
 
-    # KL divergence between soft labels
+    # KL divergence between soft labels (teacher logits) and student logits
     kl_loss = tf.keras.losses.KLDivergence()(teacher_logits, student_logits) * (temperature ** 2)
 
     return alpha * ce_loss + (1 - alpha) * kl_loss

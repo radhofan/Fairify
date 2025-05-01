@@ -18,6 +18,8 @@ from importlib import import_module
 
 from random import shuffle
 
+from tensorflow.keras.models import load_model
+
 # Import AIF360 Metrics
 from aif360.metrics import *
 from aif360.datasets import *
@@ -98,8 +100,30 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.startswith("GC-8"):
     #     continue
 
+    # if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
+    #     continue
+
+    ###############################################################################################
     if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
         continue
+
+    model_path = os.path.join(model_dir, model_file)
+
+    temperature = 3.0
+    alpha = 0.7
+    def kd_loss(y_true, y_pred):
+        y_true, teacher_soft = y_true[:, 0:1], y_true[:, 1:2]  # extract both
+        ce = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+        student_log = tf.math.log(y_pred + 1e-7) / temperature
+        kl = tf.keras.losses.KLDivergence()(teacher_soft, student_log) * (temperature ** 2)
+        return alpha * ce + (1 - alpha) * kl
+
+    # Conditional loading
+    if model_file.startswith("GC-8"):
+        model = load_model(model_path, custom_objects={'kd_loss': kd_loss})
+    else:
+        model = load_model(model_path)
+    ###############################################################################################
 
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]

@@ -54,7 +54,7 @@ train_ds = tf.data.Dataset.from_tensor_slices((X_train.values, y_train_combined)
 val_ds = tf.data.Dataset.from_tensor_slices((X_test.values, np.array(y_test).reshape(-1, 1))).batch(32)
 
 # Compile and train
-student.compile(optimizer=Adam(0.0005), loss='binary_crossentropy', metrics=['accuracy'])
+student.compile(optimizer=Adam(0.0005), loss=kd_loss, metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 student.fit(train_ds, validation_data=val_ds, epochs=100, callbacks=[early_stopping])

@@ -112,14 +112,19 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     temperature = 3.0
     alpha = 0.7
     def kd_loss(y_true, y_pred):
-        y_true, teacher_soft = y_true[:, 0:1], y_true[:, 1:2]
-        ce = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+        # Split the combined target
+        true_labels = y_true[:, 0:1]  # True binary labels
+        teacher_logits = y_true[:, 1:]  # Teacher soft labels
         
-        # KL divergence between teacher and student soft predictions
-        teacher_soft = tf.stop_gradient(teacher_soft)
-        kl = tf.keras.losses.KLDivergence()(teacher_soft, y_pred) * (temperature ** 2)
+        # Standard binary cross-entropy loss
+        ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred)
         
-        return alpha * ce + (1 - alpha) * kl
+        # Distillation loss (KL divergence between teacher and student logits)
+        student_logits = tf.math.log(tf.concat([1 - y_pred, y_pred], axis=1)) / temperature
+        kl_loss = tf.reduce_mean(
+            tf.keras.losses.kl_divergence(teacher_logits, student_logits)) * (temperature ** 2)
+        
+        return alpha * ce_loss + (1 - alpha) * kl_loss
 
     # Conditional loading
     if model_file.startswith("GC-8"):

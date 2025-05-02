@@ -109,34 +109,36 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
     model_path = os.path.join(model_dir, model_file)
 
-    temperature = 3.0
-    alpha = 0.7
-    def kd_loss(y_true, y_pred):
-        # Split the combined target
-        true_labels = tf.cast(y_true[:, 0:1], tf.float32)  # Shape: (batch_size, 1)
-        teacher_probs = tf.cast(y_true[:, 1:2], tf.float32)  # Shape: (batch_size, 1)
+    # Custom loss function with improved numerical stability
+    def distillation_loss(y_true, y_pred):
+        # Extract components from y_true
+        hard_labels = tf.cast(y_true[:, 0:1], tf.float32)  # Original labels
+        soft_labels_0 = tf.cast(y_true[:, 1:2], tf.float32)  # Teacher's prob for class 0
+        soft_labels_1 = tf.cast(y_true[:, 2:3], tf.float32)  # Teacher's prob for class 1
+        soft_labels = tf.concat([soft_labels_0, soft_labels_1], axis=1)
         
-        # Standard binary cross-entropy loss
-        ce_loss = tf.keras.losses.binary_crossentropy(true_labels, y_pred, from_logits=False)
+        # Reshape y_pred for binary classification
+        y_pred_reshaped = tf.concat([1-y_pred, y_pred], axis=1)
         
-        # Distillation loss using KL divergence
-        student_logits = tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1-1e-7)) / temperature
-        teacher_logits = tf.math.log(tf.clip_by_value(teacher_probs, 1e-7, 1-1e-7)) / temperature
+        # Standard binary cross-entropy with hard labels
+        hard_loss = tf.keras.losses.binary_crossentropy(hard_labels, y_pred)
         
-        # Compute KL divergence for binary classification
-        kl_divergence = teacher_probs * (teacher_logits - student_logits) + \
-                    (1 - teacher_probs) * (tf.math.log(1 - tf.clip_by_value(teacher_probs, 1e-7, 1-1e-7)) - 
-                                            tf.math.log(1 - tf.clip_by_value(y_pred, 1e-7, 1-1e-7)))
+        # KL divergence with soft labels (with numerical stability)
+        y_pred_safe = tf.clip_by_value(y_pred_reshaped, 1e-7, 1-1e-7)
+        soft_loss = tf.reduce_sum(soft_labels * tf.math.log(soft_labels / y_pred_safe + 1e-7), axis=1)
         
-        kl_loss = tf.reduce_mean(kl_divergence) * (temperature ** 2)
+        # Apply temperature scaling factor
+        soft_loss = soft_loss * (temperature ** 2)
         
-        # Total loss
-        total_loss = alpha * ce_loss + (1 - alpha) * kl_loss
+        # Balance between hard and soft losses
+        alpha = 0.5  # Modified from 0.7 to give more weight to soft labels
+        total_loss = alpha * hard_loss + (1 - alpha) * soft_loss
+        
         return total_loss
 
     # Conditional loading
     if model_file.startswith("GC-8"):
-        model = load_model(model_path, custom_objects={'kd_loss': kd_loss})
+        model = load_model(model_path, custom_objects={'kd_loss': distillation_loss})
     else:
         model = load_model(model_path)
     ###############################################################################################

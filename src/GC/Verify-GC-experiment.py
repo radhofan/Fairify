@@ -103,46 +103,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
     #     continue
 
-    ###############################################################################################
-    if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
+    if not (model_file.startswith("GC-1") or model_file.startswith("GC-8")):
         continue
 
-    model_path = os.path.join(model_dir, model_file)
-
-    # Define the exact loss function that was used during training
-    def distillation_loss(y_true, y_pred):
-        # Extract components from y_true
-        hard_labels = tf.cast(y_true[:, 0:1], tf.float32)  # Original labels
-        soft_labels_0 = tf.cast(y_true[:, 1:2], tf.float32)  # Teacher's prob for class 0
-        soft_labels_1 = tf.cast(y_true[:, 2:3], tf.float32)  # Teacher's prob for class 1
-        soft_labels = tf.concat([soft_labels_0, soft_labels_1], axis=1)
-        
-        # Reshape y_pred for binary classification
-        y_pred_reshaped = tf.concat([1-y_pred, y_pred], axis=1)
-        
-        # Standard binary cross-entropy with hard labels
-        hard_loss = tf.keras.losses.binary_crossentropy(hard_labels, y_pred)
-        
-        # KL divergence with soft labels (with numerical stability)
-        y_pred_safe = tf.clip_by_value(y_pred_reshaped, 1e-7, 1-1e-7)
-        soft_loss = tf.reduce_sum(soft_labels * tf.math.log(soft_labels / y_pred_safe + 1e-7), axis=1)
-        
-        # Apply temperature scaling factor
-        temperature = 2.0  # Must match what was used in training
-        soft_loss = soft_loss * (temperature ** 2)
-        
-        # Balance between hard and soft losses
-        alpha = 0.5  # Must match what was used in training
-        total_loss = alpha * hard_loss + (1 - alpha) * soft_loss
-        
-        return total_loss
-
-    # For loading models
-    if model_file.startswith("GC-8"):
-        # Note: we're passing 'distillation_loss' as the name in custom_objects
-        model = load_model(model_path, custom_objects={'distillation_loss': distillation_loss})
-    else:
-        model = load_model(model_path)
     ###############################################################################################
 
     print('==================  STARTING MODEL ' + model_file)
@@ -155,7 +118,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
     w = []
     b = []
-    # model = load_model(model_dir + model_file)
+    model = load_model(model_dir + model_file)
 
     for i in range(len(model.layers)):
         w.append(model.layers[i].get_weights()[0])

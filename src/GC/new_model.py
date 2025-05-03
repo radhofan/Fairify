@@ -5,7 +5,7 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-model = load_model('Fairify/models/german/GC-5.h5')
+model = load_model('Fairify/models/german/GC-4.h5')
 print(model.summary())
 
 # One
@@ -54,8 +54,8 @@ model.fit(
 # print("Model retrained and saved as GC-7.h5")
 
 # for gpt2
-model.save('Fairify/models/german/GC-8.h5')
-print("Model retrained and saved as GC-8.h5")
+model.save('Fairify/models/german/GC-9.h5')
+print("Model retrained and saved as GC-9.h5")
 
 
 # sample - epoch - acc

@@ -103,7 +103,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
     #     continue
 
-    if not (model_file.startswith("GC-5") or model_file.startswith("GC-8")):
+    if not (model_file.startswith("GC-4") or model_file.startswith("GC-9")):
         continue
 
     ###############################################################################################
@@ -490,7 +490,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["GC-5", "GC-8"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["GC-4", "GC-9"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-german-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

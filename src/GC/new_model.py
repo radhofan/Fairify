@@ -5,7 +5,7 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-model = load_model('Fairify/models/german/GC-3.h5')
+model = load_model('Fairify/models/german/GC-4.h5')
 print(model.summary())
 
 # One

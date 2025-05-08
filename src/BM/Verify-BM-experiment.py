@@ -314,9 +314,11 @@ for model_file in model_files:
         sim_y_orig = get_y_pred(net, w, b, sim_X)    
         sim_y = get_y_pred(net, pr_w, pr_b, sim_X)
         
-       
         orig_acc = accuracy_score(y_test, get_y_pred(net, w, b, X_test))
+        orig_f1 = f1_score(y_test, get_y_pred(net, w, b, X_test))
+
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
+        pruned_f1 = f1_score(sim_y_orig, sim_y)
 
         # In[]
         res_cols = ['Partition_ID', 'Verification', 'SAT_count', 'UNSAT_count', 'UNK_count', 'h_attempt', 'h_success', \

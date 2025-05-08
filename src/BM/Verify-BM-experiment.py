@@ -366,7 +366,7 @@ for model_file in model_files:
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        age_index = 15  
+        age_index = 14  
         prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
@@ -374,9 +374,9 @@ for model_file in model_files:
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        print('15 column')
-        print(X_test_copy.iloc[:, 15])
-        X_test_copy.rename(columns={X_test_copy.columns[15]: 'age'}, inplace=True)
+        print('14 column')
+        print(X_test_copy.iloc[:, 14])
+        X_test_copy.rename(columns={X_test_copy.columns[14]: 'age'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('y')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('y')], axis=1)
         dataset = BinaryLabelDataset(df=dataset, label_names=['y'], protected_attribute_names=['age'])

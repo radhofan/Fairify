@@ -80,7 +80,7 @@ for model_file in model_files:
     # if not model_file.endswith('.h5'):
     #     continue
     
-    if not model_file.startswith("AC-1."):
+    if not model_file.startswith("BM-1."):
         continue
 
     print('==================  STARTING MODEL ' + model_file)

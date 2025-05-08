@@ -25,40 +25,43 @@ from aif360.metrics import *
 from aif360.datasets import *
 
 # In[]
-df, X_train, y_train, X_test, y_test = load_adult_ac1()
+df, X_train, y_train, X_test, y_test = load_bank()
 X = np.r_[X_train, X_test]
-single_input = X_test[0].reshape(1, 13)
-# print_metadata(df)
+single_input = X_test[0].reshape(1, 16)
+#print_metadata(df)
 
 # In[]
-model_dir = 'Fairify/models/adult/'
-result_dir = 'Fairify/src/AC/libra/sex-'
-PARTITION_THRESHOLD = 10
+model_dir = 'Fairify/models/bank/'
+result_dir = 'Fairify/src/BM/age-'
+PARTITION_THRESHOLD = 100
 
-SOFT_TIMEOUT = 100 
-HARD_TIMEOUT = 30 * 60
+SOFT_TIMEOUT = 100
+HARD_TIMEOUT = 30*60
 HEURISTIC_PRUNE_THRESHOLD = 5
 
 # In[]
 ## Domain
 default_range = [0, 1]
 range_dict = {}
-range_dict['age'] = [10, 100]
-range_dict['workclass'] = [0, 6]
-range_dict['education'] = [0, 15]
-range_dict['education-num'] = [1, 16]
-range_dict['marital-status'] = [0, 6]
-range_dict['occupation'] = [0, 13]
-range_dict['relationship'] = [0, 5]
-range_dict['race'] = [0, 4]
-range_dict['sex'] = [0, 1]
-range_dict['capital-gain'] = [0, 19]
-range_dict['capital-loss'] = [0, 19]
-range_dict['hours-per-week'] = [1, 100]
-range_dict['native-country'] = [0, 40]
+range_dict['job'] = [0, 10]
+range_dict['marital'] = [0, 2]
+range_dict['education'] = [0, 6]
+range_dict['default'] = [0, 1]
+range_dict['housing'] = [0, 1]
+range_dict['loan'] = [0, 1]
+range_dict['contact'] = [0, 1]
+range_dict['month'] = [0, 11]
+range_dict['day_of_week'] = [0, 6]
+range_dict['emp.var.rate'] = [-3, 1]
+range_dict['duration'] = [0, 5000] #10000
+range_dict['campaign'] = [1, 50]
+range_dict['pdays'] = [0, 999]
+range_dict['previous'] = [0, 7]
+range_dict['poutcome'] = [0, 2]
+range_dict['age'] = [0, 1]
 
 A = range_dict.keys()
-PA = ['sex']
+PA = ['age']
 
 RA = []
 RA_threshold = 5
@@ -67,21 +70,19 @@ sim_size = 1 * 1000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
-# p_density = p_list_density(range_dict, p_list, df)
 print('Number of partitions: ', len(p_list))
-
-# Shuffle partitions
 shuffle(p_list)
 
-# Process each model file with a progress bar
+# In[]
+
 model_files = os.listdir(model_dir)
-for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
+for model_file in model_files:
     # if not model_file.endswith('.h5'):
     #     continue
-
+    
     if not model_file.startswith("AC-1."):
         continue
-    
+
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]
     if model_name == '':
@@ -109,18 +110,19 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     unk_count = 0
     cumulative_time = 0
     
-    # Process each partition with a progress bar
-    for p in tqdm(p_list, desc="Processing Partitions", total=len(p_list)):  # tqdm for partitions loop
+    for p in p_list:
         heuristic_attempted = 0
         result = []
         start_time = time.time()
     
         partition_id += 1
-        simulation_size = 1 * 1000
+        simulation_size = 1*1000
     
-        # Perform sound pruning
-        neuron_bounds, candidates, s_candidates, b_deads, s_deads, st_deads, pos_prob, sim_X_df = \
-            sound_prune(df, w, b, simulation_size, layer_net, p)
+        
+        # In[]
+    #    sd = s
+        neuron_bounds, candidates, s_candidates, b_deads, s_deads, st_deads, pos_prob, sim_X_df  = \
+            sound_prune_bank(df, w, b, simulation_size, layer_net, p)
     
         b_compression = compression_ratio(b_deads)
         s_compression = compression_ratio(s_deads)
@@ -128,30 +130,38 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     
         pr_w, pr_b = prune_neurons(w, b, st_deads)
 
+    
+        # In[]
         # Create properties
         in_props = []
         out_props = []
     
-        x = np.array([Int('x%s' % i) for i in range(13)]) 
-        x_ = np.array([Int('x_%s' % i) for i in range(13)])
+        x = np.array([Int('x%s' % i) for i in range(16)])
+        x_ = np.array([Int('x_%s' % i) for i in range(16)])
     
-        y = z3_net(x, pr_w, pr_b)  # y is an array of size 1
+        y = z3_net(x, pr_w, pr_b) # y is an array of size 1
         y_ = z3_net(x_, pr_w, pr_b)
     
         # Basic fairness property - must include
         for attr in A:
-            if attr in PA:
-                in_props.extend(in_const_adult(df, x, attr, 'neq', x_))
+            if(attr in PA):
+                in_props.extend(in_const_bank(df, x, attr, 'neq', x_))
+            elif(attr in RA):
+                in_props.extend(in_const_diff_bank(df, x, x_, attr, RA_threshold))
             else:
-                in_props.extend(in_const_adult(df, x, attr, 'eq', x_))
-
-        in_props.extend(in_const_domain_adult(df, x, x_, p, PA))
+                in_props.extend(in_const_bank(df, x, attr, 'eq', x_))
     
+        in_props.extend(in_const_domain_bank(df, x, x_, p, PA))
+    
+        # In[]
         s = Solver()
-        if len(sys.argv) > 1:
-            s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
+        #s.reset()
+    
+        if(len(sys.argv) > 1):
+            s.set("timeout", int(sys.argv[1]) * 1000) # X seconds
         else:
             s.set("timeout", SOFT_TIMEOUT * 1000)
+    
     
         for i in in_props:
             s.add(i)
@@ -170,7 +180,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         s_end_time = time.time()
         s_time = compute_time(start_time, s_end_time)
         hv_time = 0
-        
+        # In[]
         h_compression = 0
         t_compression = st_compression
         h_success = 0
@@ -185,17 +195,17 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     
             pr_w, pr_b = prune_neurons(w, b, deads)
             h_compression = compression_ratio(h_deads)
-            print(round(h_compression * 100, 2), '% HEURISTIC PRUNING')
+            print(round(h_compression*100, 2), '% HEURISTIC PRUNING')
             t_compression = compression_ratio(deads)
-            print(round(t_compression * 100, 2), '% TOTAL PRUNING')
+            print(round(t_compression*100, 2), '% TOTAL PRUNING')
     
-            y = z3_net(x, pr_w, pr_b)  # y is an array of size 1
+            y = z3_net(x, pr_w, pr_b) # y is an array of size 1
             y_ = z3_net(x_, pr_w, pr_b)
     
             s = Solver()
     
-            if len(sys.argv) > 1:
-                s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
+            if(len(sys.argv) > 1):
+                s.set("timeout", int(sys.argv[1]) * 1000) # X seconds
             else:
                 s.set("timeout", SOFT_TIMEOUT * 1000)
     
@@ -264,10 +274,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
             # Save counterexamples to csv
             import csv
-            cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                    'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                    'capital-loss', 'hours-per-week', 'native-country']
-            file_name =  result_dir + 'counterexample-adult-empty.csv'
+            cols = ['job', 'marital', 'education', 'default', 'housing', 'loan',
+                    'contact', 'month', 'day_of_week', 'emp.var.rate', 'duration',
+                    'campaign', 'pdays', 'previous', 'poutcome', 'age']
+            file_name =  result_dir + 'counterexample-bank-empty.csv'
             file_exists = os.path.isfile(file_name)
             with open(file_name, "a", newline='') as fp:
                 if not file_exists:
@@ -288,8 +298,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         elif res == unsat:
             unsat_count += 1
         else:
-            unk_count += 1
+            unk_count +=1
             
+    
         d = X_test[0]
         res1 = net(d, pr_w, pr_b)
         pred1 = sigmoid(res1)
@@ -303,11 +314,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         sim_y_orig = get_y_pred(net, w, b, sim_X)    
         sim_y = get_y_pred(net, pr_w, pr_b, sim_X)
         
+       
         orig_acc = accuracy_score(y_test, get_y_pred(net, w, b, X_test))
-        orig_f1 = f1_score(y_test, get_y_pred(net, w, b, X_test))
-
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
-        pruned_f1 = f1_score(sim_y_orig, sim_y)
 
         # In[]
         res_cols = ['Partition_ID', 'Verification', 'SAT_count', 'UNSAT_count', 'UNK_count', 'h_attempt', 'h_success', \
@@ -336,7 +345,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         result.append(round(orig_acc, 4))
         result.append(round(pruned_acc, 4))
         result.append('-')
-        # result.append(round(orig_acc - pruned_acc, 4))
+        #result.append(round(orig_acc - pruned_acc, 4))
         result.append(d1)
         result.append(d2)
     
@@ -351,28 +360,27 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             wr.writerow(result)
         print('******************')
 
-
         # AIF360 Metrics
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        sex_index = 8  
-        prot_attr = X_test[:, sex_index]
+        age_index = 15  
+        prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
         y_pred = pd.Series(np.array(y_pred).ravel())  
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        print('7 column')
-        print(X_test_copy.iloc[:, 8])
-        X_test_copy.rename(columns={X_test_copy.columns[8]: 'sex'}, inplace=True)
-        dataset = pd.concat([X_test_copy, y_true.rename('income-per-year')], axis=1)
-        dataset_pred = pd.concat([X_test_copy, y_pred.rename('income-per-year')], axis=1)
-        dataset = BinaryLabelDataset(df=dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
-        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['income-per-year'], protected_attribute_names=['sex'])
-        unprivileged_groups = [{'sex': 0}]
-        privileged_groups = [{'sex': 1}]
+        print('15 column')
+        print(X_test_copy.iloc[:, 15])
+        X_test_copy.rename(columns={X_test_copy.columns[15]: 'age'}, inplace=True)
+        dataset = pd.concat([X_test_copy, y_true.rename('y')], axis=1)
+        dataset_pred = pd.concat([X_test_copy, y_pred.rename('y')], axis=1)
+        dataset = BinaryLabelDataset(df=dataset, label_names=['y'], protected_attribute_names=['age'])
+        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['y'], protected_attribute_names=['age'])
+        unprivileged_groups = [{'age': 0}]
+        privileged_groups = [{'age': 1}]
         classified_metric = ClassificationMetric(dataset,
                                                  dataset_pred,
                                                  unprivileged_groups=unprivileged_groups,
@@ -402,7 +410,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["AC-1"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["BM-1"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
@@ -414,6 +422,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             
             wr.writerow(data_row)
         
-        if cumulative_time > HARD_TIMEOUT:
+        if(cumulative_time > HARD_TIMEOUT):
             print('==================  COMPLETED MODEL ' + model_file)
             break

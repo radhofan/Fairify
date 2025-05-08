@@ -30,4 +30,5 @@ sudo apt install csvtool
 python Fairify/src/GC/new_model.py
 
 # Run fairify experiment
-bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py
+# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py
+bash Fairify/src/fairify.sh Fairify/src/GC/Verify-AC-experiment.py

@@ -237,7 +237,7 @@ def load_german():
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
 
 def load_bank():
-    file_path = '../../data/bank/bank-additional-full.csv'
+    file_path = 'Fairify/data/bank/bank-additional-full.csv'
 
     column_names = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 
                     'month', 'day_of_week', 'duration', 'emp.var.rate',  

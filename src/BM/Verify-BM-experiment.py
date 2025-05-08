@@ -411,7 +411,7 @@ for model_file in model_files:
 
         # Save metric to csv
         model_prefix = next((prefix for prefix in ["BM-1"] if model_file.startswith(prefix)), "unknown")
-        file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
+        file_name = f"{result_dir}synthetic-bank-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
         file_exists = os.path.isfile(file_name)

@@ -251,6 +251,35 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             pred2_orig = sigmoid(res2_orig)
             class_1_orig = pred1_orig > 0.5
             class_2_orig = pred2_orig > 0.5
+
+              # Debug prediction
+            print("pred1: ", pred1)
+            print("pred2: ", pred2)
+            print("class_1: ", class_1)
+            print("class_2: ", class_2)
+            print("pred1_orig: ", pred1_orig)
+            print("pred2_orig: ", pred2_orig)
+            print("class_1_orig: ", class_1_orig)
+            print("class_2_orig: ", class_2_orig)
+
+            # Save counterexamples to csv
+            import csv
+            cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                    'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                    'capital-loss', 'hours-per-week', 'native-country']
+            file_name =  result_dir + 'counterexample-adult-empty.csv'
+            file_exists = os.path.isfile(file_name)
+            with open(file_name, "a", newline='') as fp:
+                if not file_exists:
+                    wr = csv.writer(fp, dialect='excel')
+                    wr.writerow(cols)
+                wr = csv.writer(fp)
+                csv_row1 = copy.deepcopy(inp1)
+                csv_row2 = copy.deepcopy(inp2)
+                csv_row1.append(int(class_1))
+                csv_row2.append(int(class_2))
+                wr.writerow(csv_row1)
+                wr.writerow(csv_row2)
             
             if class_1_orig != class_2_orig:
                 accurate = 1
@@ -335,15 +364,15 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        print('10th column')
+        print('7 column')
         print(X_test_copy.iloc[:, 11])
-        X_test_copy.rename(columns={X_test_copy.columns[11]: 'age'}, inplace=True)
-        dataset = pd.concat([X_test_copy, y_true.rename('credit')], axis=1)
-        dataset_pred = pd.concat([X_test_copy, y_pred.rename('credit')], axis=1)
-        dataset = BinaryLabelDataset(df=dataset, label_names=['credit'], protected_attribute_names=['age'])
-        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['credit'], protected_attribute_names=['age'])
-        unprivileged_groups = [{'age': 0}]
-        privileged_groups = [{'age': 1}]
+        X_test_copy.rename(columns={X_test_copy.columns[11]: 'sex'}, inplace=True)
+        dataset = pd.concat([X_test_copy, y_true.rename('income-per-year')], axis=1)
+        dataset_pred = pd.concat([X_test_copy, y_pred.rename('income-per-year')], axis=1)
+        dataset = BinaryLabelDataset(df=dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['income-per-year'], protected_attribute_names=['sex'])
+        unprivileged_groups = [{'sex': 0}]
+        privileged_groups = [{'sex': 1}]
         classified_metric = ClassificationMetric(dataset,
                                                  dataset_pred,
                                                  unprivileged_groups=unprivileged_groups,
@@ -373,8 +402,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["GC-2", "GC-8"] if model_file.startswith(prefix)), "unknown")
-        file_name = f"{result_dir}synthetic-german-predicted-{model_prefix}-metrics.csv"
+        model_prefix = next((prefix for prefix in ["GC-1"] if model_file.startswith(prefix)), "unknown")
+        file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
         file_exists = os.path.isfile(file_name)

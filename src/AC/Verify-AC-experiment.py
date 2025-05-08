@@ -356,8 +356,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        age_index = 11  
-        prot_attr = X_test[:, age_index]
+        sex_index = 8  
+        prot_attr = X_test[:, sex_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
         y_pred = pd.Series(np.array(y_pred).ravel())  
@@ -365,8 +365,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         X_test_copy = pd.DataFrame(X_test)
         print('7 column')
-        print(X_test_copy.iloc[:, 7])
-        X_test_copy.rename(columns={X_test_copy.columns[7]: 'sex'}, inplace=True)
+        print(X_test_copy.iloc[:, 8])
+        X_test_copy.rename(columns={X_test_copy.columns[8]: 'sex'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('income-per-year')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('income-per-year')], axis=1)
         dataset = BinaryLabelDataset(df=dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])

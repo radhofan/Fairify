@@ -402,7 +402,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["GC-1"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["AC-1"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

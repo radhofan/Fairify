@@ -77,11 +77,11 @@ shuffle(p_list)
 
 model_files = os.listdir(model_dir)
 for model_file in model_files:
-    # if not model_file.endswith('.h5'):
-    #     continue
-    
-    if not model_file.startswith("BM-1."):
+    if not model_file.endswith('.h5'):
         continue
+    
+    # if not model_file.startswith(("BM-1.", "BM-2.", "BM-3.", "BM-4.", "BM-5.")):
+    #     continue
 
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]

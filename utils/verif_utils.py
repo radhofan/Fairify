@@ -187,6 +187,7 @@ def load_adult_ac1():
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
 
+
 def load_german():
     filepath = 'Fairify/data/german/german.data'
     column_names = ['status', 'month', 'credit_history',
@@ -233,6 +234,28 @@ def load_german():
 #    
     seed = 42 # randrange(100)
 #    train, test  = train_test_split(df, test_size = 0.15, random_state = seed)
+    X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
+    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
+
+def load_compass():
+    file_path = 'Fairify/data/compass/compass.csv'
+    column_names = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'label']
+
+    df = pd.read_csv(file_path)
+    df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
+
+    cat_feat = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',]
+
+    for f in cat_feat:
+        label = LabelEncoder()
+        df[f] = label.fit_transform(df[f])
+
+    label_name='label'
+
+    X = df.drop(labels = [label_name], axis = 1, inplace = False)
+    y = df[label_name]
+
+    seed = 42 # randrange(100)
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
 

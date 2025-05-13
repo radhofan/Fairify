@@ -242,7 +242,7 @@ def load_compass():
     column_names = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'label']
 
     df = pd.read_csv(file_path)
-    df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
+    # df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
 
     cat_feat = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',]
 

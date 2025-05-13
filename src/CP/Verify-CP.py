@@ -44,23 +44,23 @@ HEURISTIC_PRUNE_THRESHOLD = 5
 ## Domain
 default_range = [0, 1]
 range_dict = {}
-range_dict['sex'] = [0, 2]
+range_dict['sex'] = [0, 1]
 range_dict['age'] = [0, 2]
-range_dict['race'] = [0, 2]
-range_dict['d'] = [0, 2]
-range_dict['e'] = [0, 2]
-range_dict['f'] = [0, 2]
-range_dict['g'] = [0, 2]
-range_dict['h'] = [0, 2]
-range_dict['i'] = [0, 2]
-range_dict['j'] = [0, 2]
-range_dict['k'] = [0, 2]
-range_dict['l'] = [0, 2]
+range_dict['race'] = [0, 1]
+range_dict['d'] = [0, 20]
+range_dict['e'] = [1, 10]
+range_dict['f'] = [0, 38]
+range_dict['g'] = [0, 1]
+range_dict['h'] = [0, 1]
+range_dict['i'] = [0, 1]
+range_dict['j'] = [1, 10]
+range_dict['k'] = [1, 10]
+range_dict['l'] = [0, 38]
 
 
 
 A = range_dict.keys()
-PA = ['age']
+PA = ['sex']
 
 RA = []
 RA_threshold = 100
@@ -349,7 +349,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        age_index = 1  
+        age_index = 0 
         prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
@@ -359,13 +359,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         X_test_copy = pd.DataFrame(X_test)
         print('1th column')
         print(X_test_copy.iloc[:, age_index])
-        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'age'}, inplace=True)
+        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'sex'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('label')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('label')], axis=1)
-        dataset = BinaryLabelDataset(df=dataset, label_names=['label'], protected_attribute_names=['age'])
-        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['label'], protected_attribute_names=['age'])
-        unprivileged_groups = [{'age': 0}]
-        privileged_groups = [{'age': 1}]
+        dataset = BinaryLabelDataset(df=dataset, label_names=['label'], protected_attribute_names=['sex'])
+        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['label'], protected_attribute_names=['sex'])
+        unprivileged_groups = [{'sex': 0}]
+        privileged_groups = [{'sex': 1}]
         classified_metric = ClassificationMetric(dataset,
                                                  dataset_pred,
                                                  unprivileged_groups=unprivileged_groups,

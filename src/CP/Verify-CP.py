@@ -33,7 +33,7 @@ single_input = X_test[0].reshape(1, 20)
 
 # In[]
 model_dir = 'Fairify/models/compass/'
-result_dir = 'Fairify/src/CP/age-'
+result_dir = 'Fairify/src/CP/'
 PARTITION_THRESHOLD = 100
 
 SOFT_TIMEOUT = 100 

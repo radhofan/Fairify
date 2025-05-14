@@ -15,6 +15,7 @@ from utils.input_partition import *
 from utils.verif_utils import *
 from utils.prune import *
 from importlib import import_module
+import tensorflow as tf
 
 from random import shuffle
 

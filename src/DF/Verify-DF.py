@@ -40,7 +40,7 @@ print("Reshaped single_input:", single_input.shape, flush=True)
 # In[]
 model_dir = 'Fairify/models/default/'
 result_dir = 'Fairify/src/DF/'
-PARTITION_THRESHOLD = 1000
+PARTITION_THRESHOLD = 10000
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 30*60
@@ -334,10 +334,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
             # Save counterexamples to csv
             import csv
-            cols = ["LIMIT_BAL", "SEX_2", "EDUCATION_1", "EDUCATION_2", "EDUCATION_3", "EDUCATION_4", "EDUCATION_5", 
-                    "EDUCATION_6", "MARRIAGE_1", "MARRIAGE_2", "MARRIAGE_3", "AGE", "PAY_1", "PAY_2", "PAY_3", "PAY_4", 
-                    "PAY_5", "PAY_6", "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6", 
-                    "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6", "default.payment.next.month"]
+            cols = ['LIMIT_BAL', 'AGE',
+                    'PAY_1', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5', 'PAY_6',
+                    'BILL_AMT1', 'BILL_AMT2', 'BILL_AMT3', 'BILL_AMT4', 'BILL_AMT5', 'BILL_AMT6',
+                    'PAY_AMT1', 'PAY_AMT2', 'PAY_AMT3', 'PAY_AMT4', 'PAY_AMT5', 'PAY_AMT6',
+                    'SEX_2',
+                    'EDUCATION_1', 'EDUCATION_2', 'EDUCATION_3', 'EDUCATION_4', 'EDUCATION_5', 'EDUCATION_6',
+                    'MARRIAGE_1', 'MARRIAGE_2', 'MARRIAGE_3']
 
             file_name =  result_dir + 'counterexample-default-new.csv'
             file_exists = os.path.isfile(file_name)

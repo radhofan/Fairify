@@ -628,6 +628,44 @@ def sound_prune_german(df, weight, bias, simulation_size, layer_net, range_dict)
   
     return bounds, candidates, s_candidates, b_dead_node_mask, s_dead_node_mask, dead_nodes, pos_prob, sim_df
 
+def sound_prune_compass(df, weight, bias, simulation_size, layer_net, range_dict):
+    label_name = 'label'
+    #sim_data = sim_df.drop(labels = [label_name], axis=1, inplace=False)
+    x_df = df.drop(labels = [label_name], axis=1, inplace=False)
+    sim_df = simluate_data(x_df, simulation_size, range_dict)
+
+    candidates, pos_prob = candidate_dead_nodes(sim_df.to_numpy(), weight, bias, layer_net)
+#    print('candi >>> ', candidates)
+
+    # Pruning based on the bounds
+    ws_lb, ws_ub, pl_lb, pl_ub = neuron_bounds(sim_df, weight, bias, range_dict)
+    bounds = (ws_lb, ws_ub, pl_lb, pl_ub)
+    
+    #print(ws_lb)
+    #print(ws_ub)
+    
+    b_dead_node_mask, b_candidates, b_compression = \
+        dead_node_from_bound(candidates, weight, bias, range_dict, ws_ub)
+    for l in b_dead_node_mask:
+        if not 0 in l:
+            l[0] = 0
+            
+    ## Tightenning the bound
+    # --------------
+    ## Use verification on WS nodes, layer by layer, check always +/- and merge/remove
+    s_dead_node_mask, s_candidates, s_compression = \
+        singular_verification_german(b_candidates, x_df, weight, bias, range_dict, pl_lb, pl_ub)
+    for l in s_dead_node_mask:
+        if not 0 in l:
+            l[0] = 0
+    
+    dead_nodes = merge_dead_nodes(b_dead_node_mask, s_dead_node_mask)
+    for l in dead_nodes:
+        if not 0 in l:
+            l[0] = 0
+  
+    return bounds, candidates, s_candidates, b_dead_node_mask, s_dead_node_mask, dead_nodes, pos_prob, sim_df
+
 
 def heuristic_prune(bounds, candidates, s_candidates, deads, pos_prob, perc_threshold, w, b):
     (ws_lb, ws_ub, pl_lb, pl_ub) = bounds

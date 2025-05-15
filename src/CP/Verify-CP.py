@@ -35,7 +35,7 @@ single_input = X_test[0].reshape(1, 12)
 # In[]
 model_dir = 'Fairify/models/compass/'
 result_dir = 'Fairify/src/CP/'
-PARTITION_THRESHOLD = 100
+PARTITION_THRESHOLD = 10
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 30*60

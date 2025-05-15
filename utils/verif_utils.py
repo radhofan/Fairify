@@ -273,7 +273,7 @@ def load_default():
     cat_columns_mms = ["PAY_1", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
 
     # One-hot encode categorical columns with drop='first' to avoid dummy variable trap
-    oh_encoder = OneHotEncoder(drop='first', sparse=False)
+    oh_encoder = OneHotEncoder(drop='first', sparse_output=False)
     encoded_data = oh_encoder.fit_transform(df[cat_columns_oh])
     encoded_df = pd.DataFrame(encoded_data, columns=oh_encoder.get_feature_names_out(cat_columns_oh))
 

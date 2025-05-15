@@ -45,11 +45,19 @@ HEURISTIC_PRUNE_THRESHOLD = 5
 ## Domain
 default_range = [0, 1]
 range_dict = {}
+range_dict = {}
 range_dict['ID'] = [1, 30000]
 range_dict['LIMIT_BAL'] = [10000.0, 1000000.0]
-range_dict['SEX'] = [1, 2]
-range_dict['EDUCATION'] = [0, 6]
-range_dict['MARRIAGE'] = [0, 3]
+range_dict['SEX_2.0'] = [0, 1]
+range_dict['EDUCATION_1.0'] = [0, 1]
+range_dict['EDUCATION_2.0'] = [0, 1]
+range_dict['EDUCATION_3.0'] = [0, 1]
+range_dict['EDUCATION_4.0'] = [0, 1]
+range_dict['EDUCATION_5.0'] = [0, 1]
+range_dict['EDUCATION_6.0'] = [0, 1]
+range_dict['MARRIAGE_1.0'] = [0, 1]
+range_dict['MARRIAGE_2.0'] = [0, 1]
+range_dict['MARRIAGE_3.0'] = [0, 1]
 range_dict['AGE'] = [21, 79]
 range_dict['PAY_1'] = [0, 1]
 range_dict['PAY_2'] = [0, 1]
@@ -71,9 +79,35 @@ range_dict['PAY_AMT5'] = [0.0, 426529.0]
 range_dict['PAY_AMT6'] = [0.0, 528666.0]
 range_dict['default.payment.next.month'] = [0, 1]
 
+# range_dict['ID'] = [1, 30000]
+# range_dict['LIMIT_BAL'] = [10000.0, 1000000.0]
+# range_dict['SEX'] = [1, 2]
+# range_dict['EDUCATION'] = [0, 6]
+# range_dict['MARRIAGE'] = [0, 3]
+# range_dict['AGE'] = [21, 79]
+# range_dict['PAY_1'] = [0, 1]
+# range_dict['PAY_2'] = [0, 1]
+# range_dict['PAY_3'] = [0, 1]
+# range_dict['PAY_4'] = [0, 1]
+# range_dict['PAY_5'] = [0, 1]
+# range_dict['PAY_6'] = [0, 1]
+# range_dict['BILL_AMT1'] = [-165580.0, 964511.0]
+# range_dict['BILL_AMT2'] = [-69777.0, 983931.0]
+# range_dict['BILL_AMT3'] = [-157264.0, 1664089.0]
+# range_dict['BILL_AMT4'] = [-170000.0, 891586.0]
+# range_dict['BILL_AMT5'] = [-81334.0, 927171.0]
+# range_dict['BILL_AMT6'] = [-339603.0, 961664.0]
+# range_dict['PAY_AMT1'] = [0.0, 873552.0]
+# range_dict['PAY_AMT2'] = [0.0, 1684259.0]
+# range_dict['PAY_AMT3'] = [0.0, 896040.0]
+# range_dict['PAY_AMT4'] = [0.0, 621000.0]
+# range_dict['PAY_AMT5'] = [0.0, 426529.0]
+# range_dict['PAY_AMT6'] = [0.0, 528666.0]
+# range_dict['default.payment.next.month'] = [0, 1]
+
 
 A = range_dict.keys()
-PA = ['SEX']
+PA = ['SEX_2.0']
 
 RA = []
 RA_threshold = 100
@@ -293,11 +327,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
             # Save counterexamples to csv
             import csv
-            cols = [ "ID", "LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE",
-                    "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
-                    "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
-                    "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",
-                    "default.payment.next.month"]
+            cols = ["ID", "LIMIT_BAL", "SEX_2.0", "EDUCATION_1.0", "EDUCATION_2.0", "EDUCATION_3.0", "EDUCATION_4.0", "EDUCATION_5.0", 
+                    "EDUCATION_6.0", "MARRIAGE_1.0", "MARRIAGE_2.0", "MARRIAGE_3.0", "AGE", "PAY_1", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6", 
+                    "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6", "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", 
+                    "PAY_AMT5", "PAY_AMT6", "default.payment.next.month"]
             file_name =  result_dir + 'counterexample-default-new.csv'
             file_exists = os.path.isfile(file_name)
             with open(file_name, "a", newline='') as fp:
@@ -395,13 +428,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         X_test_copy = pd.DataFrame(X_test)
         print('3th column')
         print(X_test_copy.iloc[:, age_index])
-        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'SEX'}, inplace=True)
+        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'SEX_2.0'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('default.payment.next.month')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('default.payment.next.month')], axis=1)
-        dataset = BinaryLabelDataset(df=dataset, label_names=['default.payment.next.month'], protected_attribute_names=['SEX'])
-        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['default.payment.next.month'], protected_attribute_names=['SEX'])
-        unprivileged_groups = [{'SEX': 0}]
-        privileged_groups = [{'SEX': 1}]
+        dataset = BinaryLabelDataset(df=dataset, label_names=['default.payment.next.month'], protected_attribute_names=['SEX_2.0'])
+        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['default.payment.next.month'], protected_attribute_names=['SEX_2.0'])
+        unprivileged_groups = [{'SEX_2.0': 0}]
+        privileged_groups = [{'SEX_2.0': 1}]
         classified_metric = ClassificationMetric(dataset,
                                                  dataset_pred,
                                                  unprivileged_groups=unprivileged_groups,

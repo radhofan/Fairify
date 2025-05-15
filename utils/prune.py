@@ -731,7 +731,7 @@ def sound_prune_compass(df, weight, bias, simulation_size, layer_net, range_dict
     # --------------
     ## Use verification on WS nodes, layer by layer, check always +/- and merge/remove
     s_dead_node_mask, s_candidates, s_compression = \
-        singular_verification_german(b_candidates, x_df, weight, bias, range_dict, pl_lb, pl_ub)
+        singular_verification_compass(b_candidates, x_df, weight, bias, range_dict, pl_lb, pl_ub)
     for l in s_dead_node_mask:
         if not 0 in l:
             l[0] = 0

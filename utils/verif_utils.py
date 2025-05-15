@@ -281,7 +281,7 @@ def load_default():
     df = df.drop(columns=cat_columns_oh)
     df = df.reset_index(drop=True).join(encoded_df)
 
-    print("All columns after encoding and dropping:", list(df.columns))
+    # print("All columns after encoding and dropping:", list(df.columns))
 
     # MinMax scale the payment status columns
     mms_scaler = MinMaxScaler()

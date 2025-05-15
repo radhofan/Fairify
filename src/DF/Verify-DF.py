@@ -28,6 +28,7 @@ from aif360.datasets import *
 # In[]
 
 df, X_train, y_train, X_test, y_test = load_default()
+print("All columns after encoding and dropping:", list(df.columns))
 X = np.r_[X_train, X_test]
 single_input = X_test[0].reshape(1, 30)
 #print_metadata(df)

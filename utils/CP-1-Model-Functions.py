@@ -14,7 +14,7 @@ from utils.verif_utils import *
 
 
 def layer_net(x, w, b):
-    layers = []    
+    layers = []
     for i in range(len(w)):
         x1 = w[i].T @ x + b[i]
         y1 = x1 if i == len(w) - 1 else relu(x1)
@@ -31,17 +31,17 @@ def net(x, w, b):
     return x3
 
 def z3_net(x, w, b):
-    fl_x = np.array([FP(f'fl_x{i}', Float32()) for i in range(12)])  
+    input_size = len(x)
     
-    for i in range(len(x)):
-        fl_x[i] = ToReal(x[i])  
-
+    fl_x = np.array([FP(f'fl_x{i}', Float32()) for i in range(input_size)])
+    
+    for i in range(input_size):
+        fl_x[i] = ToReal(x[i])
+    
     x1 = w[0].T @ fl_x + b[0]
     y1 = z3Relu(x1)
-
     x2 = w[1].T @ y1 + b[1]
     y2 = z3Relu(x2)
-
     x3 = w[2].T @ y2 + b[2]
     
-    return x3  
+    return x3

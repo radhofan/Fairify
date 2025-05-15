@@ -29,7 +29,8 @@ from aif360.datasets import *
 
 df, X_train, y_train, X_test, y_test = load_default()
 X = np.r_[X_train, X_test]
-single_input = X_test[0].reshape(1, 30)
+# single_input = X_test[0].reshape(1, 24)
+single_input = np.hstack([X_test[0].reshape(1, 24), np.zeros((1, 6))])
 #print_metadata(df)
 
 # In[]

@@ -80,7 +80,7 @@ def z3_layer1_ws_net_compass(x, w, b):
     return x1
 
 def z3_layer1_ws_net_default(x, w, b):
-    fl_x = np.array([Real('fl_x%s' % i) for i in range(24)])
+    fl_x = np.array([Real('fl_x%s' % i) for i in range(30)])
     for i in range(len(x)):
         fl_x[i] = ToReal(x[i])        
     x1 = w[0].T @ fl_x + b[0]

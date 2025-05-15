@@ -259,6 +259,37 @@ def load_compass():
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
 
+def load_default():
+    file_path = 'Fairify/data/default/default.csv'
+    column_names = [
+        "ID", "LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE",
+        "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
+        "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
+        "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",
+        "default.payment.next.month"
+    ]
+
+    df = pd.read_csv(file_path)
+    # df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
+
+    cat_feat = ["ID", "LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE",
+        "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
+        "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
+        "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",]
+
+    for f in cat_feat:
+        label = LabelEncoder()
+        df[f] = label.fit_transform(df[f])
+
+    label_name='default.payment.next.month'
+
+    X = df.drop(labels = [label_name], axis = 1, inplace = False)
+    y = df[label_name]
+
+    seed = 42 # randrange(100)
+    X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
+    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
+
 def load_bank():
     file_path = 'Fairify/data/bank/bank-additional-full.csv'
 
@@ -665,6 +696,34 @@ def in_const_compass(df, x, var_name, op, rhs):
                 raise Exception('The operand is not defined!') 
     return props
 
+def in_const_default(df, x, var_name, op, rhs):
+    label_name = 'default.payment.next.month'
+    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
+    props = []
+    for col in dataframe:
+        if col == var_name:
+            index = dataframe.columns.get_loc(col)
+            if(isinstance(rhs, int) or isinstance(rhs, float)):
+                right = rhs
+            else:
+                right = rhs[index]
+                
+            if(op == 'gt'):
+                props.append(x[index] > right)
+            elif(op == 'lt'):
+                props.append(x[index] < right)
+            elif(op == 'gte'):
+                props.append(x[index] >= right)
+            elif(op == 'lte'):
+                props.append(x[index] <= right)
+            elif(op == 'eq'):
+                props.append(x[index] == right)
+            elif(op == 'neq'):
+                props.append(x[index] != right)
+            else:
+                raise Exception('The operand is not defined!') 
+    return props
+
 def in_const_domain_german(df, x, x_, ranges, PA):
     label_name = 'credit'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
@@ -722,8 +781,8 @@ def in_const_domain_adult(df, x, x_, ranges, PA):
 
     return props
 
-def in_const_domain_bank(df, x, x_, ranges, PA):
-    label_name = 'y'
+def in_const_domain_default(df, x, x_, ranges, PA):
+    label_name = 'default.payment.next.month'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
     #dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
     props = []
@@ -761,6 +820,25 @@ def in_const_domain_ac1(df, x, x_, ranges, default):
             props.append(And(x_[index] >= default[0], x_[index] <= default[1]))
     return props
 
+def in_const_domain_bank(df, x, x_, ranges, PA):
+    label_name = 'y'
+    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
+    #dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
+    props = []
+    
+    for col in dataframe:
+        index = dataframe.columns.get_loc(col)
+            
+        if(col in PA):
+            props.append(And(x[index] >= ranges[col][0], x[index] <= ranges[col][1]))
+            props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1]))            
+
+        else:
+             props.append(And(x[index] >= ranges[col][0], x[index] <= ranges[col][1]))
+             #props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1])) # this ones could be ommited
+
+    return props
+
 
 def in_const_diff_adult(df, x, x_, var_name, threshold):
     label_name = 'income-per-year'
@@ -794,6 +872,16 @@ def in_const_diff_bank(df, x, x_, var_name, threshold):
 
 def in_const_diff_compass(df, x, x_, var_name, threshold):
     label_name = 'label'
+    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
+    props = []
+    for col in dataframe:
+        if col == var_name:
+            index = dataframe.columns.get_loc(col)  
+            props.append(z3Abs(x[index] - x_[index]) <= threshold)
+    return props
+
+def in_const_diff_default(df, x, x_, var_name, threshold):
+    label_name = 'default.payment.next.month'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
     props = []
     for col in dataframe:

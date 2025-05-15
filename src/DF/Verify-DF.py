@@ -46,6 +46,8 @@ SOFT_TIMEOUT = 100
 HARD_TIMEOUT = 30*60
 HEURISTIC_PRUNE_THRESHOLD = 5
 
+print('after tiemouts and dir', flush=True)
+
 # In[]
 ## Domain
 default_range = [0, 1]
@@ -107,6 +109,8 @@ range_dict['MARRIAGE_3'] = [0.0, 1.0]
 # range_dict['PAY_AMT5'] = [0.0, 426529.0]
 # range_dict['PAY_AMT6'] = [0.0, 528666.0]
 # range_dict['default.payment.next.month'] = [0, 1]
+
+print('after range dict', flush=True)
 
 
 A = range_dict.keys()

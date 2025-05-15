@@ -158,13 +158,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         # Basic fairness property - must include
         for attr in A:
             if attr in PA:
-                in_props.extend(in_const_german(df, x, attr, 'neq', x_))
+                in_props.extend(in_const_compass(df, x, attr, 'neq', x_))
             elif attr in RA:
-                in_props.extend(in_const_diff_german(df, x, x_, attr, RA_threshold))
+                in_props.extend(in_const_diff_compass(df, x, x_, attr, RA_threshold))
             else:
-                in_props.extend(in_const_german(df, x, attr, 'eq', x_))
+                in_props.extend(in_const_compass(df, x, attr, 'eq', x_))
 
-        in_props.extend(in_const_domain_german(df, x, x_, p, PA))
+        in_props.extend(in_const_domain_compass(df, x, x_, p, PA))
 
         s = Solver()
         if len(sys.argv) > 1:

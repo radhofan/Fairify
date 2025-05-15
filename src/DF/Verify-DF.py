@@ -29,7 +29,7 @@ from aif360.datasets import *
 
 df, X_train, y_train, X_test, y_test = load_default()
 X = np.r_[X_train, X_test]
-single_input = X_test[0].reshape(1, 24)
+single_input = X_test[0].reshape(1, 30)
 #print_metadata(df)
 
 # In[]
@@ -51,12 +51,12 @@ range_dict['SEX'] = [1, 2]
 range_dict['EDUCATION'] = [0, 6]
 range_dict['MARRIAGE'] = [0, 3]
 range_dict['AGE'] = [21, 79]
-range_dict['PAY_0'] = [-2, 8]
-range_dict['PAY_2'] = [-2, 8]
-range_dict['PAY_3'] = [-2, 8]
-range_dict['PAY_4'] = [-2, 8]
-range_dict['PAY_5'] = [-2, 8]
-range_dict['PAY_6'] = [-2, 8]
+range_dict['PAY_1'] = [0, 1]
+range_dict['PAY_2'] = [0, 1]
+range_dict['PAY_3'] = [0, 1]
+range_dict['PAY_4'] = [0, 1]
+range_dict['PAY_5'] = [0, 1]
+range_dict['PAY_6'] = [0, 1]
 range_dict['BILL_AMT1'] = [-165580.0, 964511.0]
 range_dict['BILL_AMT2'] = [-69777.0, 983931.0]
 range_dict['BILL_AMT3'] = [-157264.0, 1664089.0]
@@ -73,7 +73,7 @@ range_dict['default.payment.next.month'] = [0, 1]
 
 
 A = range_dict.keys()
-PA = ['sex']
+PA = ['SEX']
 
 RA = []
 RA_threshold = 100

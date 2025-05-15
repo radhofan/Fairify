@@ -261,34 +261,41 @@ def load_compass():
 
 def load_default():
     file_path = 'Fairify/data/default/default.csv'
-    column_names = [
-        "ID", "LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE",
-        "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
-        "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
-        "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",
-        "default.payment.next.month"
-    ]
 
     df = pd.read_csv(file_path)
-    # df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
+    df = df.rename(columns={"PAY_0": "PAY_1"})
+    df = df.drop(columns=["ID"])  # drop ID
 
-    cat_feat = ["ID", "LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE",
-        "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
-        "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
-        "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",]
+    # Columns to one-hot encode (categorical)
+    cat_columns_oh = ["SEX", "EDUCATION", "MARRIAGE"]
 
-    for f in cat_feat:
-        label = LabelEncoder()
-        df[f] = label.fit_transform(df[f])
+    # Columns to min-max scale
+    cat_columns_mms = ["PAY_1", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
 
-    label_name='default.payment.next.month'
+    # One-hot encode categorical columns with drop='first' to avoid dummy variable trap
+    oh_encoder = OneHotEncoder(drop='first', sparse=False)
+    encoded_data = oh_encoder.fit_transform(df[cat_columns_oh])
+    encoded_df = pd.DataFrame(encoded_data, columns=oh_encoder.get_feature_names_out(cat_columns_oh))
 
-    X = df.drop(labels = [label_name], axis = 1, inplace = False)
+    # Join encoded columns and drop original categorical columns
+    df = df.drop(columns=cat_columns_oh)
+    df = df.reset_index(drop=True).join(encoded_df)
+
+    # MinMax scale the payment status columns
+    mms_scaler = MinMaxScaler()
+    df[cat_columns_mms] = mms_scaler.fit_transform(df[cat_columns_mms])
+
+    label_name = "default.payment.next.month"
+    X = df.drop(columns=[label_name])
     y = df[label_name]
 
-    seed = 42 # randrange(100)
-    X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
-    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
+    # Optionally: you can apply standard scaling for numeric columns if you want to match preprocess_default
+    # For now, I leave other columns as is.
+
+    seed = 42
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=seed)
+
+    return df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int')
 
 def load_bank():
     file_path = 'Fairify/data/bank/bank-additional-full.csv'

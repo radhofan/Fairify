@@ -27,6 +27,7 @@ from aif360.datasets import *
 
 # In[]
 
+print("before loading...")
 df, X_train, y_train, X_test, y_test = load_default()
 print("All columns after encoding and dropping:", list(df.columns))
 X = np.r_[X_train, X_test]

@@ -261,7 +261,7 @@ def load_compass():
 
 def load_default():
     file_path = 'Fairify/data/default/default.csv'
-
+    print("loading default...")
     df = pd.read_csv(file_path)
     df = df.rename(columns={"PAY_0": "PAY_1"})
     df = df.drop(columns=["ID"])  # drop ID

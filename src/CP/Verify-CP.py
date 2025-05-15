@@ -83,24 +83,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     if not (model_file.startswith("CP-1")):
         continue
 
-
-    class ONNXKerasModel(tf.keras.Model):
-        def __init__(self, concrete_func, input_name):
-            super(ONNXKerasModel, self).__init__()
-            self.concrete_func = concrete_func
-            self.input_name = input_name
-            
-        def call(self, inputs):
-            # Package the input tensor with the correct name
-            inputs_dict = {self.input_name: inputs}
-            result = self.concrete_func(**inputs_dict)
-            # Get the first output
-            return list(result.values())[0]
-        
-        def get_config(self):
-            # This is needed for serialization but won't actually be used for H5
-            return {"input_name": self.input_name}
-
     ###############################################################################################
 
     print('==================  STARTING MODEL ' + model_file)
@@ -114,7 +96,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     w = []
     b = []
     # model = load_model(model_dir + model_file)
-    model = load_model(model_dir + model_file, custom_objects={'ONNXKerasModel': ONNXKerasModel})
+    model = load_model(model_dir + model_file)
 
     for i in range(len(model.layers)):
         w.append(model.layers[i].get_weights()[0])

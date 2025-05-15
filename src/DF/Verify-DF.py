@@ -49,7 +49,6 @@ HEURISTIC_PRUNE_THRESHOLD = 5
 print('after tiemouts and dir', flush=True)
 
 # In[]
-## Domain
 default_range = [0, 1]
 range_dict = {}
 range_dict['LIMIT_BAL'] = [10000.0, 1000000.0]
@@ -72,7 +71,6 @@ range_dict['PAY_AMT3'] = [0.0, 896040.0]
 range_dict['PAY_AMT4'] = [0.0, 621000.0]
 range_dict['PAY_AMT5'] = [0.0, 426529.0]
 range_dict['PAY_AMT6'] = [0.0, 528666.0]
-# range_dict['default.payment.next.month'] = [0, 1]
 range_dict['SEX_2'] = [0.0, 1.0]
 range_dict['EDUCATION_1'] = [0.0, 1.0]
 range_dict['EDUCATION_2'] = [0.0, 1.0]
@@ -120,15 +118,11 @@ RA = []
 RA_threshold = 100
 
 sim_size = 1 * 1000
-
 print('before partition', flush=True)
-
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
-
-print('before partition ranges', flush=True)
-
+print('partition', p_dict, flush=True)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
-
+print('partition ranges', p_list, flush=True)
 print('Number of partitions: ', len(p_list), flush=True)
 shuffle(p_list)
 print("p_list contents:", p_list, flush=True)

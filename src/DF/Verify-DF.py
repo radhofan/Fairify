@@ -30,12 +30,9 @@ from aif360.datasets import *
 print("before loading...", flush=True)
 df, X_train, y_train, X_test, y_test = load_default()
 print("after load_default()", flush=True)
-
 print("All columns after encoding and dropping:", list(df.columns), flush=True)
-
 X = np.r_[X_train, X_test]
 print("Concatenated X", flush=True)
-
 single_input = X_test[0].reshape(1, 30)
 print("Reshaped single_input:", single_input.shape, flush=True)
 #print_metadata(df)
@@ -122,9 +119,10 @@ sim_size = 1 * 1000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
-print('Number of partitions: ', len(p_list))
+
+print('Number of partitions: ', len(p_list), flush=True)
 shuffle(p_list)
-print("p_list contents:", p_list)
+print("p_list contents:", p_list, flush=True)
 
 # In[]
 
@@ -133,7 +131,7 @@ model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
 
 
-    if not (model_file.startswith("CP")):
+    if not (model_file.startswith("DF")):
         continue
 
     ###############################################################################################

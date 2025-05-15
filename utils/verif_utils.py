@@ -285,12 +285,12 @@ def load_default():
     mms_scaler = MinMaxScaler()
     df[cat_columns_mms] = mms_scaler.fit_transform(df[cat_columns_mms])
 
-    print("All columns after encoding and dropping:", list(df.columns))
+    # print("All columns after encoding and dropping:", list(df.columns))
 
-    # Print range of each column
-    print("\nColumn ranges:")
-    for col in df.columns:
-        print(f"{col}: [{df[col].min()}, {df[col].max()}]")
+    # # Print range of each column
+    # print("\nColumn ranges:")
+    # for col in df.columns:
+    #     print(f"{col}: [{df[col].min()}, {df[col].max()}]")
 
     label_name = "default.payment.next.month"
     X = df.drop(columns=[label_name])

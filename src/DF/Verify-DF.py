@@ -40,7 +40,7 @@ print("Reshaped single_input:", single_input.shape, flush=True)
 # In[]
 model_dir = 'Fairify/models/default/'
 result_dir = 'Fairify/src/DF/'
-PARTITION_THRESHOLD = 10
+PARTITION_THRESHOLD = 1000
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 30*60

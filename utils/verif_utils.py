@@ -281,6 +281,8 @@ def load_default():
     df = df.drop(columns=cat_columns_oh)
     df = df.reset_index(drop=True).join(encoded_df)
 
+    print("All columns after encoding and dropping:", list(df.columns))
+
     # MinMax scale the payment status columns
     mms_scaler = MinMaxScaler()
     df[cat_columns_mms] = mms_scaler.fit_transform(df[cat_columns_mms])
@@ -288,9 +290,6 @@ def load_default():
     label_name = "default.payment.next.month"
     X = df.drop(columns=[label_name])
     y = df[label_name]
-
-    # Optionally: you can apply standard scaling for numeric columns if you want to match preprocess_default
-    # For now, I leave other columns as is.
 
     seed = 42
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=seed)

@@ -124,6 +124,9 @@ sim_size = 1 * 1000
 print('before partition', flush=True)
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
+
+print('before partition ranges', flush=True)
+
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
 
 print('Number of partitions: ', len(p_list), flush=True)

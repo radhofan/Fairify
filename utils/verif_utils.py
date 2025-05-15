@@ -531,26 +531,6 @@ def print_metadata(dataframe):
 
 # In[]
 #print_cols(train_dataframe)
-        
-def in_const_domain_ac1(df, x, x_, ranges, default):
-    dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
-    props = []
-    
-    for col in dataframe:
-        var = ''
-        for var_name in ranges.keys():
-            if(col.startswith(var_name)):
-                var = col
-                break
-            
-        index = dataframe.columns.get_loc(col)
-        if(var != ''):
-            props.append(And(x[index] >= ranges[var_name][0], x[index] <= ranges[var_name][1]))
-            props.append(And(x_[index] >= ranges[var_name][0], x_[index] <= ranges[var_name][1]))
-        else:
-            props.append(And(x[index] >= default[0], x[index] <= default[1]))
-            props.append(And(x_[index] >= default[0], x_[index] <= default[1]))
-    return props
 
 def in_const_range(df, x, x_, var_name, lb, ub):
     dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
@@ -561,6 +541,7 @@ def in_const_range(df, x, x_, var_name, lb, ub):
             props.append(And(x[index] <= lb, x[index] >= ub))
             props.append(And(x_[index] <= lb, x_[index] >= ub))
     return props
+        
 
 def in_const_equality_domain(df, x, x_, ranges, PA):
     dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
@@ -597,25 +578,6 @@ def in_const_equality_domain(df, x, x_, ranges, PA):
 #            print(col)
 #            print(bigOr(p))
             props.append(bigOr(p))
-
-    return props
-
-def in_const_domain_bank(df, x, x_, ranges, PA):
-    label_name = 'y'
-    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
-    #dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
-    props = []
-    
-    for col in dataframe:
-        index = dataframe.columns.get_loc(col)
-            
-        if(col in PA):
-            props.append(And(x[index] >= ranges[col][0], x[index] <= ranges[col][1]))
-            props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1]))            
-
-        else:
-             props.append(And(x[index] >= ranges[col][0], x[index] <= ranges[col][1]))
-             #props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1])) # this ones could be ommited
 
     return props
 
@@ -741,34 +703,6 @@ def in_const_domain_compass(df, x, x_, ranges, PA):
 
     return props
 
-def in_const_adult(df, x, var_name, op, rhs):
-    label_name = 'income-per-year'
-    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
-    props = []
-    for col in dataframe:
-        if col == var_name:
-            index = dataframe.columns.get_loc(col)
-            if(isinstance(rhs, int) or isinstance(rhs, float)):
-                right = rhs
-            else:
-                right = rhs[index]
-                
-            if(op == 'gt'):
-                props.append(x[index] > right)
-            elif(op == 'lt'):
-                props.append(x[index] < right)
-            elif(op == 'gte'):
-                props.append(x[index] >= right)
-            elif(op == 'lte'):
-                props.append(x[index] <= right)
-            elif(op == 'eq'):
-                props.append(x[index] == right)
-            elif(op == 'neq'):
-                props.append(x[index] != right)
-            else:
-                raise Exception('The operand is not defined!') 
-    return props
-
 def in_const_domain_adult(df, x, x_, ranges, PA):
     label_name = 'income-per-year'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
@@ -787,6 +721,46 @@ def in_const_domain_adult(df, x, x_, ranges, PA):
              #props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1])) # this ones could be ommited
 
     return props
+
+def in_const_domain_bank(df, x, x_, ranges, PA):
+    label_name = 'y'
+    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
+    #dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
+    props = []
+    
+    for col in dataframe:
+        index = dataframe.columns.get_loc(col)
+            
+        if(col in PA):
+            props.append(And(x[index] >= ranges[col][0], x[index] <= ranges[col][1]))
+            props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1]))            
+
+        else:
+             props.append(And(x[index] >= ranges[col][0], x[index] <= ranges[col][1]))
+             #props.append(And(x_[index] >= ranges[col][0], x_[index] <= ranges[col][1])) # this ones could be ommited
+
+    return props
+
+def in_const_domain_ac1(df, x, x_, ranges, default):
+    dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
+    props = []
+    
+    for col in dataframe:
+        var = ''
+        for var_name in ranges.keys():
+            if(col.startswith(var_name)):
+                var = col
+                break
+            
+        index = dataframe.columns.get_loc(col)
+        if(var != ''):
+            props.append(And(x[index] >= ranges[var_name][0], x[index] <= ranges[var_name][1]))
+            props.append(And(x_[index] >= ranges[var_name][0], x_[index] <= ranges[var_name][1]))
+        else:
+            props.append(And(x[index] >= default[0], x[index] <= default[1]))
+            props.append(And(x_[index] >= default[0], x_[index] <= default[1]))
+    return props
+
 
 def in_const_diff_adult(df, x, x_, var_name, threshold):
     label_name = 'income-per-year'

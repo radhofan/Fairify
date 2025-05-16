@@ -63,7 +63,7 @@ def z3_net(x, w, b):
     Create a symbolic representation of the neural network using Z3 variables.
     
     Args:
-        x: Input vector or Z3 variables
+        x: Input vector (can be either numeric values or Z3 variables)
         w: List of weight matrices
         b: List of bias vectors
         
@@ -76,35 +76,39 @@ def z3_net(x, w, b):
     # Determine the sort (type) based on the weights
     sample_weight = w[0][0, 0]
     use_fp = isinstance(sample_weight, z3.FPRef)
+    fp_sort = sample_weight.sort() if use_fp else None
     
-    # Create Z3 variables for input with matching sort
-    if use_fp:
-        # Use the same floating-point sort as the weights
-        fp_sort = sample_weight.sort()
-        fl_x = np.array([FP(f'fl_x{i}', fp_sort) for i in range(expected_input_size)])
-        
-        # Convert input values to the right sort
-        for i in range(min(len(x), expected_input_size)):
-            fl_x[i] = FPVal(float(x[i]), fp_sort)
+    # Check if x already contains Z3 variables
+    if len(x) > 0 and isinstance(x[0], z3.ExprRef):
+        # If x is already Z3 variables, use them directly
+        fl_x = x
     else:
-        # If weights are Real, use Real for inputs
-        fl_x = np.array([Real(f'fl_x{i}') for i in range(expected_input_size)])
-        
-        # Convert input values to Real
-        for i in range(min(len(x), expected_input_size)):
-            fl_x[i] = RealVal(float(x[i]))
+        # Create Z3 variables and convert numeric inputs
+        if use_fp:
+            fl_x = np.array([FP(f'fl_x{i}', fp_sort) for i in range(expected_input_size)])
+            # Convert numeric input values
+            for i in range(min(len(x), expected_input_size)):
+                fl_x[i] = FPVal(float(x[i]), fp_sort)
+        else:
+            fl_x = np.array([Real(f'fl_x{i}') for i in range(expected_input_size)])
+            # Convert numeric input values
+            for i in range(min(len(x), expected_input_size)):
+                fl_x[i] = RealVal(float(x[i]))
+    
+    # Create zero constant with matching sort
+    zero = FPVal(0.0, fp_sort) if use_fp else RealVal(0.0)
     
     # Layer 0: Dense (30->16) + ReLU
     x1 = w[0].T @ fl_x + b[0]
-    y1 = If(x1 > 0, x1, 0) if not use_fp else If(x1 > FPVal(0.0, fp_sort), x1, FPVal(0.0, fp_sort))
+    y1 = If(x1 > zero, x1, zero)
     
     # Layer 2: Dense (16->16) + ReLU
     x2 = w[1].T @ y1 + b[1]
-    y2 = If(x2 > 0, x2, 0) if not use_fp else If(x2 > FPVal(0.0, fp_sort), x2, FPVal(0.0, fp_sort))
+    y2 = If(x2 > zero, x2, zero)
     
     # Layer 4: Dense (16->16) + ReLU
     x3 = w[2].T @ y2 + b[2]
-    y3 = If(x3 > 0, x3, 0) if not use_fp else If(x3 > FPVal(0.0, fp_sort), x3, FPVal(0.0, fp_sort))
+    y3 = If(x3 > zero, x3, zero)
     
     # Layer 6: Dense (16->1) - linear
     x4 = w[3].T @ y3 + b[3]

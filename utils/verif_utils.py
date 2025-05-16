@@ -1015,10 +1015,17 @@ def parse_z3Model(m):
     return (inp1, inp2)
 
 
+# def sigmoid(x):
+#     # y = 1 / (1 + math.exp(-x3)) # WP computer for sigmoid
+#     y = 1 / (1 + math.exp(-x))
+#     return y
+
 def sigmoid(x):
-    # y = 1 / (1 + math.exp(-x3)) # WP computer for sigmoid
-    y = 1 / (1 + math.exp(-x))
-    return y
+    if x >= 0:
+        return 1 / (1 + math.exp(-x))
+    else:
+        # For negative large numbers, compute exp(x) first to avoid overflow
+        return math.exp(x) / (1 + math.exp(x))
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""

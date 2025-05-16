@@ -27,20 +27,20 @@ from aif360.datasets import *
 
 # In[]
 
-print("before loading...", flush=True)
+# print("before loading...", flush=True)
 df, X_train, y_train, X_test, y_test = load_default()
-print("after load_default()", flush=True)
+# print("after load_default()", flush=True)
 print("All columns after encoding and dropping:", list(df.columns), flush=True)
 X = np.r_[X_train, X_test]
-print("Concatenated X", flush=True)
+# print("Concatenated X", flush=True)
 single_input = X_test[0].reshape(1, 30)
-print("Reshaped single_input:", single_input.shape, flush=True)
+# print("Reshaped single_input:", single_input.shape, flush=True)
 #print_metadata(df)
 
 # In[]
 model_dir = 'Fairify/models/default/'
 result_dir = 'Fairify/src/DF/'
-PARTITION_THRESHOLD = 10000
+PARTITION_THRESHOLD = 100
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 30*60
@@ -108,8 +108,6 @@ range_dict['MARRIAGE_3'] = [0.0, 1.0]
 # range_dict['PAY_AMT6'] = [0.0, 528666.0]
 # range_dict['default.payment.next.month'] = [0, 1]
 
-print('after range dict', flush=True)
-
 
 A = range_dict.keys()
 PA = ['SEX_2']
@@ -118,11 +116,12 @@ RA = []
 RA_threshold = 100
 
 sim_size = 1 * 1000
-print('before partition', flush=True)
+# print('before partition', flush=True)
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
-print('partition', p_dict, flush=True)
+# print('partition', p_dict, flush=True)
+print('before partition', flush=True)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
-print('partition ranges', p_list, flush=True)
+# print('partition ranges', p_list, flush=True)
 print('Number of partitions: ', len(p_list), flush=True)
 shuffle(p_list)
 print("p_list contents:", p_list, flush=True)

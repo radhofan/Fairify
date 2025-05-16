@@ -15,6 +15,67 @@ import itertools
 from utils.verif_utils import *
 
 def partition(r_dict, partition_size):
+    partition_dict = {}
+    
+    cols = r_dict.keys()
+    for col in cols:
+        low = r_dict[col][0]
+        high = r_dict[col][1]
+        col_size = high - low + 1
+        
+        if col_size <= partition_size:
+            continue
+        
+        cur_low = low
+        cur_high = low + partition_size - 1
+        parts = []
+        
+        while 1:
+            part = [cur_low, cur_high]
+            if(cur_low > high):
+                break
+            if(cur_high >= high):
+                part = [cur_low, high]
+                parts.append(part)
+                partition_dict[col] = parts
+                break
+            parts.append(part)
+            cur_low = cur_high + 1
+            cur_high = cur_high + partition_size
+    
+    return partition_dict
+
+def partitioned_ranges(A, PA, p_dict, range_dict):
+    new_ranges = {}
+    for attr in A:
+        #if attr not in PA:
+        if attr not in p_dict.keys():
+            new_ranges[attr] = range_dict[attr]
+    
+    parts = [] # for each partition attrs, one element. each element has mupltiple partitions
+    for p_attr in p_dict.keys():
+        parts.append(p_dict[p_attr])
+    
+    combs = list(itertools.product(*parts)) # all combinations
+    
+    # distribute combinations
+    total = 0
+    partition_list = []
+    for comb in combs:
+        partitioned = copy.deepcopy(new_ranges) #new_ranges.copy()
+        index = 0
+        
+        for p_attr in p_dict.keys():
+    
+            partitioned[p_attr] = comb[index]
+            index += 1
+        
+        #print(partitioned) # # One partition of new_ranges completed
+        partition_list.append(partitioned)
+        total += 1
+    return partition_list
+
+def partition_df(r_dict, partition_size):
     """
     Create partitions for ranges that exceed the partition size.
     
@@ -47,7 +108,7 @@ def partition(r_dict, partition_size):
     
     return partition_dict
 
-def partitioned_ranges(A, PA, p_dict, range_dict, max_partitions=100):
+def partitioned_ranges_df(A, PA, p_dict, range_dict, max_partitions=100):
     """
     Create range partitions with controlled combinatorial expansion.
     

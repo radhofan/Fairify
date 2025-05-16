@@ -117,10 +117,10 @@ RA_threshold = 100
 
 sim_size = 1 * 1000
 # print('before partition', flush=True)
-p_dict = partition(range_dict, PARTITION_THRESHOLD)
+p_dict = partition_df(range_dict, PARTITION_THRESHOLD)
 # print('partition', p_dict, flush=True)
 print('before partition', flush=True)
-p_list = partitioned_ranges(A, PA, p_dict, range_dict)
+p_list = partitioned_ranges_df(A, PA, p_dict, range_dict)
 # print('partition ranges', p_list, flush=True)
 print('Number of partitions: ', len(p_list), flush=True)
 shuffle(p_list)

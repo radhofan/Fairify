@@ -150,8 +150,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         in_props = []
         out_props = []
 
-        x = np.array([Int('x%s' % i) for i in range(20)])
-        x_ = np.array([Int('x_%s' % i) for i in range(20)])
+        x = np.array([Int('x%s' % i) for i in range(12)])
+        x_ = np.array([Int('x_%s' % i) for i in range(12)])
 
         y = z3_net(x, pr_w, pr_b)  # y is an array of size 1
         y_ = z3_net(x_, pr_w, pr_b)

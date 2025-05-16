@@ -74,7 +74,6 @@ def z3_net(x, w, b):
     expected_input_size = w[0].shape[0]  # Should be 30
     actual_input_size = len(x) if hasattr(x, '__len__') else 0
     
-    # Print diagnostic information
     print(f"Expected input size: {expected_input_size}, Actual input size: {actual_input_size}")
     
     # Determine the sort (type) based on the weights
@@ -122,17 +121,30 @@ def z3_net(x, w, b):
     
     # Layer 0: Dense (30->16) + ReLU
     x1 = w[0].T @ fl_x + b[0]
-    y1 = If(x1 > zero, x1, zero)
+    y1 = np.array([z3_relu(x1_i, zero) for x1_i in x1])
     
     # Layer 2: Dense (16->16) + ReLU
     x2 = w[1].T @ y1 + b[1]
-    y2 = If(x2 > zero, x2, zero)
+    y2 = np.array([z3_relu(x2_i, zero) for x2_i in x2])
     
     # Layer 4: Dense (16->16) + ReLU
     x3 = w[2].T @ y2 + b[2]
-    y3 = If(x3 > zero, x3, zero)
+    y3 = np.array([z3_relu(x3_i, zero) for x3_i in x3])
     
     # Layer 6: Dense (16->1) - linear
     x4 = w[3].T @ y3 + b[3]
     
     return x4
+
+def z3_relu(x, zero):
+    """
+    Apply ReLU activation to a single Z3 expression.
+    
+    Args:
+        x: Z3 expression
+        zero: Z3 constant zero value (matching the sort of x)
+        
+    Returns:
+        Z3 expression after applying ReLU
+    """
+    return If(x > zero, x, zero)

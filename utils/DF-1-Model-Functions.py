@@ -71,29 +71,51 @@ def z3_net(x, w, b):
         Z3 expression representing the network output
     """
     # Expected 30 inputs for first dense layer
-    expected_input_size = w[0].shape[0]  # 30
+    expected_input_size = w[0].shape[0]  # Should be 30
+    actual_input_size = len(x) if hasattr(x, '__len__') else 0
+    
+    # Print diagnostic information
+    print(f"Expected input size: {expected_input_size}, Actual input size: {actual_input_size}")
     
     # Determine the sort (type) based on the weights
     sample_weight = w[0][0, 0]
     use_fp = isinstance(sample_weight, z3.FPRef)
     fp_sort = sample_weight.sort() if use_fp else None
     
+    # Create a properly sized array for input variables
+    fl_x = np.zeros(expected_input_size, dtype=object)
+    
     # Check if x already contains Z3 variables
-    if len(x) > 0 and isinstance(x[0], z3.ExprRef):
-        # If x is already Z3 variables, use them directly
-        fl_x = x
+    if actual_input_size > 0 and isinstance(x[0], z3.ExprRef):
+        # Copy the existing Z3 variables
+        for i in range(min(actual_input_size, expected_input_size)):
+            fl_x[i] = x[i]
+        
+        # Fill any remaining positions with zero or new variables
+        zero = FPVal(0.0, fp_sort) if use_fp else RealVal(0.0)
+        for i in range(actual_input_size, expected_input_size):
+            if use_fp:
+                fl_x[i] = FP(f'fl_x{i}', fp_sort)
+                fl_x[i] = zero
+            else:
+                fl_x[i] = Real(f'fl_x{i}')
+                fl_x[i] = zero
     else:
         # Create Z3 variables and convert numeric inputs
         if use_fp:
-            fl_x = np.array([FP(f'fl_x{i}', fp_sort) for i in range(expected_input_size)])
-            # Convert numeric input values
-            for i in range(min(len(x), expected_input_size)):
-                fl_x[i] = FPVal(float(x[i]), fp_sort)
+            for i in range(expected_input_size):
+                fl_x[i] = FP(f'fl_x{i}', fp_sort)
+                if i < actual_input_size:
+                    fl_x[i] = FPVal(float(x[i]), fp_sort)
+                else:
+                    fl_x[i] = FPVal(0.0, fp_sort)
         else:
-            fl_x = np.array([Real(f'fl_x{i}') for i in range(expected_input_size)])
-            # Convert numeric input values
-            for i in range(min(len(x), expected_input_size)):
-                fl_x[i] = RealVal(float(x[i]))
+            for i in range(expected_input_size):
+                fl_x[i] = Real(f'fl_x{i}')
+                if i < actual_input_size:
+                    fl_x[i] = RealVal(float(x[i]))
+                else:
+                    fl_x[i] = RealVal(0.0)
     
     # Create zero constant with matching sort
     zero = FPVal(0.0, fp_sort) if use_fp else RealVal(0.0)

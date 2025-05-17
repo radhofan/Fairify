@@ -108,7 +108,7 @@ def partition_df(r_dict, partition_size):
     
     return partition_dict
 
-def partitioned_ranges_df(A, PA, p_dict, range_dict, max_partitions=100):
+def partitioned_ranges_df(A, PA, p_dict, range_dict, max_partitions=10):
     """
     Create range partitions with controlled combinatorial expansion.
     

@@ -40,7 +40,7 @@ single_input = X_test[0].reshape(1, 30)
 # In[]
 model_dir = 'Fairify/models/default/'
 result_dir = 'Fairify/src/DF/'
-PARTITION_THRESHOLD = 100
+PARTITION_THRESHOLD = 10
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 30*60

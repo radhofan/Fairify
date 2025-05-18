@@ -24,10 +24,27 @@ def z3Relu(x):
 
 def z3Sigmoid(x):
     """Z3 implementation of Sigmoid activation
-    Note: This is an approximation since Z3 doesn't have a direct sigmoid function
+    Note: This is a piece-wise linear approximation since Z3 doesn't support transcendental functions
+    
+    We approximate sigmoid with piece-wise linear function:
+    - For x < -5, return 0 (sigmoid is very close to 0)
+    - For x > 5, return 1 (sigmoid is very close to 1)
+    - For -5 <= x <= 5, use linear approximation segments
     """
-    # For a single output, we can return a single value
-    return [1 / (1 + z3.Exp(-x[i])) for i in range(len(x))]
+    result = []
+    for i in range(len(x)):
+        # Create piece-wise linear approximation
+        xi = x[i]
+        # Handle extreme values first
+        approximation = If(xi < -5, 0,  # For values less than -5, sigmoid is ≈ 0
+                          If(xi > 5, 1,  # For values greater than 5, sigmoid is ≈ 1
+                            # Otherwise, use linear approximations in different regions
+                            If(xi < -2.5, 0.02 * xi + 0.1,  # Linear approximation for [-5, -2.5]
+                              If(xi < 0, 0.1 * xi + 0.3,    # Linear approximation for [-2.5, 0]
+                                If(xi < 2.5, 0.1 * xi + 0.5, # Linear approximation for [0, 2.5]
+                                  0.02 * xi + 0.7)))))       # Linear approximation for [2.5, 5]
+        result.append(approximation)
+    return result
 
 def ground_net(x, w, b):
     """Evaluate network with numpy operations"""

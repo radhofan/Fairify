@@ -154,8 +154,8 @@ for model_file in model_files:
         in_props = []
         out_props = []
     
-        x = np.array([Int('x%s' % i) for i in range(32)])
-        x_ = np.array([Int('x_%s' % i) for i in range(32)])
+        x = np.array([Int('x%s' % i) for i in range(16)])
+        x_ = np.array([Int('x_%s' % i) for i in range(16)])
     
         y = z3_net(x, pr_w, pr_b) # y is an array of size 1
         y_ = z3_net(x_, pr_w, pr_b)

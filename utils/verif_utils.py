@@ -1056,3 +1056,31 @@ def y_pred_mismatch(net, w, b, pr_w, pr_b, X_test, y_test):
             print('MISMATCH')
             print(res)
             print(res_)
+
+def in_const_adult(df, x, var_name, op, rhs):
+    label_name = 'income-per-year'
+    dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
+    props = []
+    for col in dataframe:
+        if col == var_name:
+            index = dataframe.columns.get_loc(col)
+            if(isinstance(rhs, int) or isinstance(rhs, float)):
+                right = rhs
+            else:
+                right = rhs[index]
+                
+            if(op == 'gt'):
+                props.append(x[index] > right)
+            elif(op == 'lt'):
+                props.append(x[index] < right)
+            elif(op == 'gte'):
+                props.append(x[index] >= right)
+            elif(op == 'lte'):
+                props.append(x[index] <= right)
+            elif(op == 'eq'):
+                props.append(x[index] == right)
+            elif(op == 'neq'):
+                props.append(x[index] != right)
+            else:
+                raise Exception('The operand is not defined!') 
+    return props

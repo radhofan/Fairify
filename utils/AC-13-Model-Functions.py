@@ -15,7 +15,7 @@ def layer_net(x, w, b):
     for i in range(len(w)):
         x1 = w[i].T @ x + b[i]
         if i == len(w)-1:  # Output layer
-            y1 = sigmoid_z3(x1)  # Apply sigmoid for output
+            y1 = x1  # Return raw logits for output layer
         else:
             y1 = relu(x1)  # Apply ReLU for hidden layers
         layers.append(y1)
@@ -31,10 +31,9 @@ def net(x, w, b):
     x2 = w[1].T @ y1 + b[1]
     y2 = relu(x2)
     
-    # Layer 3: 20 -> 1 neuron with sigmoid
+    # Layer 3: 20 -> 1 neuron (return raw logits)
     x3 = w[2].T @ y2 + b[2]
-    y3 = sigmoid(x3)  # Apply sigmoid activation
-    return y3
+    return x3  # Return raw logits, apply sigmoid separately if needed
 
 def z3_net(x, w, b, input_dim):
     # Create Z3 variables for input - use actual input dimension
@@ -51,24 +50,29 @@ def z3_net(x, w, b, input_dim):
     x2 = w[1].T @ y1 + b[1]
     y2 = z3Relu(x2)
     
-    # Layer 3: 20 -> 1 neuron with sigmoid
+    # Layer 3: 20 -> 1 neuron (return raw logits)
     x3 = w[2].T @ y2 + b[2]
-    y3 = z3_sigmoid(x3)  # Apply Z3 sigmoid activation
-    return y3
+    return x3  # Return raw logits for Z3 verification
 
 def sigmoid(x):
     """Standard sigmoid function for numpy arrays"""
     return 1 / (1 + np.exp(-x))
 
-def z3_sigmoid(x):
-    """Z3 symbolic sigmoid approximation"""
-    # Option 1: Return raw logits if you want to work with pre-activation
-    # return x
-    
-    # Option 2: Z3 sigmoid approximation (you'll need to implement this)
-    # For verification, you might want to use piecewise linear approximation
-    # or constraint-based representation of sigmoid
-    return x  # Placeholder - implement based on your verification needs
+def apply_sigmoid_to_logits(logits):
+    """Apply sigmoid to raw logits when needed"""
+    return sigmoid(logits)
+
+# Z3 sigmoid helpers (choose based on your verification needs)
+def z3_sigmoid_constraint(x, y):
+    """Add constraints that y = sigmoid(x) approximately"""
+    # Piecewise linear approximation or bounds
+    # This is a placeholder - implement based on your specific needs
+    return [y >= 0, y <= 1]  # Basic bounds for sigmoid output
+
+def z3_sigmoid_decision_boundary(x):
+    """For binary classification, often we only care about sign of logits"""
+    # Returns constraint for x > 0 (which corresponds to sigmoid(x) > 0.5)
+    return x > 0
 
 # Usage example:
 def create_z3_model_from_keras(keras_model, input_dim):

@@ -35,7 +35,10 @@ def net(x, w, b):
     x3 = w[2].T @ y2 + b[2]
     return x3  # Return raw logits, apply sigmoid separately if needed
 
-def z3_net(x, w, b, input_dim):
+def z3_net(x, w, b):
+    # Infer input dimension from the input x
+    input_dim = len(x)
+    
     # Create Z3 variables for input - use actual input dimension
     fl_x = np.array([FP('fl_x%s' % i, Float32()) for i in range(input_dim)])  
    
@@ -75,7 +78,7 @@ def z3_sigmoid_decision_boundary(x):
     return x > 0
 
 # Usage example:
-def create_z3_model_from_keras(keras_model, input_dim):
+def create_z3_model_from_keras(keras_model):
     """Extract weights and biases from Keras model and create Z3 representation"""
     weights = []
     biases = []
@@ -85,7 +88,10 @@ def create_z3_model_from_keras(keras_model, input_dim):
         weights.append(w)
         biases.append(b)
     
+    # Get input dimension from first layer
+    input_dim = keras_model.layers[0].input_shape[1]
+    
     # Create Z3 input variables
     x_vars = [Real('x_%d' % i) for i in range(input_dim)]
     
-    return z3_net(x_vars, weights, biases, input_dim)
+    return z3_net(x_vars, weights, biases)

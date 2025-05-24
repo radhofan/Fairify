@@ -61,7 +61,7 @@ range_dict['l'] = [0, 38]
 
 
 A = range_dict.keys()
-PA = ['sex']
+PA = ['race']
 
 RA = []
 RA_threshold = 100
@@ -369,7 +369,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        age_index = 0 
+        age_index = 2 
         prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
@@ -379,13 +379,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         X_test_copy = pd.DataFrame(X_test)
         print('1th column')
         print(X_test_copy.iloc[:, age_index])
-        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'sex'}, inplace=True)
+        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'race'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('label')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('label')], axis=1)
-        dataset = BinaryLabelDataset(df=dataset, label_names=['label'], protected_attribute_names=['sex'])
-        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['label'], protected_attribute_names=['sex'])
-        unprivileged_groups = [{'sex': 0}]
-        privileged_groups = [{'sex': 1}]
+        dataset = BinaryLabelDataset(df=dataset, label_names=['label'], protected_attribute_names=['race'])
+        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['label'], protected_attribute_names=['race'])
+        unprivileged_groups = [{'race': 0}]
+        privileged_groups = [{'race': 1}]
         classified_metric = ClassificationMetric(dataset,
                                                  dataset_pred,
                                                  unprivileged_groups=unprivileged_groups,

@@ -70,9 +70,9 @@ sim_size = 1 * 1000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)
-print('Number of partitions: ', len(p_list))
+# print('Number of partitions: ', len(p_list))
 shuffle(p_list)
-print("p_list contents:", p_list)
+# print("p_list contents:", p_list)
 
 # In[]
 

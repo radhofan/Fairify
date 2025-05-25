@@ -33,11 +33,12 @@ single_input = X_test[0].reshape(1, 13)
 # In[]
 model_dir = 'Fairify/models/adult/'
 result_dir = 'Fairify/src/AC/libra/sex-'
-PARTITION_THRESHOLD = 10
+PARTITION_THRESHOLD = 5
 
 SOFT_TIMEOUT = 100 
-HARD_TIMEOUT = 30 * 60
+HARD_TIMEOUT = 60 * 60
 HEURISTIC_PRUNE_THRESHOLD = 5
+
 
 # In[]
 ## Domain

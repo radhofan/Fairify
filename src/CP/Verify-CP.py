@@ -64,7 +64,7 @@ A = range_dict.keys()
 PA = ['sex']
 
 RA = []
-RA_threshold = 5
+RA_threshold = 200
 
 sim_size = 1 * 1000
 

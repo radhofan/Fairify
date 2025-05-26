@@ -81,7 +81,7 @@ for model_file in model_files:
     # if not model_file.endswith('.h5'):
     #     continue
     
-    if not model_file.startswith(("BM-13")):
+    if not model_file.startswith(("BM-9")):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -430,7 +430,7 @@ for model_file in model_files:
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["BM-13"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["BM-9"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-bank-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

@@ -48,15 +48,15 @@ range_dict = {}
 range_dict['sex'] = [0, 1]
 range_dict['age'] = [0, 2]
 range_dict['race'] = [0, 1]
-range_dict['d'] = [0, 20]
-range_dict['e'] = [1, 10]
-range_dict['f'] = [0, 38]
+range_dict['d'] = [0, 10]
+range_dict['e'] = [0, 9]
+range_dict['f'] = [0, 36]
 range_dict['g'] = [0, 1]
 range_dict['h'] = [0, 1]
 range_dict['i'] = [0, 1]
-range_dict['j'] = [1, 10]
-range_dict['k'] = [1, 10]
-range_dict['l'] = [0, 38]
+range_dict['j'] = [0, 9]
+range_dict['k'] = [0, 9]
+range_dict['l'] = [0, 36]
 
 
 

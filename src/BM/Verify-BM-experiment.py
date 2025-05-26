@@ -34,11 +34,11 @@ single_input = X_test[0].reshape(1, 16)
 # In[]
 model_dir = 'Fairify/models/bank/'
 result_dir = 'Fairify/src/BM/age-'
-PARTITION_THRESHOLD = 100
+PARTITION_THRESHOLD = 10
 
 SOFT_TIMEOUT = 100
 HARD_TIMEOUT = 30*60
-HEURISTIC_PRUNE_THRESHOLD = 5
+HEURISTIC_PRUNE_THRESHOLD = 100
 
 # In[]
 ## Domain
@@ -65,7 +65,7 @@ A = range_dict.keys()
 PA = ['age']
 
 RA = []
-RA_threshold = 5
+RA_threshold = 100
 
 sim_size = 1 * 1000
 

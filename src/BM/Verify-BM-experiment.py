@@ -36,8 +36,8 @@ model_dir = 'Fairify/models/bank/'
 result_dir = 'Fairify/src/BM/age-'
 PARTITION_THRESHOLD = 10
 
-SOFT_TIMEOUT = 100
-HARD_TIMEOUT = 30*60
+SOFT_TIMEOUT = 200
+HARD_TIMEOUT = 60*60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
 # In[]
@@ -65,7 +65,7 @@ A = range_dict.keys()
 PA = ['age']
 
 RA = []
-RA_threshold = 100
+RA_threshold = 200
 
 sim_size = 1 * 1000
 

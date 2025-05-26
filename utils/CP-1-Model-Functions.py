@@ -58,7 +58,7 @@ def net(x, w, b):
 #fl_x = np.array([FP('fl_x%s' % i, FPSort(8, 24)) for i in range(13)])
 def z3_net(x, w, b):
     
-    fl_x = np.array([FP('fl_x%s' % i, Float32()) for i in range(16)])  
+    fl_x = np.array([FP('fl_x%s' % i, Float32()) for i in range(12)])  
     #fl_x = np.array([Real('fl_x%s' % i) for i in range(16)])
     
     

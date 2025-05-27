@@ -194,7 +194,11 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         h_compression = 0
         t_compression = st_compression
         h_success = 0
+        print("Z3 check result:", res)
         if res == unknown:
+            print("Z3 reason for unknown:", s.reason_unknown())
+            print("Solver stats:")
+            print(s.statistics())
             heuristic_attempted = 1
 
             h_deads, deads = heuristic_prune(neuron_bounds, candidates,
@@ -303,6 +307,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         elif res == unsat:
             unsat_count += 1
         else:
+            print("Z3 reason for unknown:", s.reason_unknown())
             unk_count += 1
 
         d = X_test[0]

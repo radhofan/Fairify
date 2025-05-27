@@ -36,8 +36,8 @@ model_dir = 'Fairify/models/bank/'
 result_dir = 'Fairify/src/BM/age-'
 PARTITION_THRESHOLD = 10
 
-SOFT_TIMEOUT = 400
-HARD_TIMEOUT = 80*60
+SOFT_TIMEOUT = 300
+HARD_TIMEOUT = 60*60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
 # In[]
@@ -81,7 +81,7 @@ for model_file in model_files:
     # if not model_file.endswith('.h5'):
     #     continue
     
-    if not model_file.startswith(("BM-9")):
+    if not model_file.startswith(("BM-10")):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -430,7 +430,7 @@ for model_file in model_files:
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["BM-9"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["BM-10"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-bank-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

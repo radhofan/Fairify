@@ -35,7 +35,7 @@ model_dir = 'Fairify/models/adult/'
 result_dir = 'Fairify/src/AC/libra/sex-'
 PARTITION_THRESHOLD = 5
 
-SOFT_TIMEOUT = 200 
+SOFT_TIMEOUT = 300 
 HARD_TIMEOUT = 60 * 60
 HEURISTIC_PRUNE_THRESHOLD = 100
 

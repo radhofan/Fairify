@@ -37,8 +37,8 @@ model_dir = 'Fairify/models/compass/'
 result_dir = 'Fairify/src/CP/'
 PARTITION_THRESHOLD = 10
 
-SOFT_TIMEOUT = 100
-HARD_TIMEOUT = 30*60
+SOFT_TIMEOUT = 400
+HARD_TIMEOUT = 80*60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
 # In[]
@@ -64,7 +64,7 @@ A = range_dict.keys()
 PA = ['sex']
 
 RA = []
-RA_threshold = 100
+RA_threshold = 200
 
 sim_size = 1 * 1000
 

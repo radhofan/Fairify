@@ -36,8 +36,8 @@ model_dir = 'Fairify/models/bank/'
 result_dir = 'Fairify/src/BM/age-'
 PARTITION_THRESHOLD = 10
 
-SOFT_TIMEOUT = 300
-HARD_TIMEOUT = 60*60
+SOFT_TIMEOUT = 400
+HARD_TIMEOUT = 80*60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
 # In[]

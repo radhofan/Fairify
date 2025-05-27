@@ -34,9 +34,9 @@ single_input = X_test[0].reshape(1, 16)
 # In[]
 model_dir = 'Fairify/models/bank/'
 result_dir = 'Fairify/src/BM/age-'
-PARTITION_THRESHOLD = 10
+PARTITION_THRESHOLD = 5
 
-SOFT_TIMEOUT = 200
+SOFT_TIMEOUT = 300
 HARD_TIMEOUT = 60*60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
@@ -67,7 +67,7 @@ PA = ['age']
 RA = []
 RA_threshold = 200
 
-sim_size = 1 * 1000
+sim_size = 1 * 2000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)

@@ -35,9 +35,9 @@ model_dir = 'Fairify/models/adult/'
 result_dir = 'Fairify/src/AC/libra/sex-'
 PARTITION_THRESHOLD = 5
 
-SOFT_TIMEOUT = 100 
+SOFT_TIMEOUT = 200 
 HARD_TIMEOUT = 60 * 60
-HEURISTIC_PRUNE_THRESHOLD = 5
+HEURISTIC_PRUNE_THRESHOLD = 100
 
 
 # In[]
@@ -62,7 +62,7 @@ A = range_dict.keys()
 PA = ['sex']
 
 RA = []
-RA_threshold = 5
+RA_threshold = 200
 
 sim_size = 1 * 1000
 

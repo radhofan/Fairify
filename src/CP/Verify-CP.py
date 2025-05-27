@@ -167,7 +167,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         in_props.extend(in_const_domain_compass(df, x, x_, p, PA))
 
+        set_param('timeout', 300_000)  # in ms, = 300s
+        set_param('rlimit', 1_000_000)  # Resource limit, allow more solver steps
         s = Solver()
+       
         if len(sys.argv) > 1:
             s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
         else:

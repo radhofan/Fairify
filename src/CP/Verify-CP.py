@@ -66,7 +66,7 @@ PA = ['sex']
 RA = []
 RA_threshold = 100
 
-sim_size = 1 * 1000
+sim_size = 10 * 1000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)

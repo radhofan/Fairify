@@ -67,7 +67,7 @@ PA = ['age']
 RA = []
 RA_threshold = 200
 
-sim_size = 1 * 2000
+sim_size = 1 * 1000
 
 p_dict = partition(range_dict, PARTITION_THRESHOLD)
 p_list = partitioned_ranges(A, PA, p_dict, range_dict)

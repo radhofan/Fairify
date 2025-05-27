@@ -153,6 +153,11 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
         else:
             s.set("timeout", SOFT_TIMEOUT * 1000)
+        
+        s.set("sat.random_seed", 42)      
+        s.set("smt.random_seed", 42)      
+        s.set("sat.restart.max", 50)     
+        s.set("sat.phase", "random")     
     
         for i in in_props:
             s.add(i)

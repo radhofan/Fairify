@@ -154,10 +154,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         else:
             s.set("timeout", SOFT_TIMEOUT * 1000)
         
-        s.set("sat.random_seed", 42)      
-        s.set("smt.random_seed", 42)      
-        s.set("sat.restart.max", 50)     
-        s.set("sat.phase", "random")     
+        s.set("random_seed", 42)           # Instead of "sat.random_seed" 
+        s.set("restart.max", 100)          # This one was correct
+        s.set("phase_selection", 0)        # Instead of "sat.phase", 0=random
     
         for i in in_props:
             s.add(i)

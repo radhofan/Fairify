@@ -99,26 +99,26 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # model = load_model(model_dir + model_file)
     model = load_model(model_dir + model_file)
 
-    for i in range(len(model.layers)):
-        w.append(model.layers[i].get_weights()[0])
-        b.append(model.layers[i].get_weights()[1])
+    # for i in range(len(model.layers)):
+    #     w.append(model.layers[i].get_weights()[0])
+    #     b.append(model.layers[i].get_weights()[1])
 
     # Find all Dense layers
-    # dense_layers = []
-    # for i, layer in enumerate(model.layers):
-    #     if isinstance(layer, tf.keras.layers.Dense):
-    #         dense_layers.append(i)
+    dense_layers = []
+    for i, layer in enumerate(model.layers):
+        if isinstance(layer, tf.keras.layers.Dense):
+            dense_layers.append(i)
 
-    # # Extract weights and biases from Dense layers only
-    # for i in dense_layers:
-    #     layer = model.layers[i]
-    #     weights = layer.get_weights()
+    # Extract weights and biases from Dense layers only
+    for i in dense_layers:
+        layer = model.layers[i]
+        weights = layer.get_weights()
         
-    #     if len(weights) >= 1:
-    #         w.append(weights[0])  # Kernel weights
+        if len(weights) >= 1:
+            w.append(weights[0])  # Kernel weights
         
-    #     if len(weights) >= 2:
-    #         b.append(weights[1])  # Bias
+        if len(weights) >= 2:
+            b.append(weights[1])  # Bias
 
     print('###################')
     partition_id = 0

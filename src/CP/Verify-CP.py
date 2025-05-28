@@ -94,7 +94,7 @@ model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
 
 
-    if not (model_file.startswith("CP-1")):
+    if not (model_file.startswith("CP-11")):
         continue
 
     ###############################################################################################
@@ -180,38 +180,38 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         in_props.extend(in_const_domain_compass(df, x, x_, p, PA))
 
-        # s = Solver()
+        s = Solver()
        
-        # if len(sys.argv) > 1:
-        #     s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
-        # else:
-        #     s.set("timeout", SOFT_TIMEOUT * 1000)
+        if len(sys.argv) > 1:
+            s.set("timeout", int(sys.argv[1]) * 1000)  # X seconds
+        else:
+            s.set("timeout", SOFT_TIMEOUT * 1000)
 
-        # for i in in_props:
-        #     s.add(i)
+        for i in in_props:
+            s.add(i)
 
-        # s.add(Or(And(y[0] < 0, y_[0] > 0), And(y[0] > 0, y_[0] < 0)))
+        s.add(Or(And(y[0] < 0, y_[0] > 0), And(y[0] > 0, y_[0] < 0)))
 
-        # print('Verifying ...')
-        # res = s.check()
+        print('Verifying ...')
+        res = s.check()
 
         # Assuming y, y_ and in_props are already defined
-        goal = Goal()
-        for i in in_props:
-            goal.add(i)
-        goal.add(Or(And(y[0] < 0, y_[0] > 0), And(y[0] > 0, y_[0] < 0)))
+        # goal = Goal()
+        # for i in in_props:
+        #     goal.add(i)
+        # goal.add(Or(And(y[0] < 0, y_[0] > 0), And(y[0] > 0, y_[0] < 0)))
 
-        # Apply tactic pipeline
-        tactic = Then('simplify', 'propagate-values', 'solve-eqs', 'smt')
-        result = tactic(goal)
+        # # Apply tactic pipeline
+        # tactic = Then('simplify', 'propagate-values', 'solve-eqs', 'smt')
+        # result = tactic(goal)
 
-        # Run solver on the first subgoal
-        s = Solver()
-        s.set("timeout", 10000)  # 10-second timeout
-        s.add(result[0].as_expr())
-        print("Checking satisfiability...")
-        res = s.check()
-        print("Result:", res)
+        # # Run solver on the first subgoal
+        # s = Solver()
+        # s.set("timeout", 10000)  # 10-second timeout
+        # s.add(result[0].as_expr())
+        # print("Checking satisfiability...")
+        # res = s.check()
+        # print("Result:", res)
 
         print(res)
         if res == sat:
@@ -452,7 +452,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["CP-1"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["CP-11"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-compass-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

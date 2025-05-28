@@ -106,7 +106,7 @@ model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
 
 
-    if not (model_file.startswith("DF-3")):
+    if not (model_file.startswith("DF-7")):
         continue
 
     ###############################################################################################
@@ -447,7 +447,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["DF-3"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["DF-7"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-default-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

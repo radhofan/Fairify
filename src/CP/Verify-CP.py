@@ -45,31 +45,31 @@ HEURISTIC_PRUNE_THRESHOLD = 50
 ## Domain
 default_range = [0, 1]
 range_dict = {}
-range_dict['sex'] = [0, 1]
-range_dict['age'] = [0, 1]
-range_dict['race'] = [0, 1]
-range_dict['d'] = [0, 1]
-range_dict['e'] = [0, 1]
-range_dict['f'] = [0, 1]
-range_dict['g'] = [0, 1]
-range_dict['h'] = [0, 1]
-range_dict['i'] = [0, 1]
-range_dict['j'] = [0, 1]
-range_dict['k'] = [0, 1]
-range_dict['l'] = [0, 1]
-
 # range_dict['sex'] = [0, 1]
-# range_dict['age'] = [0, 2]
+# range_dict['age'] = [0, 1]
 # range_dict['race'] = [0, 1]
-# range_dict['d'] = [0, 10]
-# range_dict['e'] = [0, 9]
-# range_dict['f'] = [0, 36]
+# range_dict['d'] = [0, 1]
+# range_dict['e'] = [0, 1]
+# range_dict['f'] = [0, 1]
 # range_dict['g'] = [0, 1]
 # range_dict['h'] = [0, 1]
 # range_dict['i'] = [0, 1]
-# range_dict['j'] = [0, 9]
-# range_dict['k'] = [0, 9]
-# range_dict['l'] = [0, 36]
+# range_dict['j'] = [0, 1]
+# range_dict['k'] = [0, 1]
+# range_dict['l'] = [0, 1]
+
+range_dict['sex'] = [0, 1]
+range_dict['age'] = [0, 2]
+range_dict['race'] = [0, 1]
+range_dict['d'] = [0, 10]
+range_dict['e'] = [0, 9]
+range_dict['f'] = [0, 36]
+range_dict['g'] = [0, 1]
+range_dict['h'] = [0, 1]
+range_dict['i'] = [0, 1]
+range_dict['j'] = [0, 9]
+range_dict['k'] = [0, 9]
+range_dict['l'] = [0, 36]
 
 
 
@@ -94,7 +94,7 @@ model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
 
 
-    if not (model_file.startswith("CP-1")):
+    if not (model_file.startswith("CP-11")):
         continue
 
     ###############################################################################################
@@ -436,7 +436,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["CP-1"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["CP-11"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-compass-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

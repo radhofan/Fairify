@@ -68,7 +68,7 @@ range_dict['Misdemeanor'] = [0,1]
 # range_dict['l'] = [0, 36]
 
 A = range_dict.keys()
-PA = ['sex']
+PA = ['Race']
 
 RA = []
 RA_threshold = 100

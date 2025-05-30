@@ -35,7 +35,7 @@ print_metadata(df)
 # In[]
 model_dir = 'Fairify/models/compass/'
 result_dir = 'Fairify/src/CP/'
-PARTITION_THRESHOLD = 8
+PARTITION_THRESHOLD = 5
 
 SOFT_TIMEOUT = 100
 HARD_TIMEOUT = 30*60
@@ -88,7 +88,7 @@ model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
 
 
-    if not (model_file.startswith("CP-1")):
+    if not (model_file.startswith("CP-1.")):
         continue
 
     ###############################################################################################

@@ -73,7 +73,7 @@ def z3_layer1_ws_net_bank(x, w, b):
     return x1
 
 def z3_layer1_ws_net_compass(x, w, b):
-    fl_x = np.array([Real('fl_x%s' % i) for i in range(12)])
+    fl_x = np.array([Real('fl_x%s' % i) for i in range(6)])
     for i in range(len(x)):
         fl_x[i] = ToReal(x[i])        
     x1 = w[0].T @ fl_x + b[0]
@@ -783,7 +783,7 @@ def sound_prune_german(df, weight, bias, simulation_size, layer_net, range_dict)
     return bounds, candidates, s_candidates, b_dead_node_mask, s_dead_node_mask, dead_nodes, pos_prob, sim_df
 
 def sound_prune_compass(df, weight, bias, simulation_size, layer_net, range_dict):
-    label_name = 'label'
+    label_name = 'score_factor'
     #sim_data = sim_df.drop(labels = [label_name], axis=1, inplace=False)
     x_df = df.drop(labels = [label_name], axis=1, inplace=False)
     sim_df = simluate_data(x_df, simulation_size, range_dict)

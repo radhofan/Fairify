@@ -238,19 +238,21 @@ def load_german():
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
 
 def load_compass():
-    file_path = 'Fairify/data/compass/compass.csv'
-    column_names = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'label']
+    file_path = 'Fairify/data/compass/compas_preprocessed_full.csv'
+    # column_names = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'label']
+    column_names = ['Two_yr_Recidivism', 'Number_of_Priors', 'Age', 'Race', 'Female', 'Misdemeanor', 'score_factor']
 
     df = pd.read_csv(file_path)
     # df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
 
-    cat_feat = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',]
+    # cat_feat = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',]
+    cat_feat = ['Two_yr_Recidivism', 'Number_of_Priors', 'Age', 'Race', 'Female', 'Misdemeanor']
 
     for f in cat_feat:
         label = LabelEncoder()
         df[f] = label.fit_transform(df[f])
 
-    label_name='label'
+    label_name='score_factor'
 
     X = df.drop(labels = [label_name], axis = 1, inplace = False)
     y = df[label_name]
@@ -680,7 +682,7 @@ def in_const_german(df, x, var_name, op, rhs):
     return props
 
 def in_const_compass(df, x, var_name, op, rhs):
-    label_name = 'label'
+    label_name = 'score_factor'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
     props = []
     for col in dataframe:
@@ -755,7 +757,7 @@ def in_const_domain_german(df, x, x_, ranges, PA):
     return props
 
 def in_const_domain_compass(df, x, x_, ranges, PA):
-    label_name = 'label'
+    label_name = 'score_factor'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
     #dataframe = df.drop(df.columns[len(df.columns)-1], axis=1, inplace=False)
     props = []
@@ -882,7 +884,7 @@ def in_const_diff_bank(df, x, x_, var_name, threshold):
     return props
 
 def in_const_diff_compass(df, x, x_, var_name, threshold):
-    label_name = 'label'
+    label_name = 'score_factor'
     dataframe = df.drop(labels = [label_name], axis=1, inplace=False)
     props = []
     for col in dataframe:

@@ -45,33 +45,27 @@ HEURISTIC_PRUNE_THRESHOLD = 50
 ## Domain
 default_range = [0, 1]
 range_dict = {}
+
+range_dict['Two_yr_Recidivism'] = [0,1]
+range_dict['Number_of_Priors'] = [0,38]
+range_dict['Age'] = [0,1]
+range_dict['Race'] = [0,1]
+range_dict['Female'] = [0,1]
+range_dict['Misdemeanor'] = [0,1]
+# range_dict['score_factor'] = [0,1]
+
 # range_dict['sex'] = [0, 1]
-# range_dict['age'] = [0, 1]
+# range_dict['age'] = [0, 2]
 # range_dict['race'] = [0, 1]
-# range_dict['d'] = [0, 1]
-# range_dict['e'] = [0, 1]
-# range_dict['f'] = [0, 1]
+# range_dict['d'] = [0, 10]
+# range_dict['e'] = [0, 9]
+# range_dict['f'] = [0, 36]
 # range_dict['g'] = [0, 1]
 # range_dict['h'] = [0, 1]
 # range_dict['i'] = [0, 1]
-# range_dict['j'] = [0, 1]
-# range_dict['k'] = [0, 1]
-# range_dict['l'] = [0, 1]
-
-range_dict['sex'] = [0, 1]
-range_dict['age'] = [0, 2]
-range_dict['race'] = [0, 1]
-range_dict['d'] = [0, 10]
-range_dict['e'] = [0, 9]
-range_dict['f'] = [0, 36]
-range_dict['g'] = [0, 1]
-range_dict['h'] = [0, 1]
-range_dict['i'] = [0, 1]
-range_dict['j'] = [0, 9]
-range_dict['k'] = [0, 9]
-range_dict['l'] = [0, 36]
-
-
+# range_dict['j'] = [0, 9]
+# range_dict['k'] = [0, 9]
+# range_dict['l'] = [0, 36]
 
 A = range_dict.keys()
 PA = ['sex']
@@ -111,25 +105,25 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     b = []
     model = load_model(model_dir + model_file)
 
-    # for i in range(len(model.layers)):
-    #     w.append(model.layers[i].get_weights()[0])
-    #     b.append(model.layers[i].get_weights()[1])
+    for i in range(len(model.layers)):
+        w.append(model.layers[i].get_weights()[0])
+        b.append(model.layers[i].get_weights()[1])
 
-    dense_layers = []
-    for i, layer in enumerate(model.layers):
-        if isinstance(layer, tf.keras.layers.Dense):
-            dense_layers.append(i)
+    # dense_layers = []
+    # for i, layer in enumerate(model.layers):
+    #     if isinstance(layer, tf.keras.layers.Dense):
+    #         dense_layers.append(i)
 
-    # Extract weights and biases from Dense layers only
-    for i in dense_layers:
-        layer = model.layers[i]
-        weights = layer.get_weights()
+    # # Extract weights and biases from Dense layers only
+    # for i in dense_layers:
+    #     layer = model.layers[i]
+    #     weights = layer.get_weights()
         
-        if len(weights) >= 1:
-            w.append(weights[0])  # Kernel weights
+    #     if len(weights) >= 1:
+    #         w.append(weights[0])  # Kernel weights
         
-        if len(weights) >= 2:
-            b.append(weights[1])  # Bias
+    #     if len(weights) >= 2:
+    #         b.append(weights[1])  # Bias
 
     print('###################')
     partition_id = 0
@@ -161,8 +155,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         in_props = []
         out_props = []
 
-        x = np.array([Int('x%s' % i) for i in range(12)])
-        x_ = np.array([Int('x_%s' % i) for i in range(12)])
+        x = np.array([Int('x%s' % i) for i in range(6)])
+        x_ = np.array([Int('x_%s' % i) for i in range(6)])
 
         y = z3_net(x, pr_w, pr_b)  # y is an array of size 1
         y_ = z3_net(x_, pr_w, pr_b)
@@ -315,7 +309,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
             # Save counterexamples to csv
             import csv
-            cols = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'label']
+            # cols = ['sex', 'age', 'race', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'label']
+            cols = ['Two_yr_Recidivism', 'Number_of_Priors', 'Age', 'Race', 'Female', 'Misdemeanor', 'score_factor']
             file_name =  result_dir + 'counterexample-compass-new.csv'
             file_exists = os.path.isfile(file_name)
             with open(file_name, "a", newline='') as fp:
@@ -404,7 +399,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         y_true = y_test 
         y_pred = get_y_pred(net, w, b, X_test)
 
-        age_index = 0 
+        age_index = 3 
         prot_attr = X_test[:, age_index]
 
         y_true = pd.Series(np.array(y_true).ravel())  
@@ -412,15 +407,15 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        print('1th column')
+        print('3th column')
         print(X_test_copy.iloc[:, age_index])
-        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'sex'}, inplace=True)
-        dataset = pd.concat([X_test_copy, y_true.rename('label')], axis=1)
-        dataset_pred = pd.concat([X_test_copy, y_pred.rename('label')], axis=1)
-        dataset = BinaryLabelDataset(df=dataset, label_names=['label'], protected_attribute_names=['sex'])
-        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['label'], protected_attribute_names=['sex'])
-        unprivileged_groups = [{'sex': 0}]
-        privileged_groups = [{'sex': 1}]
+        X_test_copy.rename(columns={X_test_copy.columns[age_index]: 'Race'}, inplace=True)
+        dataset = pd.concat([X_test_copy, y_true.rename('score_factor')], axis=1)
+        dataset_pred = pd.concat([X_test_copy, y_pred.rename('score_factor')], axis=1)
+        dataset = BinaryLabelDataset(df=dataset, label_names=['score_factor'], protected_attribute_names=['Race'])
+        dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['score_factor'], protected_attribute_names=['Race'])
+        unprivileged_groups = [{'Race': 0}]
+        privileged_groups = [{'Race': 1}]
         classified_metric = ClassificationMetric(dataset,
                                                  dataset_pred,
                                                  unprivileged_groups=unprivileged_groups,

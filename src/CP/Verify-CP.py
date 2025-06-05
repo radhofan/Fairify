@@ -88,7 +88,7 @@ model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
 
 
-    if not (model_file.startswith("CP-1.")):
+    if not (model_file.startswith("CP-11.")):
         continue
 
     ###############################################################################################

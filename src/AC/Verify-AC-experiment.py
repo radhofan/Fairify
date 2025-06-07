@@ -25,15 +25,15 @@ from aif360.metrics import *
 from aif360.datasets import *
 
 # In[]
-df, X_train, y_train, X_test, y_test = load_adult_ac1()
+df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
 X = np.r_[X_train, X_test]
 single_input = X_test[0].reshape(1, 13)
 # print_metadata(df)
 
 # In[]
 model_dir = 'Fairify/models/adult/'
-result_dir = 'Fairify/src/AC/libra/sex-'
-PARTITION_THRESHOLD = 8
+result_dir = 'Fairify/src/AC/res/'
+PARTITION_THRESHOLD = 5
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 60 * 60
@@ -80,7 +80,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.endswith('.h5'):
     #     continue
 
-    if not model_file.startswith("AC-13"):
+    if not model_file.startswith("AC-9"):
         continue
     
     print('==================  STARTING MODEL ' + model_file)
@@ -268,23 +268,91 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print("class_2_orig: ", class_2_orig)
 
             # Save counterexamples to csv
+            # import csv
+            # cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+            #         'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+            #         'capital-loss', 'hours-per-week', 'native-country']
+            # file_name =  result_dir + 'counterexample-adult-empty.csv'
+            # file_exists = os.path.isfile(file_name)
+            # with open(file_name, "a", newline='') as fp:
+            #     if not file_exists:
+            #         wr = csv.writer(fp, dialect='excel')
+            #         wr.writerow(cols)
+            #     wr = csv.writer(fp)
+            #     csv_row1 = copy.deepcopy(inp1)
+            #     csv_row2 = copy.deepcopy(inp2)
+            #     csv_row1.append(int(class_1))
+            #     csv_row2.append(int(class_2))
+            #     wr.writerow(csv_row1)
+            #     wr.writerow(csv_row2)
+
+            # Save counterexamples to csv
             import csv
+
+            def decode_counterexample(encoded_row, encoders):
+                """Decode numerical values back to original format using the actual encoders"""
+                cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                        'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                        'capital-loss', 'hours-per-week', 'native-country']
+                
+                decoded_row = []
+                
+                for i, col_name in enumerate(cols):
+                    value = encoded_row[i]
+                    
+                    if col_name in encoders:
+                        try:
+                            if isinstance(encoders[col_name], LabelEncoder):
+                                # For categorical features
+                                decoded_value = encoders[col_name].inverse_transform([int(value)])[0]
+                            elif isinstance(encoders[col_name], KBinsDiscretizer):
+                                # For binned features, get the bin edges
+                                bin_edges = encoders[col_name].bin_edges_[0]
+                                bin_idx = int(value)
+                                if bin_idx < len(bin_edges) - 1:
+                                    decoded_value = f"{bin_edges[bin_idx]:.1f}-{bin_edges[bin_idx+1]:.1f}"
+                                else:
+                                    decoded_value = f"Bin_{bin_idx}"
+                            else:
+                                decoded_value = value
+                        except:
+                            decoded_value = f"{col_name}_{value}"
+                    else:
+                        # For non-encoded features (age, education-num, hours-per-week)
+                        decoded_value = int(value) if isinstance(value, (int, float)) else value
+                    
+                    decoded_row.append(decoded_value)
+                
+                return decoded_row
+
             cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                    'capital-loss', 'hours-per-week', 'native-country']
-            file_name =  result_dir + 'counterexample-adult-empty.csv'
+                    'capital-loss', 'hours-per-week', 'native-country', 'prediction']
+
+            file_name = result_dir + 'counterexample.csv'
             file_exists = os.path.isfile(file_name)
+
             with open(file_name, "a", newline='') as fp:
                 if not file_exists:
                     wr = csv.writer(fp, dialect='excel')
                     wr.writerow(cols)
+                
                 wr = csv.writer(fp)
-                csv_row1 = copy.deepcopy(inp1)
-                csv_row2 = copy.deepcopy(inp2)
-                csv_row1.append(int(class_1))
-                csv_row2.append(int(class_2))
-                wr.writerow(csv_row1)
-                wr.writerow(csv_row2)
+                
+                # Decode the counterexamples using actual encoders
+                decoded_row1 = decode_counterexample(inp1, encoders)
+                decoded_row2 = decode_counterexample(inp2, encoders)
+                
+                # Add predictions
+                decoded_row1.append(int(class_1))
+                decoded_row2.append(int(class_2))
+                
+                # Write to CSV
+                wr.writerow(decoded_row1)
+                wr.writerow(decoded_row2)
+
+
+
             
             if class_1_orig != class_2_orig:
                 accurate = 1
@@ -407,7 +475,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         ti = classified_metric.theil_index()
 
         # Save metric to csv
-        model_prefix = next((prefix for prefix in ["AC-13"] if model_file.startswith(prefix)), "unknown")
+        model_prefix = next((prefix for prefix in ["AC-9"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]

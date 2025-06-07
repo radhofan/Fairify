@@ -146,11 +146,14 @@ def load_adult_ac1():
     print("Missing Data: {} rows removed.".format(count))
     df = dropped
     
+    encoders = {}
+
     cat_feat = ['sex', 'workclass', 'education', 'marital-status', 'occupation', 'relationship', 'native-country']
     ## Implement label encoder instead of one-hot encoder
     for feature in cat_feat:
         le = LabelEncoder()
         df[feature] = le.fit_transform(df[feature])
+        encoders[feature] = le
 
 #    df = pd.get_dummies(df, columns=cat_feat, prefix_sep='=')
     
@@ -159,14 +162,14 @@ def load_adult_ac1():
     for feature in cat_feat:
         le = LabelEncoder()
         df[feature] = le.fit_transform(df[feature])
+        encoders[feature] = le
         
-    
     bin_cols = ['capital-gain', 'capital-loss']
     for feature in bin_cols:
         bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
         df[feature] = bins.fit_transform(df[[feature]])
+        encoders[feature] = le
 
-    
 #    df = df[columns]
     label_name = 'income-per-year'
     
@@ -181,11 +184,10 @@ def load_adult_ac1():
     X = df.drop(labels = [label_name], axis = 1, inplace = False)
     y = df[label_name]
     
-    
     seed = 42 # randrange(100)
 #    train, test  = train_test_split(df, test_size = 0.15, random_state = seed)
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
-    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
+    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'), encoders)
 
 
 def load_german():

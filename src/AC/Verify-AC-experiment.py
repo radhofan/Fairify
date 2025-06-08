@@ -327,7 +327,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
             cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                    'capital-loss', 'hours-per-week', 'native-country', 'prediction']
+                    'capital-loss', 'hours-per-week', 'native-country', 'output', 'prediction']
 
             file_name = result_dir + 'counterexample.csv'
             file_exists = os.path.isfile(file_name)
@@ -339,21 +339,20 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 
                 wr = csv.writer(fp)
                 
-                # Decode the counterexamples using actual encoders
                 decoded_row1 = decode_counterexample(inp1, encoders)
                 decoded_row2 = decode_counterexample(inp2, encoders)
-                
-                # Add predictions
+
+                decoded_row1.append(float(pred1))
                 decoded_row1.append(int(class_1))
+
+                decoded_row2.append(float(pred2))
                 decoded_row2.append(int(class_2))
-                
-                # Write to CSV
+
                 wr.writerow(decoded_row1)
                 wr.writerow(decoded_row2)
 
 
 
-            
             if class_1_orig != class_2_orig:
                 accurate = 1
             if class_1 == class_1_orig and class_2 == class_2_orig:

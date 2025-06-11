@@ -33,7 +33,7 @@ single_input = X_test[0].reshape(1, 13)
 # In[]
 model_dir = 'Fairify/models/adult/'
 result_dir = 'Fairify/src/AC/res/'
-PARTITION_THRESHOLD = 5
+PARTITION_THRESHOLD = 10
 
 SOFT_TIMEOUT = 100 
 HARD_TIMEOUT = 30 * 60

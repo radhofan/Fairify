@@ -310,9 +310,12 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                                 bin_edges = encoders[col_name].bin_edges_[0]
                                 bin_idx = int(value)
                                 if bin_idx < len(bin_edges) - 1:
-                                    decoded_value = f"{bin_edges[bin_idx]:.1f}-{bin_edges[bin_idx+1]:.1f}"
+                                    start = bin_edges[bin_idx]
+                                    end = bin_edges[bin_idx + 1]
+                                    midpoint = int((start + end) / 2)  # ✅ Rounded midpoint as whole integer
+                                    decoded_value = midpoint
                                 else:
-                                    decoded_value = f"Bin_{bin_idx}"
+                                    decoded_value = int(bin_edges[-1])  # fallback: upper edge of last bin
                             else:
                                 decoded_value = value
                         except:

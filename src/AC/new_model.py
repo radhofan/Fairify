@@ -15,10 +15,6 @@ df = pd.read_csv('Fairify/experimentData/counterexamples-fair-lfr.csv')
 
 # === Start of full preprocessing matching load_adult_ac1() ===
 
-# Drop unnecessary columns
-del_cols = ['fnlwgt']
-df.drop(labels=del_cols, axis=1, inplace=True)
-
 # Drop rows with missing values
 df.dropna(inplace=True)
 

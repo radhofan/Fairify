@@ -168,7 +168,7 @@ def load_adult_ac1():
     for feature in bin_cols:
         bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
         df[feature] = bins.fit_transform(df[[feature]])
-        encoders[feature] = le
+        encoders[feature] = bins
 
 #    df = df[columns]
     label_name = 'income-per-year'

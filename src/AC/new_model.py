@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 
 # Load pre-trained adult model
-model = load_model('Fairify/models/adult/AM-1.h5')
+model = load_model('Fairify/models/adult/AC-1.h5')
 print(model.summary())
 
 # Load synthetic data (mimicking GPT2-generated format)
@@ -40,13 +40,6 @@ binning_cols = ['capital-gain', 'capital-loss']
 for feature in binning_cols:
     bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
     df[feature] = bins.fit_transform(df[[feature]])
-
-# Encode target variable
-# favorable_classes = ['>50K', '>50K.']  # Note: test file might have '>50K.'
-# label_name = 'income-per-year'
-# pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
-# df.loc[pos, label_name] = 1
-# df.loc[~pos, label_name] = 0
 
 df.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'

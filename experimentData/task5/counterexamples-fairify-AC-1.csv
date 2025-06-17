@@ -1,0 +1,9 @@
+age,workclass,education,education-num,marital-status,occupation,relationship,race,sex,capital-gain,capital-loss,hours-per-week,native-country,output,prediction
+100,Without-pay,Preschool,1,Married-AF-spouse,Priv-house-serv,Wife,Amer-Indian-Eskimo,Male,7499,1633,75,Philippines,0.5630890438541751,1
+100,Without-pay,Preschool,1,Married-AF-spouse,Priv-house-serv,Wife,Amer-Indian-Eskimo,Female,7499,1633,75,Philippines,0.37402256423905483,0
+100,Federal-gov,Preschool,11,Married-civ-spouse,Adm-clerical,Wife,Amer-Indian-Eskimo,Female,2499,4029,13,Ireland,0.49598535582384223,0
+100,Federal-gov,Preschool,11,Married-civ-spouse,Adm-clerical,Wife,Amer-Indian-Eskimo,Male,2499,4029,13,Ireland,0.6277138424468507,1
+90,Private,Assoc-voc,11,Widowed,Prof-specialty,Own-child,Other,Female,7499,980,50,Yugoslavia,0.4998171925626194,0
+90,Private,Assoc-voc,11,Widowed,Prof-specialty,Own-child,Other,Male,7499,980,50,Yugoslavia,0.6469090851340712,1
+75,Federal-gov,Assoc-acdm,10,Divorced,Protective-serv,Husband,White,Male,7499,326,41,Yugoslavia,0.7088508808731486,1
+75,Federal-gov,Assoc-acdm,10,Divorced,Protective-serv,Husband,White,Female,7499,326,41,Yugoslavia,0.49488818575201265,0

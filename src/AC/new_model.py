@@ -158,6 +158,9 @@ def fair_train_step(model, X_batch, y_batch, lambda_fair=0.5):
     with tf.GradientTape() as tape:
         predictions = model(X_batch, training=True)
         
+        # Reshape y_batch to match predictions shape
+        y_batch = tf.reshape(y_batch, (-1, 1))
+        
         # Standard loss
         task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
         task_loss = tf.reduce_mean(task_loss)

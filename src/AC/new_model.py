@@ -11,7 +11,7 @@ model = load_model('Fairify/models/adult/AC-1.h5')
 print(model.summary())
 
 # Load synthetic data (mimicking GPT2-generated format)
-df = pd.read_csv('Fairify/experimentData/counterexamples_relabeled.csv')
+df = pd.read_csv('Fairify/experimentData/counterexamples_fairify_AC1_relabeled.csv')
 
 # === Start of full preprocessing matching load_adult_ac1() ===
 

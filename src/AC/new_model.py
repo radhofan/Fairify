@@ -123,18 +123,17 @@ y = df[label_name].values
 # -----------------------------
 
 # Assume each pair of rows are CEs (i.e., even index = original, odd = CE)
-y_relabels = []
+y_soft_labels = []
 
 for i in range(0, len(y), 2):
     if i + 1 >= len(y):  # skip incomplete pair
         break
-    y_pair = y[i:i+2]
-    avg = (y_pair[0] + y_pair[1]) / 2
-    relabeled = 1 if avg >= 0.5 else 0
-    y_relabels.extend([relabeled, relabeled])
+    y1, y2 = y[i], y[i+1]
+    propagated = (y1 + y2) / 2  # harmonic propagation
+    y_soft_labels.extend([propagated, propagated])  # assign same label to both
 
-y_relabels = np.array(y_relabels)
-X_ce_pairs = X.iloc[:len(y_relabels)]
+y_relabels = np.array(y_soft_labels)
+X_ce_pairs = X.iloc[:len(y_soft_labels)]
 
 print(f"Relabeled {len(y_relabels)} instances across {len(y_relabels)//2} CE pairs")
 

@@ -144,102 +144,115 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # -----------------------------
-# Step 3: Custom Fair Loss Function
+# Step 3: Fair Training with Custom Training Loop
 # -----------------------------
 
 lambda_fair = 0.5
 
-class CustomFairLoss(tf.keras.losses.Loss):
-    def __init__(self, lambda_fair=0.5, name="custom_fair_loss"):
-        super().__init__(name=name)
-        self.lambda_fair = lambda_fair
-    
-    def call(self, y_true, y_pred):
-        # Standard binary crossentropy loss
-        task_loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+# Compile model with standard loss for now
+optimizer = Adam(learning_rate=0.0005)
+model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+# Custom training function
+def fair_train_step(model, X_batch, y_batch, lambda_fair=0.5):
+    with tf.GradientTape() as tape:
+        predictions = model(X_batch, training=True)
+        
+        # Standard loss
+        task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
         task_loss = tf.reduce_mean(task_loss)
         
-        # Fairness loss - minimize prediction differences between CE pairs
-        # Ensure we have even number of samples for pairing
-        batch_size = tf.shape(y_pred)[0]
+        # Fairness loss - for CE pairs
+        batch_size = tf.shape(predictions)[0]
         even_batch_size = batch_size - (batch_size % 2)
         
-        y_pred_pairs = y_pred[:even_batch_size]
-        y_pred_pairs = tf.reshape(y_pred_pairs, (-1, 2))
+        if even_batch_size >= 2:
+            pred_pairs = predictions[:even_batch_size]
+            pred_pairs = tf.reshape(pred_pairs, (-1, 2))
+            fair_loss = tf.reduce_mean(tf.abs(pred_pairs[:, 0] - pred_pairs[:, 1]))
+        else:
+            fair_loss = 0.0
         
-        # Calculate absolute difference between CE pairs
-        fair_loss = tf.reduce_mean(tf.abs(y_pred_pairs[:, 0] - y_pred_pairs[:, 1]))
-        
-        return task_loss + self.lambda_fair * fair_loss
+        total_loss = task_loss + lambda_fair * fair_loss
+    
+    gradients = tape.gradient(total_loss, model.trainable_variables)
+    model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    
+    return total_loss, task_loss, fair_loss
 
-# Custom data generator to maintain CE pair structure
-class CEPairGenerator(tf.keras.utils.Sequence):
-    def __init__(self, X, y, batch_size=32, shuffle=False):
-        self.X = X
-        self.y = y
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.indices = np.arange(len(X))
+# Custom training loop
+def train_fair_model(model, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
+    best_val_loss = float('inf')
+    patience_count = 0
+    patience = 3
+    
+    for epoch in range(epochs):
+        # Training
+        epoch_losses = []
+        epoch_task_losses = []
+        epoch_fair_losses = []
         
-        # Ensure batch size is even to maintain CE pairs
-        if self.batch_size % 2 != 0:
-            self.batch_size += 1
+        # Shuffle training data while keeping pairs together
+        n_pairs = len(X_train) // 2
+        pair_indices = np.arange(n_pairs)
+        np.random.shuffle(pair_indices)
+        
+        shuffled_indices = []
+        for pair_idx in pair_indices:
+            shuffled_indices.extend([pair_idx * 2, pair_idx * 2 + 1])
+        
+        X_train_shuffled = X_train.iloc[shuffled_indices]
+        y_train_shuffled = y_train[shuffled_indices]
+        
+        # Batch training
+        for i in range(0, len(X_train_shuffled), batch_size):
+            X_batch = X_train_shuffled.iloc[i:i+batch_size].values
+            y_batch = y_train_shuffled[i:i+batch_size]
             
-        self.on_epoch_end()
-    
-    def __len__(self):
-        return int(np.floor(len(self.X) / self.batch_size))
-    
-    def __getitem__(self, index):
-        start_idx = index * self.batch_size
-        end_idx = start_idx + self.batch_size
-        batch_indices = self.indices[start_idx:end_idx]
+            if len(X_batch) < 2:  # Skip small batches
+                continue
+                
+            total_loss, task_loss, fair_loss = fair_train_step(
+                model, X_batch, y_batch, lambda_fair
+            )
+            
+            epoch_losses.append(total_loss.numpy())
+            epoch_task_losses.append(task_loss.numpy())
+            epoch_fair_losses.append(fair_loss.numpy() if isinstance(fair_loss, tf.Tensor) else fair_loss)
         
-        X_batch = self.X.iloc[batch_indices].values
-        y_batch = self.y[batch_indices]
+        # Validation
+        val_loss = model.evaluate(X_val.values, y_val, verbose=0)[0]
         
-        return X_batch, y_batch
+        print(f"Epoch {epoch+1}/{epochs} - "
+              f"Loss: {np.mean(epoch_losses):.4f} - "
+              f"Task Loss: {np.mean(epoch_task_losses):.4f} - "
+              f"Fair Loss: {np.mean(epoch_fair_losses):.4f} - "
+              f"Val Loss: {val_loss:.4f}")
+        
+        # Early stopping
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_count = 0
+            model.save_weights('best_weights.h5')
+        else:
+            patience_count += 1
+            if patience_count >= patience:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
     
-    def on_epoch_end(self):
-        if self.shuffle:
-            # Shuffle while keeping CE pairs together
-            pair_indices = np.arange(0, len(self.indices), 2)
-            np.random.shuffle(pair_indices)
-            new_indices = []
-            for pair_start in pair_indices:
-                if pair_start + 1 < len(self.indices):
-                    new_indices.extend([pair_start, pair_start + 1])
-            self.indices = np.array(new_indices)
-
-# Compile model with custom fair loss
-optimizer = Adam(learning_rate=0.0005)
-model.compile(
-    optimizer=optimizer, 
-    loss=CustomFairLoss(lambda_fair=lambda_fair), 
-    metrics=['accuracy']
-)
-
-# Create data generators
-train_generator = CEPairGenerator(X_train, y_train, batch_size=32, shuffle=False)
-val_generator = CEPairGenerator(X_test, y_test, batch_size=32, shuffle=False)
-
-# Early stopping
-early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+    # Load best weights
+    model.load_weights('best_weights.h5')
+    return model
 
 # Train the model with fairness constraints
-history = model.fit(
-    train_generator,
-    epochs=100,
-    validation_data=val_generator,
-    callbacks=[early_stopping],
-    verbose=1
-)
+print("Starting fair training...")
+model = train_fair_model(model, X_train, y_train, X_test, y_test)
 
-# Evaluate the final model
-test_loss, test_acc = model.evaluate(val_generator, verbose=0)
+# Final evaluation
+test_loss, test_acc = model.evaluate(X_test.values, y_test, verbose=0)
 print(f"Final Test Accuracy: {test_acc:.4f}")
-print(f"Final Test Loss (with fairness): {test_loss:.4f}")
+print(f"Final Test Loss: {test_loss:.4f}")
 
-# Save retrained model
+# Save retrained model (now with standard loss, no custom objects)
 model.save('Fairify/models/adult/AC-14.h5')
 print("Model retrained with fairness constraints and saved as AC-14.h5")

@@ -138,6 +138,9 @@ X_ce_pairs = X.iloc[:len(y_relabels)]
 
 print(f"Relabeled {len(y_relabels)} instances across {len(y_relabels)//2} CE pairs")
 
+unique, counts = np.unique(y_relabels, return_counts=True)
+print(dict(zip(unique, counts)))
+
 # Train-test split with CE pairs
 X_train, X_test, y_train, y_test = train_test_split(
     X_ce_pairs, y_relabels, test_size=0.15, random_state=42
@@ -150,7 +153,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 lambda_fair = 0.5
 
 # Compile model with standard loss for now
-optimizer = Adam(learning_rate=0.001)  # Increase learning rate
+optimizer = Adam(learning_rate=0.0001)  # Increase learning rate
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Add regularization to prevent overfitting
@@ -189,7 +192,7 @@ def fair_train_step(model, X_batch, y_batch, lambda_fair=0.5):
             fair_loss = 0.0
         
         # Reduce lambda_fair to prevent domination
-        total_loss = task_loss + 0.1 * fair_loss  # Reduced from lambda_fair
+        total_loss = task_loss + 0.05 * fair_loss  # Reduced from lambda_fair
     
     gradients = tape.gradient(total_loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))

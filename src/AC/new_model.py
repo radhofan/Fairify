@@ -1,3 +1,10 @@
+import sys
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+sys.path.append(src_dir)
+
 import pandas as pd
 import numpy as np
 from tensorflow.keras.models import load_model

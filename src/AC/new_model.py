@@ -54,13 +54,17 @@ y_synthetic = df_synthetic[label_name]
 X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
     X_synthetic, y_synthetic, test_size=0.15, random_state=42)
 
-# === Combine original + synthetic datasets ===
-X_train_combined = pd.concat([X_train_orig, X_train_synth], ignore_index=True)
-y_train_combined = pd.concat([y_train_orig, y_train_synth], ignore_index=True)
+# Convert to numpy arrays
+X_train_synth = X_train_synth.values
+y_train_synth = y_train_synth.values
 
-# Use original test set (or combine test sets if you prefer)
-X_test_combined = X_test_orig  # or pd.concat([X_test_orig, X_test_synth])
-y_test_combined = y_test_orig  # or pd.concat([y_test_orig, y_test_synth])
+# === Combine original + synthetic datasets using numpy ===
+X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0)
+y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0)
+
+# Use original test set
+X_test_combined = X_test_orig
+y_test_combined = y_test_orig
 
 print(f"Original training size: {len(X_train_orig)}")
 print(f"Synthetic training size: {len(X_train_synth)}")

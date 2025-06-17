@@ -22,7 +22,7 @@ print(model.summary())
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
 # Load synthetic data (counterexamples)
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_fairify_AC1_relabeled.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_relabeled.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)

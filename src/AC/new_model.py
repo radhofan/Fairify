@@ -150,8 +150,17 @@ X_train, X_test, y_train, y_test = train_test_split(
 lambda_fair = 0.5
 
 # Compile model with standard loss for now
-optimizer = Adam(learning_rate=0.0005)
+optimizer = Adam(learning_rate=0.001)  # Increase learning rate
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+# Add regularization to prevent overfitting
+from tensorflow.keras import regularizers
+
+# Get the current model architecture and add dropout/regularization
+if hasattr(model, 'layers'):
+    for layer in model.layers:
+        if hasattr(layer, 'kernel_regularizer'):
+            layer.kernel_regularizer = regularizers.l2(0.01)
 
 # Custom training function
 def fair_train_step(model, X_batch, y_batch, lambda_fair=0.5):
@@ -173,10 +182,14 @@ def fair_train_step(model, X_batch, y_batch, lambda_fair=0.5):
             pred_pairs = predictions[:even_batch_size]
             pred_pairs = tf.reshape(pred_pairs, (-1, 2))
             fair_loss = tf.reduce_mean(tf.abs(pred_pairs[:, 0] - pred_pairs[:, 1]))
+            
+            # Add small epsilon to prevent exact zero
+            fair_loss = tf.maximum(fair_loss, 1e-8)
         else:
             fair_loss = 0.0
         
-        total_loss = task_loss + lambda_fair * fair_loss
+        # Reduce lambda_fair to prevent domination
+        total_loss = task_loss + 0.1 * fair_loss  # Reduced from lambda_fair
     
     gradients = tape.gradient(total_loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))

@@ -1,73 +1,73 @@
-# import pandas as pd
-# import numpy as np
-# from tensorflow.keras.models import load_model
-# from tensorflow.keras.callbacks import EarlyStopping
-# from tensorflow.keras.optimizers import Adam
-# from sklearn.model_selection import train_test_split
-# from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+import pandas as pd
+import numpy as np
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 
-# # Load pre-trained adult model
-# model = load_model('Fairify/models/adult/AC-1.h5')
-# print(model.summary())
+# Load pre-trained adult model
+model = load_model('Fairify/models/adult/AC-1.h5')
+print(model.summary())
 
-# # Load synthetic data (mimicking GPT2-generated format)
-# df = pd.read_csv('Fairify/experimentData/counterexamples.csv')
+# Load synthetic data (mimicking GPT2-generated format)
+df = pd.read_csv('Fairify/experimentData/counterexample_relabeled.csv')
 
-# # === Start of full preprocessing matching load_adult_ac1() ===
+# === Start of full preprocessing matching load_adult_ac1() ===
 
-# # Drop rows with missing values
-# df.dropna(inplace=True)
+# Drop rows with missing values
+df.dropna(inplace=True)
 
-# # Define categorical columns to label encode
-# cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
-#             'relationship', 'native-country', 'sex']
+# Define categorical columns to label encode
+cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
+            'relationship', 'native-country', 'sex']
 
-# # Apply LabelEncoder
-# for feature in cat_feat:
-#     le = LabelEncoder()
-#     df[feature] = le.fit_transform(df[feature])
+# Apply LabelEncoder
+for feature in cat_feat:
+    le = LabelEncoder()
+    df[feature] = le.fit_transform(df[feature])
 
-# # Encode 'race' separately
-# le_race = LabelEncoder()
-# df['race'] = le_race.fit_transform(df['race'])
+# Encode 'race' separately
+le_race = LabelEncoder()
+df['race'] = le_race.fit_transform(df['race'])
 
-# # Bin capital-gain and capital-loss
-# binning_cols = ['capital-gain', 'capital-loss']
-# for feature in binning_cols:
-#     bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
-#     df[feature] = bins.fit_transform(df[[feature]])
+# Bin capital-gain and capital-loss
+binning_cols = ['capital-gain', 'capital-loss']
+for feature in binning_cols:
+    bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
+    df[feature] = bins.fit_transform(df[[feature]])
 
-# df.rename(columns={'decision': 'income-per-year'}, inplace=True)
-# label_name = 'income-per-year'
+df.rename(columns={'decision': 'income-per-year'}, inplace=True)
+label_name = 'income-per-year'
 
-# # Split features and labels
-# X = df.drop(columns=[label_name])
-# y = df[label_name]
+# Split features and labels
+X = df.drop(columns=[label_name])
+y = df[label_name]
 
-# # Train-test split
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
-# # === End of preprocessing matching load_adult_ac1() ===
+# === End of preprocessing matching load_adult_ac1() ===
 
-# # Compile model
-# optimizer = Adam(learning_rate=0.0005)
-# model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+# Compile model
+optimizer = Adam(learning_rate=0.0005)
+model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-# # Early stopping
-# early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+# Early stopping
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
-# # Train the model
-# model.fit(
-#     X_train, y_train,
-#     epochs=100, 
-#     batch_size=32,
-#     validation_data=(X_test, y_test),
-#     callbacks=[early_stopping]
-# )
+# Train the model
+model.fit(
+    X_train, y_train,
+    epochs=100, 
+    batch_size=32,
+    validation_data=(X_test, y_test),
+    callbacks=[early_stopping]
+)
 
-# # Save retrained model
-# model.save('Fairify/models/adult/AC-14.h5')
-# print("Model retrained and saved as AC-14.h5")
+# Save retrained model
+model.save('Fairify/models/adult/AC-14.h5')
+print("Model retrained and saved as AC-14.h5")
 
 
 # import pandas as pd
@@ -329,131 +329,131 @@
 # print("Model retrained with fairness constraints and saved as AC-14.h5")
 
 
-import pandas as pd
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
-from tensorflow.keras import regularizers
+# import pandas as pd
+# import numpy as np
+# import tensorflow as tf
+# from tensorflow.keras.models import load_model
+# from tensorflow.keras.optimizers import Adam
+# from sklearn.model_selection import train_test_split
+# from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+# from tensorflow.keras import regularizers
 
-# Load pre-trained model
-model = load_model('Fairify/models/adult/AC-1.h5')
-print(model.summary())
+# # Load pre-trained model
+# model = load_model('Fairify/models/adult/AC-1.h5')
+# print(model.summary())
 
-# Load and preprocess synthetic CE data
-df = pd.read_csv('Fairify/experimentData/counterexamples.csv')
-df.dropna(inplace=True)
+# # Load and preprocess synthetic CE data
+# df = pd.read_csv('Fairify/experimentData/counterexamples.csv')
+# df.dropna(inplace=True)
 
-# Encode categorical features
-cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
-            'relationship', 'native-country', 'sex']
-for col in cat_feat:
-    df[col] = LabelEncoder().fit_transform(df[col])
-df['race'] = LabelEncoder().fit_transform(df['race'])
+# # Encode categorical features
+# cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
+#             'relationship', 'native-country', 'sex']
+# for col in cat_feat:
+#     df[col] = LabelEncoder().fit_transform(df[col])
+# df['race'] = LabelEncoder().fit_transform(df['race'])
 
-# Discretize numerical columns
-for col in ['capital-gain', 'capital-loss']:
-    df[col] = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')\
-        .fit_transform(df[[col]])
+# # Discretize numerical columns
+# for col in ['capital-gain', 'capital-loss']:
+#     df[col] = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')\
+#         .fit_transform(df[[col]])
 
-df.rename(columns={'decision': 'income-per-year'}, inplace=True)
-X = df.drop(columns=['income-per-year'])
-y = df['income-per-year'].values
+# df.rename(columns={'decision': 'income-per-year'}, inplace=True)
+# X = df.drop(columns=['income-per-year'])
+# y = df['income-per-year'].values
 
-# Truncate to even length for CE pairs
-n_ce = len(y) // 2 * 2
-X = X.iloc[:n_ce]
-y = y[:n_ce]
+# # Truncate to even length for CE pairs
+# n_ce = len(y) // 2 * 2
+# X = X.iloc[:n_ce]
+# y = y[:n_ce]
 
-# Split into train/test
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.15, random_state=42
-)
+# # Split into train/test
+# X_train, X_test, y_train, y_test = train_test_split(
+#     X, y, test_size=0.15, random_state=42
+# )
 
-# Add L2 regularization
-for layer in model.layers:
-    if hasattr(layer, 'kernel_regularizer'):
-        layer.kernel_regularizer = regularizers.l2(0.01)
+# # Add L2 regularization
+# for layer in model.layers:
+#     if hasattr(layer, 'kernel_regularizer'):
+#         layer.kernel_regularizer = regularizers.l2(0.01)
 
-# Compile with standard binary loss
-model.compile(
-    optimizer=Adam(learning_rate=0.0001),
-    loss='binary_crossentropy',
-    metrics=['accuracy']
-)
+# # Compile with standard binary loss
+# model.compile(
+#     optimizer=Adam(learning_rate=0.0001),
+#     loss='binary_crossentropy',
+#     metrics=['accuracy']
+# )
 
-# Fairness-aware training step
-def fair_train_step(model, X_batch, y_batch, lambda_fair=0.001):
-    with tf.GradientTape() as tape:
-        y_batch = tf.reshape(y_batch, (-1, 1))
-        preds = model(X_batch, training=True)
-        task_loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(y_batch, preds))
+# # Fairness-aware training step
+# def fair_train_step(model, X_batch, y_batch, lambda_fair=0.001):
+#     with tf.GradientTape() as tape:
+#         y_batch = tf.reshape(y_batch, (-1, 1))
+#         preds = model(X_batch, training=True)
+#         task_loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(y_batch, preds))
 
-        batch_size = tf.shape(preds)[0]
-        even_size = batch_size - (batch_size % 2)
-        fair_loss = 0.0
-        if even_size >= 2:
-            pred_pairs = tf.reshape(preds[:even_size], (-1, 2))
-            fair_loss = tf.reduce_mean(tf.abs(pred_pairs[:, 0] - pred_pairs[:, 1]))
-            fair_loss = tf.maximum(fair_loss, 1e-8)
+#         batch_size = tf.shape(preds)[0]
+#         even_size = batch_size - (batch_size % 2)
+#         fair_loss = 0.0
+#         if even_size >= 2:
+#             pred_pairs = tf.reshape(preds[:even_size], (-1, 2))
+#             fair_loss = tf.reduce_mean(tf.abs(pred_pairs[:, 0] - pred_pairs[:, 1]))
+#             fair_loss = tf.maximum(fair_loss, 1e-8)
 
-        total_loss = task_loss + lambda_fair * fair_loss
+#         total_loss = task_loss + lambda_fair * fair_loss
 
-    grads = tape.gradient(total_loss, model.trainable_variables)
-    model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    return total_loss, task_loss, fair_loss
+#     grads = tape.gradient(total_loss, model.trainable_variables)
+#     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
+#     return total_loss, task_loss, fair_loss
 
-# Training loop
-def train_fair_model(model, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
-    best_val_loss = float('inf')
-    patience, patience_count = 3, 0
+# # Training loop
+# def train_fair_model(model, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
+#     best_val_loss = float('inf')
+#     patience, patience_count = 3, 0
 
-    for epoch in range(epochs):
-        losses, task_losses, fair_losses = [], [], []
+#     for epoch in range(epochs):
+#         losses, task_losses, fair_losses = [], [], []
 
-        # Shuffle CE pairs
-        n_pairs = len(X_train) // 2
-        pair_indices = np.random.permutation(n_pairs)
-        indices = np.ravel([[i * 2, i * 2 + 1] for i in pair_indices])
-        X_shuff = X_train.iloc[indices]
-        y_shuff = y_train[indices]
+#         # Shuffle CE pairs
+#         n_pairs = len(X_train) // 2
+#         pair_indices = np.random.permutation(n_pairs)
+#         indices = np.ravel([[i * 2, i * 2 + 1] for i in pair_indices])
+#         X_shuff = X_train.iloc[indices]
+#         y_shuff = y_train[indices]
 
-        for i in range(0, len(X_shuff), batch_size):
-            X_batch = X_shuff.iloc[i:i+batch_size].values
-            y_batch = y_shuff[i:i+batch_size]
-            if len(X_batch) < 2: continue
-            total, task, fair = fair_train_step(model, X_batch, y_batch)
-            losses.append(total.numpy())
-            task_losses.append(task.numpy())
-            fair_losses.append(fair.numpy() if isinstance(fair, tf.Tensor) else fair)
+#         for i in range(0, len(X_shuff), batch_size):
+#             X_batch = X_shuff.iloc[i:i+batch_size].values
+#             y_batch = y_shuff[i:i+batch_size]
+#             if len(X_batch) < 2: continue
+#             total, task, fair = fair_train_step(model, X_batch, y_batch)
+#             losses.append(total.numpy())
+#             task_losses.append(task.numpy())
+#             fair_losses.append(fair.numpy() if isinstance(fair, tf.Tensor) else fair)
 
-        val_loss = model.evaluate(X_val.values, y_val, verbose=0)[0]
-        print(f"Epoch {epoch+1} | Loss: {np.mean(losses):.4f} | "
-              f"Task: {np.mean(task_losses):.4f} | Fair: {np.mean(fair_losses):.4f} | Val: {val_loss:.4f}")
+#         val_loss = model.evaluate(X_val.values, y_val, verbose=0)[0]
+#         print(f"Epoch {epoch+1} | Loss: {np.mean(losses):.4f} | "
+#               f"Task: {np.mean(task_losses):.4f} | Fair: {np.mean(fair_losses):.4f} | Val: {val_loss:.4f}")
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_count = 0
-            model.save_weights('best_weights.h5')
-        else:
-            patience_count += 1
-            if patience_count >= patience:
-                print("Early stopping.")
-                break
+#         if val_loss < best_val_loss:
+#             best_val_loss = val_loss
+#             patience_count = 0
+#             model.save_weights('best_weights.h5')
+#         else:
+#             patience_count += 1
+#             if patience_count >= patience:
+#                 print("Early stopping.")
+#                 break
 
-    model.load_weights('best_weights.h5')
-    return model
+#     model.load_weights('best_weights.h5')
+#     return model
 
-# Train
-print("Training with fairness constraints using original labels...")
-model = train_fair_model(model, X_train, y_train, X_test, y_test)
+# # Train
+# print("Training with fairness constraints using original labels...")
+# model = train_fair_model(model, X_train, y_train, X_test, y_test)
 
-# Evaluate and save
-test_loss, test_acc = model.evaluate(X_test.values, y_test, verbose=0)
-print(f"Final Test Accuracy: {test_acc:.4f}")
-print(f"Final Test Loss: {test_loss:.4f}")
+# # Evaluate and save
+# test_loss, test_acc = model.evaluate(X_test.values, y_test, verbose=0)
+# print(f"Final Test Accuracy: {test_acc:.4f}")
+# print(f"Final Test Loss: {test_loss:.4f}")
 
-model.save('Fairify/models/adult/AC-14.h5')
-print("Saved retrained model as AC-14.h5")
+# model.save('Fairify/models/adult/AC-14.h5')
+# print("Saved retrained model as AC-14.h5")

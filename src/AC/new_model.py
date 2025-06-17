@@ -1,10 +1,8 @@
 import sys
 import os
-
 script_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
 sys.path.append(src_dir)
-
 import pandas as pd
 import numpy as np
 from tensorflow.keras.models import load_model
@@ -69,18 +67,27 @@ y_test_combined = y_test_orig
 print(f"Original training size: {len(X_train_orig)}")
 print(f"Synthetic training size: {len(X_train_synth)}")
 print(f"Combined training size: {len(X_train_combined)}")
+print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
+
+# === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
+orig_weight = 1.0
+synth_weight = 10.0
+
+sample_weights = np.concatenate([
+    np.full(len(X_train_orig), orig_weight),
+    np.full(len(X_train_synth), synth_weight)
+])
 
 # === Train on combined dataset ===
-# Use lower learning rate to preserve original knowledge
-optimizer = Adam(learning_rate=0.01)  # Much lower than 0.0005
+optimizer = Adam(learning_rate=0.0001)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
-# Train on combined dataset
 model.fit(
     X_train_combined, y_train_combined,
-    epochs=50,  # Fewer epochs
+    sample_weight=sample_weights,
+    epochs=50,
     batch_size=32,
     validation_data=(X_test_combined, y_test_combined),
     callbacks=[early_stopping]

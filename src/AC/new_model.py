@@ -5,70 +5,79 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+from utils.verif_utils import *
 
 # Load pre-trained adult model
 model = load_model('Fairify/models/adult/AC-1.h5')
 print(model.summary())
 
-# Load synthetic data (mimicking GPT2-generated format)
-df = pd.read_csv('Fairify/experimentData/counterexamples_fairify_AC1_relabeled.csv')
+# Load original dataset using your function
+df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
-# === Start of full preprocessing matching load_adult_ac1() ===
+# Load synthetic data (counterexamples)
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_fairify_AC1_relabeled.csv')
 
-# Drop rows with missing values
-df.dropna(inplace=True)
-
-# Define categorical columns to label encode
+# === Preprocess synthetic data to match original preprocessing ===
+df_synthetic.dropna(inplace=True)
 cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
             'relationship', 'native-country', 'sex']
 
-# Apply LabelEncoder
+# Apply same encoders from original data to synthetic data
 for feature in cat_feat:
-    le = LabelEncoder()
-    df[feature] = le.fit_transform(df[feature])
+    if feature in encoders:
+        # Use the same encoder fitted on original data
+        df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
 
-# Encode 'race' separately
-le_race = LabelEncoder()
-df['race'] = le_race.fit_transform(df['race'])
+# Handle race encoding
+if 'race' in encoders:
+    df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
 
-# Bin capital-gain and capital-loss
+# Apply same binning for capital columns
 binning_cols = ['capital-gain', 'capital-loss']
 for feature in binning_cols:
-    bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
-    df[feature] = bins.fit_transform(df[[feature]])
+    if feature in encoders:
+        df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
 
-df.rename(columns={'decision': 'income-per-year'}, inplace=True)
+df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'
 
-# Split features and labels
-X = df.drop(columns=[label_name])
-y = df[label_name]
+# Split synthetic data
+X_synthetic = df_synthetic.drop(columns=[label_name])
+y_synthetic = df_synthetic[label_name]
+X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
+    X_synthetic, y_synthetic, test_size=0.15, random_state=42)
 
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
+# === Combine original + synthetic datasets ===
+X_train_combined = pd.concat([X_train_orig, X_train_synth], ignore_index=True)
+y_train_combined = pd.concat([y_train_orig, y_train_synth], ignore_index=True)
 
-# === End of preprocessing matching load_adult_ac1() ===
+# Use original test set (or combine test sets if you prefer)
+X_test_combined = X_test_orig  # or pd.concat([X_test_orig, X_test_synth])
+y_test_combined = y_test_orig  # or pd.concat([y_test_orig, y_test_synth])
 
-# Compile model
-optimizer = Adam(learning_rate=0.0005)
+print(f"Original training size: {len(X_train_orig)}")
+print(f"Synthetic training size: {len(X_train_synth)}")
+print(f"Combined training size: {len(X_train_combined)}")
+
+# === Train on combined dataset ===
+# Use lower learning rate to preserve original knowledge
+optimizer = Adam(learning_rate=0.0001)  # Much lower than 0.0005
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-# Early stopping
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
-# Train the model
+# Train on combined dataset
 model.fit(
-    X_train, y_train,
-    epochs=100, 
+    X_train_combined, y_train_combined,
+    epochs=50,  # Fewer epochs
     batch_size=32,
-    validation_data=(X_test, y_test),
+    validation_data=(X_test_combined, y_test_combined),
     callbacks=[early_stopping]
 )
 
 # Save retrained model
 model.save('Fairify/models/adult/AC-14.h5')
-print("Model retrained and saved as AC-14.h5")
-
+print("Model retrained on combined dataset and saved as AC-14.h5")
 
 # import pandas as pd
 # import numpy as np

@@ -72,7 +72,7 @@ print(f"Combined training size: {len(X_train_combined)}")
 
 # === Train on combined dataset ===
 # Use lower learning rate to preserve original knowledge
-optimizer = Adam(learning_rate=0.0001)  # Much lower than 0.0005
+optimizer = Adam(learning_rate=0.01)  # Much lower than 0.0005
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)

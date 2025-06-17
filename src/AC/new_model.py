@@ -385,7 +385,7 @@ model.compile(
 )
 
 # Fairness-aware training step
-def fair_train_step(model, X_batch, y_batch, lambda_fair=0.05):
+def fair_train_step(model, X_batch, y_batch, lambda_fair=0.001):
     with tf.GradientTape() as tape:
         y_batch = tf.reshape(y_batch, (-1, 1))
         preds = model(X_batch, training=True)

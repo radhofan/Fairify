@@ -116,34 +116,86 @@ label_name = 'income-per-year'
 X = df.drop(columns=[label_name])
 y = df[label_name].values
 
-# === End of preprocessing matching load_adult_ac1() ===
+# # -----------------------------
+# # Step 2: Relabel Using Label Propagation on CE Pairs
+# # -----------------------------
+
+# # Assume each pair of rows are CEs (i.e., even index = original, odd = CE)
+# y_soft_labels = []
+
+# for i in range(0, len(y), 2):
+#     if i + 1 >= len(y):  # skip incomplete pair
+#         break
+#     y1, y2 = y[i], y[i+1]
+#     propagated = (y1 + y2) / 2  # harmonic propagation
+#     y_soft_labels.extend([propagated, propagated])  # assign same label to both
+
+# y_relabels = np.array(y_soft_labels)
+# X_ce_pairs = X.iloc[:len(y_soft_labels)]
+
+# print(f"Relabeled {len(y_relabels)} instances across {len(y_relabels)//2} CE pairs")
+
+# unique, counts = np.unique(y_relabels, return_counts=True)
+# print(dict(zip(unique, counts)))
+
+# # Train-test split with CE pairs
+# X_train, X_test, y_train, y_test = train_test_split(
+#     X_ce_pairs, y_relabels, test_size=0.15, random_state=42
+# )
 
 # -----------------------------
-# Step 2: Relabel Using Label Propagation on CE Pairs
+# Step 2: Relabel Using Scoring Rule (Only First Row in Each CE Pair)
 # -----------------------------
 
-# Assume each pair of rows are CEs (i.e., even index = original, odd = CE)
+def score_example(row):
+    score = 0
+    
+    # Education: check if higher education (e.g., education label >= 10)
+    if row['education'] >= 10:
+        score += 1
+    
+    # Work hours: full time or above
+    if row['hours-per-week'] >= 40:
+        score += 1
+    
+    # Capital-gain (binned): bins > 0 imply some gain
+    if row['capital-gain'] > 0:
+        score += 1
+    
+    # Occupation: 3, 4, 11 were exec roles (assume managerial)
+    if row['occupation'] in [3, 4, 11]:
+        score += 1
+    
+    # Marital status: assume label 1 is 'Married-civ-spouse'
+    if row['marital-status'] == 1:
+        score += 1
+
+    # Relationship: head of household (assume label 0 is 'Husband' or 'Wife')
+    if row['relationship'] in [0, 1]:
+        score += 1
+
+    # Native-country: assume label 0 is 'United-States' (or high-income country)
+    if row['native-country'] == 0:
+        score += 1
+
 y_soft_labels = []
 
-for i in range(0, len(y), 2):
-    if i + 1 >= len(y):  # skip incomplete pair
+for i in range(0, len(df), 2):
+    if i + 1 >= len(df):
         break
-    y1, y2 = y[i], y[i+1]
-    propagated = (y1 + y2) / 2  # harmonic propagation
-    y_soft_labels.extend([propagated, propagated])  # assign same label to both
+
+    row = df.iloc[i]
+    score = score_example(row)
+
+    label = 1 if score >= 4 else 0  # Adjust threshold to be stricter
+    y_soft_labels.extend([label, label])
 
 y_relabels = np.array(y_soft_labels)
 X_ce_pairs = X.iloc[:len(y_soft_labels)]
 
 print(f"Relabeled {len(y_relabels)} instances across {len(y_relabels)//2} CE pairs")
-
 unique, counts = np.unique(y_relabels, return_counts=True)
 print(dict(zip(unique, counts)))
-
-# Train-test split with CE pairs
-X_train, X_test, y_train, y_test = train_test_split(
-    X_ce_pairs, y_relabels, test_size=0.15, random_state=42
-)
 
 # -----------------------------
 # Step 3: Fair Training with Custom Training Loop

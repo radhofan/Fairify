@@ -11,11 +11,6 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from utils.verif_utils import *
 
-# === Path setup ===
-script_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
-sys.path.append(src_dir)
-
 # === Load pre-trained model ===
 model = load_model('Fairify/models/adult/AC-1.h5')
 print(model.summary())
@@ -44,19 +39,12 @@ for feature in ['capital-gain', 'capital-loss']:
 df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'
 
-# === Extract CE pairs as tensor ===
+# === Create CE pairs index ===
 pairs = [(i, i+1) for i in range(0, len(df_synthetic), 2)]
 pairs_tensor = tf.constant(pairs, dtype=tf.int32)
 
 # === Prepare CE input data ===
 X_ce = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
-
-# === Define vectorized fairness loss ===
-def pairwise_fairness_loss(model, X_ce_pairs, pairs_tensor, lambda_fair=1.0):
-    preds = model(X_ce_pairs, training=False)
-    diffs = tf.gather(preds, pairs_tensor[:, 0]) - tf.gather(preds, pairs_tensor[:, 1])
-    squared_diffs = tf.square(diffs)
-    return lambda_fair * tf.reduce_mean(squared_diffs)
 
 # === Train/test split on synthetic data ===
 X_synthetic = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
@@ -78,7 +66,7 @@ print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 
 # === Sample Weights ===
 orig_weight = 1.0
-synth_weight = 100.0
+synth_weight = 10.0
 sample_weights = np.concatenate([
     np.full(len(X_train_orig), orig_weight),
     np.full(len(X_train_synth), synth_weight)
@@ -93,7 +81,21 @@ train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32).prefetch(tf.da
 loss_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
 optimizer = Adam(learning_rate=1e-4)
 epochs = 50
-lambda_fair = 1.0
+lambda_fair = 10.0
+
+# === In-batch Fairness Loss ===
+def pairwise_fairness_loss_batchwise(preds, batch_indices, all_ce_pairs, lambda_fair=1.0):
+    idx_map = {int(idx): i for i, idx in enumerate(batch_indices.numpy())}
+    valid_pairs = []
+    for i, j in all_ce_pairs.numpy():
+        if int(i) in idx_map and int(j) in idx_map:
+            valid_pairs.append((idx_map[int(i)], idx_map[int(j)]))
+    if not valid_pairs:
+        return 0.0
+    pair_tensor = tf.constant(valid_pairs, dtype=tf.int32)
+    diffs = tf.gather(preds, pair_tensor[:, 0]) - tf.gather(preds, pair_tensor[:, 1])
+    squared_diffs = tf.square(diffs)
+    return lambda_fair * tf.reduce_mean(squared_diffs)
 
 # === Custom Training Loop ===
 for epoch in range(epochs):
@@ -108,7 +110,7 @@ for epoch in range(epochs):
             per_sample_loss = loss_fn(y_batch, logits)
             weighted_bce = tf.reduce_mean(per_sample_loss * w_batch)
 
-            fair_loss = pairwise_fairness_loss(model, X_ce, pairs_tensor, lambda_fair)
+            fair_loss = pairwise_fairness_loss_batchwise(logits, idx_batch, pairs_tensor, lambda_fair)
             total_loss = weighted_bce + fair_loss
 
         grads = tape.gradient(total_loss, model.trainable_weights)
@@ -119,7 +121,7 @@ for epoch in range(epochs):
 
 # === Save the model ===
 model.save('Fairify/models/adult/AC-14.h5')
-print("✅ Model retrained with fairness loss and saved as AC-14.h5")
+print("✅ Model retrained with in-batch fairness loss and saved as AC-14.h5")
 
 ###########################################################################################################################
 

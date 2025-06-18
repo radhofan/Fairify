@@ -75,7 +75,7 @@ print(f"Synthetic training size: {len(X_train_synth)}")
 print(f"Combined training size: {len(X_train_combined)}")
 print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 
-# === Sample Weights ===
+# === Sample Weights - FIX THE SHAPE ISSUE ===
 orig_weight = 1.0
 synth_weight = 100.0
 sample_weights = np.concatenate([
@@ -83,30 +83,45 @@ sample_weights = np.concatenate([
     np.full(len(X_train_synth), synth_weight)
 ]).astype(np.float32)
 
+# Ensure sample_weights is 1D and properly shaped
 sample_weights = sample_weights.flatten()
+print(f"Sample weights shape: {sample_weights.shape}")
+print(f"X_train_combined shape: {X_train_combined.shape}")
+print(f"y_train_combined shape: {y_train_combined.shape}")
 
-# === Build Dataset ===
-train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, sample_weights))
+# === Build Dataset - FIXED ===
+# Create indices array to track which samples belong to which batch
+indices = np.arange(len(X_train_combined))
+train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, indices))
 train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32)
 
 # === Compile model ===
-loss_fn = tf.keras.losses.BinaryCrossentropy()
+loss_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)  # Get per-sample loss
 optimizer = Adam(learning_rate=0.0001)
 epochs = 50
 lambda_fair = 1.0
 
-# === Custom Training Loop ===
+# === Custom Training Loop - FIXED ===
 for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}")
     epoch_loss = []
 
-    for step, (x_batch, y_batch, w_batch) in enumerate(train_dataset):
+    for step, (x_batch, y_batch, idx_batch) in enumerate(train_dataset):
+        # Get sample weights for this batch using indices
+        w_batch = tf.gather(sample_weights, idx_batch)
        
         with tf.GradientTape() as tape:
             logits = model(x_batch, training=True)
-            bce_loss = loss_fn(y_batch, logits, sample_weight=w_batch)
+            
+            # Calculate per-sample BCE loss
+            per_sample_loss = loss_fn(y_batch, logits)
+            # Apply sample weights and reduce
+            weighted_bce = tf.reduce_mean(per_sample_loss * w_batch)
+            
+            # Calculate fairness loss
             fair_loss = pairwise_fairness_loss(model, X_ce, lambda_fair)
-            total_loss = bce_loss + fair_loss
+            
+            total_loss = weighted_bce + fair_loss
 
         grads = tape.gradient(total_loss, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))

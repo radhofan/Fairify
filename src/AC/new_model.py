@@ -83,6 +83,8 @@ sample_weights = np.concatenate([
     np.full(len(X_train_synth), synth_weight)
 ]).astype(np.float32)
 
+sample_weights = sample_weights.flatten()
+
 # === Build Dataset ===
 train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, sample_weights))
 train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32)

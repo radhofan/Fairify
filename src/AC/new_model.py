@@ -1,8 +1,5 @@
 import sys
 import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
-sys.path.append(src_dir)
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -44,18 +41,19 @@ for feature in ['capital-gain', 'capital-loss']:
 df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'
 
-# === Extract CE pairs indices ===
+# === Extract CE pairs as tensor ===
 pairs = [(i, i+1) for i in range(0, len(df_synthetic), 2)]
+pairs_tensor = tf.constant(pairs, dtype=tf.int32)
+
+# === Prepare CE input data ===
 X_ce = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
 
-# === Pairwise Fairness Loss ===
-def pairwise_fairness_loss(model, X_ce_pairs, lambda_fair=1.0):
-    f_preds = model(X_ce_pairs, training=False)
-    loss = 0.0
-    for i, j in pairs:
-        diff = tf.square(f_preds[i] - f_preds[j])
-        loss += diff
-    return lambda_fair * tf.reduce_mean(loss)
+# === Define vectorized fairness loss ===
+def pairwise_fairness_loss(model, X_ce_pairs, pairs_tensor, lambda_fair=1.0):
+    preds = model(X_ce_pairs, training=False)
+    diffs = tf.gather(preds, pairs_tensor[:, 0]) - tf.gather(preds, pairs_tensor[:, 1])
+    squared_diffs = tf.square(diffs)
+    return lambda_fair * tf.reduce_mean(squared_diffs)
 
 # === Train/test split on synthetic data ===
 X_synthetic = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
@@ -75,7 +73,7 @@ print(f"Synthetic training size: {len(X_train_synth)}")
 print(f"Combined training size: {len(X_train_combined)}")
 print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 
-# === Sample Weights - FIX THE SHAPE ISSUE ===
+# === Sample Weights ===
 orig_weight = 1.0
 synth_weight = 100.0
 sample_weights = np.concatenate([
@@ -83,53 +81,40 @@ sample_weights = np.concatenate([
     np.full(len(X_train_synth), synth_weight)
 ]).astype(np.float32)
 
-# Ensure sample_weights is 1D and properly shaped
-sample_weights = sample_weights.flatten()
-print(f"Sample weights shape: {sample_weights.shape}")
-print(f"X_train_combined shape: {X_train_combined.shape}")
-print(f"y_train_combined shape: {y_train_combined.shape}")
-
-# === Build Dataset - FIXED ===
-# Create indices array to track which samples belong to which batch
+# === Build Dataset (with indices) ===
 indices = np.arange(len(X_train_combined))
 train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, indices))
-train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32)
+train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32).prefetch(tf.data.AUTOTUNE)
 
-# === Compile model ===
-loss_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)  # Get per-sample loss
-optimizer = Adam(learning_rate=0.0001)
+# === Compile training tools ===
+loss_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+optimizer = Adam(learning_rate=1e-4)
 epochs = 50
 lambda_fair = 1.0
 
-# === Custom Training Loop - FIXED ===
+# === Custom Training Loop ===
 for epoch in range(epochs):
-    print(f"Epoch {epoch+1}/{epochs}")
-    epoch_loss = []
+    print(f"\nEpoch {epoch+1}/{epochs}")
+    epoch_losses = []
 
     for step, (x_batch, y_batch, idx_batch) in enumerate(train_dataset):
-        # Get sample weights for this batch using indices
         w_batch = tf.gather(sample_weights, idx_batch)
-       
+
         with tf.GradientTape() as tape:
             logits = model(x_batch, training=True)
-            
-            # Calculate per-sample BCE loss
             per_sample_loss = loss_fn(y_batch, logits)
-            # Apply sample weights and reduce
             weighted_bce = tf.reduce_mean(per_sample_loss * w_batch)
-            
-            # Calculate fairness loss
-            fair_loss = pairwise_fairness_loss(model, X_ce, lambda_fair)
-            
+
+            fair_loss = pairwise_fairness_loss(model, X_ce, pairs_tensor, lambda_fair)
             total_loss = weighted_bce + fair_loss
 
         grads = tape.gradient(total_loss, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))
-        epoch_loss.append(total_loss.numpy())
+        epoch_losses.append(total_loss)
 
-    print(f"Loss: {np.mean(epoch_loss):.4f}")
+    print(f"Epoch Loss: {tf.reduce_mean(epoch_losses):.4f}")
 
-# === Save model ===
+# === Save the model ===
 model.save('Fairify/models/adult/AC-14.h5')
 print("✅ Model retrained with fairness loss and saved as AC-14.h5")
 

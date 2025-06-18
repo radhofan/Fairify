@@ -1,108 +1,106 @@
 import sys
 import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
-sys.path.append(src_dir)
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 from utils.verif_utils import *
 
-# Load pre-trained adult model
+# === Path setup ===
+script_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+sys.path.append(src_dir)
+
+# === Load pre-trained model ===
 model = load_model('Fairify/models/adult/AC-1.h5')
 print(model.summary())
 
-# Load original dataset
+# === Load and preprocess original data ===
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
-# Load synthetic data (counterexamples)
+# === Load and preprocess counterexample (synthetic) data ===
 df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_v2.csv')
 df_synthetic.dropna(inplace=True)
 
-cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
-            'relationship', 'native-country', 'sex']
-
-# Apply encoders to synthetic data
+# Categorical encoding
+cat_feat = ['workclass', 'education', 'marital-status', 'occupation', 'relationship', 'native-country', 'sex']
 for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
-
 if 'race' in encoders:
     df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
 
-binning_cols = ['capital-gain', 'capital-loss']
-for feature in binning_cols:
+# Bin continuous features
+for feature in ['capital-gain', 'capital-loss']:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
 
+# Final cleanup
 df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'
 
-# Extract CE Pairs
+# === Extract CE pairs indices ===
 pairs = [(i, i+1) for i in range(0, len(df_synthetic), 2)]
-X_ce = df_synthetic.drop(columns=[label_name, 'output']).values
+X_ce = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
 
+# === Pairwise Fairness Loss ===
 def pairwise_fairness_loss(model, X_ce_pairs, lambda_fair=1.0):
-    f_preds = model(X_ce_pairs)
+    f_preds = model(X_ce_pairs, training=False)
     loss = 0.0
     for i, j in pairs:
         diff = tf.square(f_preds[i] - f_preds[j])
         loss += diff
     return lambda_fair * tf.reduce_mean(loss)
 
-# Prepare train/test for synthetic
-X_synthetic = df_synthetic.drop(columns=[label_name, 'output'])
-y_synthetic = df_synthetic[label_name]
+# === Train/test split on synthetic data ===
+X_synthetic = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
+y_synthetic = df_synthetic[label_name].values.astype(np.float32)
 X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
-    X_synthetic, y_synthetic, test_size=0.15, random_state=42)
+    X_synthetic, y_synthetic, test_size=0.15, random_state=42
+)
 
-X_train_synth = X_train_synth.values
-y_train_synth = y_train_synth.values
-
-# Combine datasets
-X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0)
-y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0)
-
-X_test_combined = X_test_orig
-y_test_combined = y_test_orig
+# === Combine datasets ===
+X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0).astype(np.float32)
+y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0).astype(np.float32)
+X_test_combined = X_test_orig.astype(np.float32)
+y_test_combined = y_test_orig.astype(np.float32)
 
 print(f"Original training size: {len(X_train_orig)}")
 print(f"Synthetic training size: {len(X_train_synth)}")
 print(f"Combined training size: {len(X_train_combined)}")
 print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 
-# Sample weights
+# === Sample Weights ===
 orig_weight = 1.0
 synth_weight = 100.0
 sample_weights = np.concatenate([
     np.full(len(X_train_orig), orig_weight),
     np.full(len(X_train_synth), synth_weight)
-]).flatten()
+]).astype(np.float32)
 
-# Custom training loop
+# === Build Dataset ===
+train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, sample_weights))
+train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32)
+
+# === Compile model ===
 loss_fn = tf.keras.losses.BinaryCrossentropy()
 optimizer = Adam(learning_rate=0.0001)
-batch_size = 32
 epochs = 50
 lambda_fair = 1.0
 
-train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, sample_weights))
-train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-
+# === Custom Training Loop ===
 for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}")
     epoch_loss = []
 
     for step, (x_batch, y_batch, w_batch) in enumerate(train_dataset):
+        w_batch = tf.squeeze(w_batch)  # Ensure shape (batch_size,)
         with tf.GradientTape() as tape:
             logits = model(x_batch, training=True)
             bce_loss = loss_fn(y_batch, logits, sample_weight=w_batch)
-            fair_loss = pairwise_fairness_loss(model, X_ce)
+            fair_loss = pairwise_fairness_loss(model, X_ce, lambda_fair)
             total_loss = bce_loss + fair_loss
 
         grads = tape.gradient(total_loss, model.trainable_weights)
@@ -111,9 +109,10 @@ for epoch in range(epochs):
 
     print(f"Loss: {np.mean(epoch_loss):.4f}")
 
-# Final evaluation and save
+# === Save model ===
 model.save('Fairify/models/adult/AC-14.h5')
-print("Model retrained on combined dataset with fairness loss and saved as AC-14.h5")
+print("✅ Model retrained with fairness loss and saved as AC-14.h5")
+
 
 
 ###########################################################################################################################

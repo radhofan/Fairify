@@ -24,7 +24,7 @@ print(model.summary())
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
 # === Load and preprocess counterexample (synthetic) data ===
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_v2.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_v3.csv')
 df_synthetic.dropna(inplace=True)
 
 # Categorical encoding

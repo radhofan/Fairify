@@ -1,130 +1,3 @@
-import sys
-import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
-sys.path.append(src_dir)
-import pandas as pd
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
-from utils.verif_utils import *
-
-# === Load pre-trained model ===
-model = load_model('Fairify/models/adult/AC-1.h5')
-print(model.summary())
-
-# === Load and preprocess original data ===
-df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
-
-# === Load and preprocess counterexample (synthetic) data ===
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_v3.csv')
-df_synthetic.dropna(inplace=True)
-
-# Categorical encoding
-cat_feat = ['workclass', 'education', 'marital-status', 'occupation', 'relationship', 'native-country', 'sex']
-for feature in cat_feat:
-    if feature in encoders:
-        df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
-if 'race' in encoders:
-    df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
-
-# Bin continuous features
-for feature in ['capital-gain', 'capital-loss']:
-    if feature in encoders:
-        df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
-
-# Final cleanup
-df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
-label_name = 'income-per-year'
-
-# === Create CE pairs index ===
-pairs = [(i, i+1) for i in range(0, len(df_synthetic), 2)]
-pairs_tensor = tf.constant(pairs, dtype=tf.int32)
-
-# === Prepare CE input data ===
-X_ce = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
-
-# === Train/test split on synthetic data ===
-X_synthetic = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
-y_synthetic = df_synthetic[label_name].values.astype(np.float32)
-X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
-    X_synthetic, y_synthetic, test_size=0.15, random_state=42
-)
-
-# === Combine datasets ===
-X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0).astype(np.float32)
-y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0).astype(np.float32)
-X_test_combined = X_test_orig.astype(np.float32)
-y_test_combined = y_test_orig.astype(np.float32)
-
-print(f"Original training size: {len(X_train_orig)}")
-print(f"Synthetic training size: {len(X_train_synth)}")
-print(f"Combined training size: {len(X_train_combined)}")
-print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
-
-# === Sample Weights ===
-orig_weight = 1.0
-synth_weight = 10.0
-sample_weights = np.concatenate([
-    np.full(len(X_train_orig), orig_weight),
-    np.full(len(X_train_synth), synth_weight)
-]).astype(np.float32)
-
-# === Build Dataset (with indices) ===
-indices = np.arange(len(X_train_combined))
-train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, indices))
-train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32).prefetch(tf.data.AUTOTUNE)
-
-# === Compile training tools ===
-loss_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-optimizer = Adam(learning_rate=1e-4)
-epochs = 50
-lambda_fair = 10.0
-
-# === In-batch Fairness Loss ===
-def pairwise_fairness_loss_batchwise(preds, batch_indices, all_ce_pairs, lambda_fair=1.0):
-    idx_map = {int(idx): i for i, idx in enumerate(batch_indices.numpy())}
-    valid_pairs = []
-    for i, j in all_ce_pairs.numpy():
-        if int(i) in idx_map and int(j) in idx_map:
-            valid_pairs.append((idx_map[int(i)], idx_map[int(j)]))
-    if not valid_pairs:
-        return 0.0
-    pair_tensor = tf.constant(valid_pairs, dtype=tf.int32)
-    diffs = tf.gather(preds, pair_tensor[:, 0]) - tf.gather(preds, pair_tensor[:, 1])
-    squared_diffs = tf.square(diffs)
-    return lambda_fair * tf.reduce_mean(squared_diffs)
-
-# === Custom Training Loop ===
-for epoch in range(epochs):
-    print(f"\nEpoch {epoch+1}/{epochs}")
-    epoch_losses = []
-
-    for step, (x_batch, y_batch, idx_batch) in enumerate(train_dataset):
-        w_batch = tf.gather(sample_weights, idx_batch)
-
-        with tf.GradientTape() as tape:
-            logits = model(x_batch, training=True)
-            per_sample_loss = loss_fn(y_batch, logits)
-            weighted_bce = tf.reduce_mean(per_sample_loss * w_batch)
-
-            fair_loss = pairwise_fairness_loss_batchwise(logits, idx_batch, pairs_tensor, lambda_fair)
-            total_loss = weighted_bce + fair_loss
-
-        grads = tape.gradient(total_loss, model.trainable_weights)
-        optimizer.apply_gradients(zip(grads, model.trainable_weights))
-        epoch_losses.append(total_loss)
-
-    print(f"Epoch Loss: {tf.reduce_mean(epoch_losses):.4f}")
-
-# === Save the model ===
-model.save('Fairify/models/adult/AC-14.h5')
-print("✅ Model retrained with in-batch fairness loss and saved as AC-14.h5")
-
-###########################################################################################################################
-
 # import sys
 # import os
 # script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -132,97 +5,224 @@ print("✅ Model retrained with in-batch fairness loss and saved as AC-14.h5")
 # sys.path.append(src_dir)
 # import pandas as pd
 # import numpy as np
+# import tensorflow as tf
 # from tensorflow.keras.models import load_model
-# from tensorflow.keras.callbacks import EarlyStopping
 # from tensorflow.keras.optimizers import Adam
 # from sklearn.model_selection import train_test_split
-# from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 # from utils.verif_utils import *
 
-# # Load pre-trained adult model
+# # === Load pre-trained model ===
 # model = load_model('Fairify/models/adult/AC-1.h5')
 # print(model.summary())
 
-# # Load original dataset using your function
+# # === Load and preprocess original data ===
 # df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
-# # Load synthetic data (counterexamples)
-# df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_relabeled.csv')
-
-# # === Preprocess synthetic data to match original preprocessing ===
+# # === Load and preprocess counterexample (synthetic) data ===
+# df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_v3.csv')
 # df_synthetic.dropna(inplace=True)
-# cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
-#             'relationship', 'native-country', 'sex']
 
-# # Apply same encoders from original data to synthetic data
+# # Categorical encoding
+# cat_feat = ['workclass', 'education', 'marital-status', 'occupation', 'relationship', 'native-country', 'sex']
 # for feature in cat_feat:
 #     if feature in encoders:
-#         # Use the same encoder fitted on original data
 #         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
-
-# # Handle race encoding
 # if 'race' in encoders:
 #     df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
 
-# # Apply same binning for capital columns
-# binning_cols = ['capital-gain', 'capital-loss']
-# for feature in binning_cols:
+# # Bin continuous features
+# for feature in ['capital-gain', 'capital-loss']:
 #     if feature in encoders:
 #         df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
 
+# # Final cleanup
 # df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 # label_name = 'income-per-year'
 
-# # Split synthetic data
-# X_synthetic = df_synthetic.drop(columns=[label_name])
-# y_synthetic = df_synthetic[label_name]
+# # === Create CE pairs index ===
+# pairs = [(i, i+1) for i in range(0, len(df_synthetic), 2)]
+# pairs_tensor = tf.constant(pairs, dtype=tf.int32)
+
+# # === Prepare CE input data ===
+# X_ce = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
+
+# # === Train/test split on synthetic data ===
+# X_synthetic = df_synthetic.drop(columns=[label_name, 'output']).values.astype(np.float32)
+# y_synthetic = df_synthetic[label_name].values.astype(np.float32)
 # X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
-#     X_synthetic, y_synthetic, test_size=0.15, random_state=42)
+#     X_synthetic, y_synthetic, test_size=0.15, random_state=42
+# )
 
-# # Convert to numpy arrays
-# X_train_synth = X_train_synth.values
-# y_train_synth = y_train_synth.values
-
-# # === Combine original + synthetic datasets using numpy ===
-# X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0)
-# y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0)
-
-# # Use original test set
-# X_test_combined = X_test_orig
-# y_test_combined = y_test_orig
+# # === Combine datasets ===
+# X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0).astype(np.float32)
+# y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0).astype(np.float32)
+# X_test_combined = X_test_orig.astype(np.float32)
+# y_test_combined = y_test_orig.astype(np.float32)
 
 # print(f"Original training size: {len(X_train_orig)}")
 # print(f"Synthetic training size: {len(X_train_synth)}")
 # print(f"Combined training size: {len(X_train_combined)}")
 # print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 
-# # === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
+# # === Sample Weights ===
 # orig_weight = 1.0
-# synth_weight = 100.0
-
+# synth_weight = 10.0
 # sample_weights = np.concatenate([
 #     np.full(len(X_train_orig), orig_weight),
 #     np.full(len(X_train_synth), synth_weight)
-# ])
+# ]).astype(np.float32)
 
-# # === Train on combined dataset ===
-# optimizer = Adam(learning_rate=0.0001)
-# model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+# # === Build Dataset (with indices) ===
+# indices = np.arange(len(X_train_combined))
+# train_dataset = tf.data.Dataset.from_tensor_slices((X_train_combined, y_train_combined, indices))
+# train_dataset = train_dataset.shuffle(buffer_size=1024).batch(32).prefetch(tf.data.AUTOTUNE)
 
-# early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+# # === Compile training tools ===
+# loss_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+# optimizer = Adam(learning_rate=1e-4)
+# epochs = 50
+# lambda_fair = 10.0
 
-# model.fit(
-#     X_train_combined, y_train_combined,
-#     sample_weight=sample_weights,
-#     epochs=50,
-#     batch_size=32,
-#     validation_data=(X_test_combined, y_test_combined),
-#     callbacks=[early_stopping]
-# )
+# # === In-batch Fairness Loss ===
+# def pairwise_fairness_loss_batchwise(preds, batch_indices, all_ce_pairs, lambda_fair=1.0):
+#     idx_map = {int(idx): i for i, idx in enumerate(batch_indices.numpy())}
+#     valid_pairs = []
+#     for i, j in all_ce_pairs.numpy():
+#         if int(i) in idx_map and int(j) in idx_map:
+#             valid_pairs.append((idx_map[int(i)], idx_map[int(j)]))
+#     if not valid_pairs:
+#         return 0.0
+#     pair_tensor = tf.constant(valid_pairs, dtype=tf.int32)
+#     diffs = tf.gather(preds, pair_tensor[:, 0]) - tf.gather(preds, pair_tensor[:, 1])
+#     squared_diffs = tf.square(diffs)
+#     return lambda_fair * tf.reduce_mean(squared_diffs)
 
-# # Save retrained model
+# # === Custom Training Loop ===
+# for epoch in range(epochs):
+#     print(f"\nEpoch {epoch+1}/{epochs}")
+#     epoch_losses = []
+
+#     for step, (x_batch, y_batch, idx_batch) in enumerate(train_dataset):
+#         w_batch = tf.gather(sample_weights, idx_batch)
+
+#         with tf.GradientTape() as tape:
+#             logits = model(x_batch, training=True)
+#             per_sample_loss = loss_fn(y_batch, logits)
+#             weighted_bce = tf.reduce_mean(per_sample_loss * w_batch)
+
+#             fair_loss = pairwise_fairness_loss_batchwise(logits, idx_batch, pairs_tensor, lambda_fair)
+#             total_loss = weighted_bce + fair_loss
+
+#         grads = tape.gradient(total_loss, model.trainable_weights)
+#         optimizer.apply_gradients(zip(grads, model.trainable_weights))
+#         epoch_losses.append(total_loss)
+
+#     print(f"Epoch Loss: {tf.reduce_mean(epoch_losses):.4f}")
+
+# # === Save the model ===
 # model.save('Fairify/models/adult/AC-14.h5')
-# print("Model retrained on combined dataset and saved as AC-14.h5")
+# print("✅ Model retrained with in-batch fairness loss and saved as AC-14.h5")
+
+###########################################################################################################################
+
+import sys
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+sys.path.append(src_dir)
+import pandas as pd
+import numpy as np
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+from utils.verif_utils import *
+
+# Load pre-trained adult model
+model = load_model('Fairify/models/adult/AC-1.h5')
+print(model.summary())
+
+# Load original dataset using your function
+df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
+
+# Load synthetic data (counterexamples)
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples_fairify_AC1_relabeled.csv')
+
+# === Preprocess synthetic data to match original preprocessing ===
+df_synthetic.dropna(inplace=True)
+cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
+            'relationship', 'native-country', 'sex']
+
+# Apply same encoders from original data to synthetic data
+for feature in cat_feat:
+    if feature in encoders:
+        # Use the same encoder fitted on original data
+        df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
+
+# Handle race encoding
+if 'race' in encoders:
+    df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
+
+# Apply same binning for capital columns
+binning_cols = ['capital-gain', 'capital-loss']
+for feature in binning_cols:
+    if feature in encoders:
+        df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
+
+df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
+label_name = 'income-per-year'
+
+# Split synthetic data
+X_synthetic = df_synthetic.drop(columns=[label_name])
+y_synthetic = df_synthetic[label_name]
+X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
+    X_synthetic, y_synthetic, test_size=0.15, random_state=42)
+
+# Convert to numpy arrays
+X_train_synth = X_train_synth.values
+y_train_synth = y_train_synth.values
+
+# === Combine original + synthetic datasets using numpy ===
+X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0)
+y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0)
+
+# Use original test set
+X_test_combined = X_test_orig
+y_test_combined = y_test_orig
+
+print(f"Original training size: {len(X_train_orig)}")
+print(f"Synthetic training size: {len(X_train_synth)}")
+print(f"Combined training size: {len(X_train_combined)}")
+print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
+
+# === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
+orig_weight = 1.0
+synth_weight = 1000.0
+
+sample_weights = np.concatenate([
+    np.full(len(X_train_orig), orig_weight),
+    np.full(len(X_train_synth), synth_weight)
+])
+
+# === Train on combined dataset ===
+optimizer = Adam(learning_rate=0.0001)
+model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+
+model.fit(
+    X_train_combined, y_train_combined,
+    sample_weight=sample_weights,
+    epochs=50,
+    batch_size=32,
+    validation_data=(X_test_combined, y_test_combined),
+    callbacks=[early_stopping]
+)
+
+# Save retrained model
+model.save('Fairify/models/adult/AC-14.h5')
+print("Model retrained on combined dataset and saved as AC-14.h5")
 
 ###########################################################################################################################
 

@@ -80,7 +80,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.endswith('.h5'):
     #     continue
 
-    if not model_file.startswith("AC-3."):
+    if not model_file.startswith("AC-14."):
         continue
     
     print('==================  STARTING MODEL ' + model_file)

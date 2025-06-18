@@ -79,7 +79,7 @@ sample_weights = np.concatenate([
 ])
 
 # === Train on combined dataset ===
-optimizer = Adam(learning_rate=0.0001)
+optimizer = Adam(learning_rate=0.01)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)

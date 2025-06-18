@@ -99,7 +99,7 @@ for epoch in range(epochs):
     epoch_loss = []
 
     for step, (x_batch, y_batch, w_batch) in enumerate(train_dataset):
-        w_batch = tf.squeeze(w_batch)  # Ensure shape (batch_size,)
+       
         with tf.GradientTape() as tape:
             logits = model(x_batch, training=True)
             bce_loss = loss_fn(y_batch, logits, sample_weight=w_batch)

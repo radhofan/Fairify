@@ -82,7 +82,7 @@ synth_weight = 100.0
 sample_weights = np.concatenate([
     np.full(len(X_train_orig), orig_weight),
     np.full(len(X_train_synth), synth_weight)
-])
+]).flatten()
 
 # Custom training loop
 loss_fn = tf.keras.losses.BinaryCrossentropy()

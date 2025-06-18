@@ -1,5 +1,8 @@
 import sys
 import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+sys.path.append(src_dir)
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -112,8 +115,6 @@ for epoch in range(epochs):
 # === Save model ===
 model.save('Fairify/models/adult/AC-14.h5')
 print("✅ Model retrained with fairness loss and saved as AC-14.h5")
-
-
 
 ###########################################################################################################################
 

@@ -71,7 +71,7 @@ print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 
 # === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
 orig_weight = 1.0
-synth_weight = 10.0
+synth_weight = 100.0
 
 sample_weights = np.concatenate([
     np.full(len(X_train_orig), orig_weight),
@@ -79,7 +79,7 @@ sample_weights = np.concatenate([
 ])
 
 # === Train on combined dataset ===
-optimizer = Adam(learning_rate=0.01)
+optimizer = Adam(learning_rate=0.0001)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)

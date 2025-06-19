@@ -503,27 +503,27 @@ optimizer = Adam(learning_rate=0.01)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # -----------------------------
-# 🧪 Stage 1: Train on Counterexamples Only
+# 🎯 Stage 1: Fine-tune on Original Data First
 # -----------------------------
-print("\n--- PHASE 1: Training on Counterexamples ---")
-history_fair = two_stage_model.fit(
-    X_train_synth, y_train_synth,
-    epochs=15,
+print("\n--- PHASE 1: Fine-tuning on Original Data ---")
+history_acc = two_stage_model.fit(
+    X_train_orig, y_train_orig,
+    epochs=10,
     batch_size=32,
     validation_data=(X_test_orig, y_test_orig),
     verbose=1
 )
 
 # -----------------------------
-# 🎯 Stage 2: Fine-tune on Original Data
+# 🧪 Stage 2: Adapt to Counterexamples for Fairness
 # -----------------------------
-print("\n--- PHASE 2: Fine-tuning on Original Data ---")
-optimizer = Adam(learning_rate=0.001)
+print("\n--- PHASE 2: Training on Counterexamples ---")
+optimizer = Adam(learning_rate=0.001)  # Lower learning rate for fairness adaptation
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-history_acc = two_stage_model.fit(
-    X_train_orig, y_train_orig,
-    epochs=10,
+history_fair = two_stage_model.fit(
+    X_train_synth, y_train_synth,
+    epochs=15,
     batch_size=32,
     validation_data=(X_test_orig, y_test_orig),
     verbose=1

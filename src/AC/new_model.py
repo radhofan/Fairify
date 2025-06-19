@@ -150,7 +150,7 @@ def measure_fairness(model, X_test, feature_names=None):
     # Find sex column index - adjust based on your feature order
     # In Adult dataset, sex is typically one of the categorical features
     # You may need to adjust this index based on your preprocessing
-    sex_col_idx = 9  # Common position for sex in Adult dataset after preprocessing
+    sex_col_idx = 8  # Common position for sex in Adult dataset after preprocessing
     
     if X_test.shape[1] <= sex_col_idx:
         print(f"Warning: Sex column index {sex_col_idx} out of bounds. Using last column.")

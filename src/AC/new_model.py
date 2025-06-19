@@ -495,13 +495,8 @@ original_tpr_diff, original_fpr_diff = measure_equalized_odds(original_model, X_
 # === TWO-STAGE RETRAINING ===
 print("\n=== TWO-STAGE RETRAINING ===")
 
-# Load original model fresh
-model = load_model('Fairify/models/adult/AC-1.h5')
-
-# Reset final layer to force adaptation
-x = model.layers[-2].output
-new_output = Dense(1, activation='sigmoid', name='new_output')(x)
-two_stage_model = KerasModel(model.input, new_output)  # Use explicit KerasModel
+# Load original model fresh - this preserves the original architecture
+two_stage_model = load_model('Fairify/models/adult/AC-1.h5')
 
 # Compile
 optimizer = Adam(learning_rate=0.01)

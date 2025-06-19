@@ -496,7 +496,7 @@ original_tpr_diff, original_fpr_diff = measure_equalized_odds(original_model, X_
 print("\n=== TWO-STAGE RETRAINING ===")
 
 # Load original model fresh - this preserves the original architecture
-two_stage_model = load_model('Fairify/models/adult/AC-1.h5')
+two_stage_model = load_model('Fairify/models/adult/AC-2.h5')
 
 # Compile
 optimizer = Adam(learning_rate=0.01)
@@ -570,8 +570,8 @@ print(f"Final accuracy: {final_acc:.3f}")
 print(f"Accuracy change: {final_acc - original_acc:.3f}")
 
 # Save retrained model
-two_stage_model.save('Fairify/models/adult/AC-14.h5')
-print("\nTwo-stage model saved as AC-14.h5")
+two_stage_model.save('Fairify/models/adult/AC-15.h5')
+print("\nTwo-stage model saved as AC-15.h5")
 
 ###########################################################################################################################
 

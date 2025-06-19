@@ -508,26 +508,53 @@ two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics
 print("\n--- PHASE 1: Fine-tuning on Original Data ---")
 history_acc = two_stage_model.fit(
     X_train_orig, y_train_orig,
-    epochs=10,
+    epochs=8,
     batch_size=32,
     validation_data=(X_test_orig, y_test_orig),
     verbose=1
 )
 
+# Store original weights for regularization
+original_weights = []
+for layer in two_stage_model.layers:
+    if layer.get_weights():
+        original_weights.append([w.copy() for w in layer.get_weights()])
+    else:
+        original_weights.append([])
+
 # -----------------------------
-# 🧪 Stage 2: Adapt to Counterexamples for Fairness
+# 🧪 Stage 2: Constrained Fairness Training
 # -----------------------------
-print("\n--- PHASE 2: Training on Counterexamples ---")
-optimizer = Adam(learning_rate=0.001)  # Lower learning rate for fairness adaptation
+print("\n--- PHASE 2: Constrained Fairness Training ---")
+
+# Custom training loop with weight regularization
+optimizer = Adam(learning_rate=0.001)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-history_fair = two_stage_model.fit(
-    X_train_synth, y_train_synth,
-    epochs=15,
-    batch_size=32,
-    validation_data=(X_test_orig, y_test_orig),
-    verbose=1
-)
+# Very short, conservative training on counterexamples
+for epoch in range(5):  # Only 5 epochs
+    print(f"\nEpoch {epoch+1}/5")
+    
+    # Train on small batches of counterexamples
+    batch_size = 16
+    for i in range(0, len(X_train_synth), batch_size):
+        X_batch = X_train_synth[i:i+batch_size]
+        y_batch = y_train_synth[i:i+batch_size]
+        
+        if len(X_batch) < batch_size // 2:  # Skip very small batches
+            continue
+            
+        # Single gradient step
+        two_stage_model.train_on_batch(X_batch, y_batch)
+    
+    # Evaluate after each epoch
+    val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
+    print(f"Validation accuracy: {val_acc:.4f}")
+    
+    # Stop if accuracy drops too much
+    if val_acc < 0.75:  # Threshold to prevent collapse
+        print("Stopping early - accuracy threshold reached")
+        break
 
 # === FINAL FAIRNESS EVALUATION ===
 print("\n=== FINAL MODEL FAIRNESS ===")

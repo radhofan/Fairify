@@ -189,7 +189,7 @@ def measure_equalized_odds(model, X_test, y_test):
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
     
-    sex_col_idx = 9  # Adjust as needed
+    sex_col_idx = 8  # Adjust as needed
     if X_test.shape[1] <= sex_col_idx:
         sex_col_idx = X_test.shape[1] - 1
     
@@ -286,7 +286,7 @@ print(f"Combined training size: {len(X_train_combined)}")
 
 # === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
 orig_weight = 1.0
-synth_weight = 100.0  # High weight for counterexamples
+synth_weight = 50.0  # High weight for counterexamples
 sample_weights = np.concatenate([
     np.full(len(X_train_orig), orig_weight),
     np.full(len(X_train_synth), synth_weight)
@@ -299,14 +299,14 @@ print("\n=== RETRAINING MODEL ===")
 # Create a copy of the model to retrain
 model = load_model('Fairify/models/adult/AC-1.h5')
 
-optimizer = Adam(learning_rate=0.0001)
+optimizer = Adam(learning_rate=0.01)
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # FIX 1: Train without validation to avoid early stopping on original distribution
 history = model.fit(
     X_train_combined, y_train_combined,
     sample_weight=sample_weights,
-    epochs=15,  # Fixed small number of epochs instead of early stopping
+    epochs=25,  # Fixed small number of epochs instead of early stopping
     batch_size=32,
     verbose=1
     # NO validation_data - this was causing the fairness regression

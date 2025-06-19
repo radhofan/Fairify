@@ -1,9 +1,0 @@
-age,capital-gain,capital-loss,decision,education,education-num,hours-per-week,marital-status,native-country,occupation,race,relationship,sex,workclass
-100,7499,1633,0,Preschool,1,75,Married-AF-spouse,Philippines,Priv-house-serv,Amer-Indian-Eskimo,Wife,Male,Without-pay
-100,7499,1633,0,Preschool,1,75,Married-AF-spouse,Philippines,Priv-house-serv,Amer-Indian-Eskimo,Wife,Female,Without-pay
-100,2499,4029,1,Preschool,11,13,Married-civ-spouse,Ireland,Adm-clerical,Amer-Indian-Eskimo,Wife,Female,Federal-gov
-100,2499,4029,1,Preschool,11,13,Married-civ-spouse,Ireland,Adm-clerical,Amer-Indian-Eskimo,Wife,Male,Federal-gov
-90,7499,980,1,Assoc-voc,11,50,Widowed,Yugoslavia,Prof-specialty,Other,Own-child,Female,Private
-90,7499,980,1,Assoc-voc,11,50,Widowed,Yugoslavia,Prof-specialty,Other,Own-child,Male,Private
-75,7499,326,1,Assoc-acdm,10,41,Divorced,Yugoslavia,Protective-serv,White,Husband,Male,Federal-gov
-75,7499,326,1,Assoc-acdm,10,41,Divorced,Yugoslavia,Protective-serv,White,Husband,Female,Federal-gov

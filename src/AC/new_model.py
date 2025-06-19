@@ -125,6 +125,240 @@
 
 ###########################################################################################################################
 
+# import sys
+# import os
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+# sys.path.append(src_dir)
+# import pandas as pd
+# import numpy as np
+# from tensorflow.keras.models import load_model
+# from tensorflow.keras.callbacks import EarlyStopping
+# from tensorflow.keras.optimizers import Adam
+# from sklearn.model_selection import train_test_split
+# from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+# from utils.verif_utils import *
+
+# def measure_fairness(model, X_test, feature_names=None):
+#     """
+#     Measure fairness metrics for the model
+#     Assumes sex is in the feature set and encoded as 0/1
+#     """
+#     predictions = model.predict(X_test)
+#     pred_binary = (predictions > 0.5).astype(int).flatten()
+    
+#     # Find sex column index - adjust based on your feature order
+#     # In Adult dataset, sex is typically one of the categorical features
+#     # You may need to adjust this index based on your preprocessing
+#     sex_col_idx = 8  # Common position for sex in Adult dataset after preprocessing
+    
+#     if X_test.shape[1] <= sex_col_idx:
+#         print(f"Warning: Sex column index {sex_col_idx} out of bounds. Using last column.")
+#         sex_col_idx = X_test.shape[1] - 1
+    
+#     sex_values = X_test[:, sex_col_idx]
+#     unique_sex = np.unique(sex_values)
+    
+#     print(f"Sex column values: {unique_sex}")
+#     print(f"Sex distribution: {np.bincount(sex_values.astype(int))}")
+    
+#     # Demographic Parity (Statistical Parity)
+#     if len(unique_sex) >= 2:
+#         group1_mask = sex_values == unique_sex[0]
+#         group2_mask = sex_values == unique_sex[1]
+        
+#         group1_positive_rate = np.mean(pred_binary[group1_mask])
+#         group2_positive_rate = np.mean(pred_binary[group2_mask])
+#         dp_diff = abs(group1_positive_rate - group2_positive_rate)
+        
+#         print(f"Group 1 (sex={unique_sex[0]}) positive rate: {group1_positive_rate:.3f}")
+#         print(f"Group 2 (sex={unique_sex[1]}) positive rate: {group2_positive_rate:.3f}")
+#         print(f"Demographic Parity Difference: {dp_diff:.3f}")
+        
+#         # Equalized Odds (TPR and FPR equality)
+#         # Need true labels for this
+#         return dp_diff
+#     else:
+#         print("Cannot compute fairness - only one group found in sex column")
+#         return None
+
+# def measure_equalized_odds(model, X_test, y_test):
+#     """
+#     Measure Equalized Odds (TPR and FPR differences between groups)
+#     """
+#     predictions = model.predict(X_test)
+#     pred_binary = (predictions > 0.5).astype(int).flatten()
+    
+#     sex_col_idx = 8  # Adjust as needed
+#     if X_test.shape[1] <= sex_col_idx:
+#         sex_col_idx = X_test.shape[1] - 1
+    
+#     sex_values = X_test[:, sex_col_idx]
+#     unique_sex = np.unique(sex_values)
+    
+#     if len(unique_sex) >= 2:
+#         group1_mask = sex_values == unique_sex[0]
+#         group2_mask = sex_values == unique_sex[1]
+        
+#         # True Positive Rate (Sensitivity)
+#         group1_tpr = np.mean(pred_binary[group1_mask & (y_test == 1)])
+#         group2_tpr = np.mean(pred_binary[group2_mask & (y_test == 1)])
+#         tpr_diff = abs(group1_tpr - group2_tpr)
+        
+#         # False Positive Rate
+#         group1_fpr = np.mean(pred_binary[group1_mask & (y_test == 0)])
+#         group2_fpr = np.mean(pred_binary[group2_mask & (y_test == 0)])
+#         fpr_diff = abs(group1_fpr - group2_fpr)
+        
+#         print(f"True Positive Rate difference: {tpr_diff:.3f}")
+#         print(f"False Positive Rate difference: {fpr_diff:.3f}")
+#         print(f"Equalized Odds violation: {max(tpr_diff, fpr_diff):.3f}")
+        
+#         return tpr_diff, fpr_diff
+    
+#     return None, None
+
+# # Load pre-trained adult model
+# print("Loading original model...")
+# original_model = load_model('Fairify/models/adult/AC-1.h5')
+# print(original_model.summary())
+
+# # Load original dataset using your function
+# df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
+
+# # Load synthetic data (counterexamples)
+# print("Loading synthetic counterexamples...")
+# df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-1.csv')
+
+# # === Preprocess synthetic data to match original preprocessing ===
+# df_synthetic.dropna(inplace=True)
+# cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
+#             'relationship', 'native-country', 'sex']
+
+# # Apply same encoders from original data to synthetic data
+# for feature in cat_feat:
+#     if feature in encoders:
+#         # Use the same encoder fitted on original data
+#         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
+
+# # Handle race encoding
+# if 'race' in encoders:
+#     df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
+
+# # Apply same binning for capital columns
+# binning_cols = ['capital-gain', 'capital-loss']
+# for feature in binning_cols:
+#     if feature in encoders:
+#         df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
+
+# df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
+# label_name = 'income-per-year'
+
+# # Split synthetic data
+# X_synthetic = df_synthetic.drop(columns=[label_name])
+# y_synthetic = df_synthetic[label_name]
+
+# X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
+#     X_synthetic, y_synthetic, test_size=0.15, random_state=42)
+
+# # Convert to numpy arrays
+# X_train_synth = X_train_synth.values
+# y_train_synth = y_train_synth.values
+
+# # === Analyze counterexamples before training ===
+# print("\n=== COUNTEREXAMPLE ANALYSIS ===")
+# print(f"Original training size: {len(X_train_orig)}")
+# print(f"Synthetic training size: {len(X_train_synth)}")
+# print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
+# print(f"Original positive class ratio: {np.mean(y_train_orig):.3f}")
+# print(f"Synthetic positive class ratio: {np.mean(y_train_synth):.3f}")
+
+# # === Measure original model fairness ===
+# print("\n=== ORIGINAL MODEL FAIRNESS ===")
+# original_dp = measure_fairness(original_model, X_test_orig)
+# original_tpr_diff, original_fpr_diff = measure_equalized_odds(original_model, X_test_orig, y_test_orig)
+
+# # === Combine datasets ===
+# X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0)
+# y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0)
+
+# print(f"Combined training size: {len(X_train_combined)}")
+
+# # === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
+# orig_weight = 1.0
+# synth_weight = 50.0  # High weight for counterexamples
+# sample_weights = np.concatenate([
+#     np.full(len(X_train_orig), orig_weight),
+#     np.full(len(X_train_synth), synth_weight)
+# ])
+
+# print(f"Sample weight ratio: {synth_weight}:1 (synthetic:original)")
+
+# # === Clone and retrain model (Fix 1: Remove validation) ===
+# print("\n=== RETRAINING MODEL ===")
+# # Create a copy of the model to retrain
+# model = load_model('Fairify/models/adult/AC-1.h5')
+
+# optimizer = Adam(learning_rate=0.01)
+# model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+# # FIX 1: Train without validation to avoid early stopping on original distribution
+# history = model.fit(
+#     X_train_combined, y_train_combined,
+#     sample_weight=sample_weights,
+#     epochs=25,  # Fixed small number of epochs instead of early stopping
+#     batch_size=32,
+#     verbose=1
+#     # NO validation_data - this was causing the fairness regression
+# )
+
+# # === Measure retrained model fairness (Fix 2) ===
+# print("\n=== RETRAINED MODEL FAIRNESS ===")
+# retrained_dp = measure_fairness(model, X_test_orig)
+# retrained_tpr_diff, retrained_fpr_diff = measure_equalized_odds(model, X_test_orig, y_test_orig)
+
+# # === Compare fairness improvements ===
+# print("\n=== FAIRNESS COMPARISON ===")
+# if original_dp is not None and retrained_dp is not None:
+#     dp_improvement = original_dp - retrained_dp
+#     print(f"Demographic Parity improvement: {dp_improvement:.3f}")
+#     print(f"  Original DP difference: {original_dp:.3f}")
+#     print(f"  Retrained DP difference: {retrained_dp:.3f}")
+    
+#     if dp_improvement > 0:
+#         print("✅ FAIRNESS IMPROVED!")
+#     else:
+#         print("❌ Fairness did not improve")
+
+# if original_tpr_diff is not None and retrained_tpr_diff is not None:
+#     tpr_improvement = original_tpr_diff - retrained_tpr_diff
+#     fpr_improvement = original_fpr_diff - retrained_fpr_diff
+#     print(f"TPR difference improvement: {tpr_improvement:.3f}")
+#     print(f"FPR difference improvement: {fpr_improvement:.3f}")
+
+# # === Test accuracy preservation ===
+# print("\n=== ACCURACY COMPARISON ===")
+# original_acc = original_model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
+# retrained_acc = model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
+# print(f"Original accuracy: {original_acc:.3f}")
+# print(f"Retrained accuracy: {retrained_acc:.3f}")
+# print(f"Accuracy change: {retrained_acc - original_acc:.3f}")
+
+# # Save retrained model
+# model.save('Fairify/models/adult/AC-14.h5')
+# print("\nModel retrained and saved as AC-14.h5")
+
+# # === Additional Debugging Information ===
+# print("\n=== DEBUGGING INFO ===")
+# print("If fairness is still not improving, check:")
+# print("1. Are counterexamples actually targeting the right bias?")
+# print("2. Is the sex column index correct?")
+# print("3. Try increasing epochs or learning rate")
+# print("4. Consider generating more counterexamples")
+# print(f"5. Current counterexample ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
+
+###########################################################################################################################
+
 import sys
 import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -132,7 +366,8 @@ src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
 sys.path.append(src_dir)
 import pandas as pd
 import numpy as np
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model, Model
+from tensorflow.keras.layers import Dense
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
@@ -140,18 +375,10 @@ from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 from utils.verif_utils import *
 
 def measure_fairness(model, X_test, feature_names=None):
-    """
-    Measure fairness metrics for the model
-    Assumes sex is in the feature set and encoded as 0/1
-    """
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
     
-    # Find sex column index - adjust based on your feature order
-    # In Adult dataset, sex is typically one of the categorical features
-    # You may need to adjust this index based on your preprocessing
-    sex_col_idx = 8  # Common position for sex in Adult dataset after preprocessing
-    
+    sex_col_idx = 8  
     if X_test.shape[1] <= sex_col_idx:
         print(f"Warning: Sex column index {sex_col_idx} out of bounds. Using last column.")
         sex_col_idx = X_test.shape[1] - 1
@@ -162,7 +389,6 @@ def measure_fairness(model, X_test, feature_names=None):
     print(f"Sex column values: {unique_sex}")
     print(f"Sex distribution: {np.bincount(sex_values.astype(int))}")
     
-    # Demographic Parity (Statistical Parity)
     if len(unique_sex) >= 2:
         group1_mask = sex_values == unique_sex[0]
         group2_mask = sex_values == unique_sex[1]
@@ -175,21 +401,16 @@ def measure_fairness(model, X_test, feature_names=None):
         print(f"Group 2 (sex={unique_sex[1]}) positive rate: {group2_positive_rate:.3f}")
         print(f"Demographic Parity Difference: {dp_diff:.3f}")
         
-        # Equalized Odds (TPR and FPR equality)
-        # Need true labels for this
         return dp_diff
     else:
         print("Cannot compute fairness - only one group found in sex column")
         return None
 
 def measure_equalized_odds(model, X_test, y_test):
-    """
-    Measure Equalized Odds (TPR and FPR differences between groups)
-    """
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
     
-    sex_col_idx = 8  # Adjust as needed
+    sex_col_idx = 8  
     if X_test.shape[1] <= sex_col_idx:
         sex_col_idx = X_test.shape[1] - 1
     
@@ -200,12 +421,10 @@ def measure_equalized_odds(model, X_test, y_test):
         group1_mask = sex_values == unique_sex[0]
         group2_mask = sex_values == unique_sex[1]
         
-        # True Positive Rate (Sensitivity)
         group1_tpr = np.mean(pred_binary[group1_mask & (y_test == 1)])
         group2_tpr = np.mean(pred_binary[group2_mask & (y_test == 1)])
         tpr_diff = abs(group1_tpr - group2_tpr)
         
-        # False Positive Rate
         group1_fpr = np.mean(pred_binary[group1_mask & (y_test == 0)])
         group2_fpr = np.mean(pred_binary[group2_mask & (y_test == 0)])
         fpr_diff = abs(group1_fpr - group2_fpr)
@@ -235,17 +454,13 @@ df_synthetic.dropna(inplace=True)
 cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
             'relationship', 'native-country', 'sex']
 
-# Apply same encoders from original data to synthetic data
 for feature in cat_feat:
     if feature in encoders:
-        # Use the same encoder fitted on original data
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
 
-# Handle race encoding
 if 'race' in encoders:
     df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
 
-# Apply same binning for capital columns
 binning_cols = ['capital-gain', 'capital-loss']
 for feature in binning_cols:
     if feature in encoders:
@@ -254,18 +469,16 @@ for feature in binning_cols:
 df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'
 
-# Split synthetic data
 X_synthetic = df_synthetic.drop(columns=[label_name])
 y_synthetic = df_synthetic[label_name]
 
 X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
     X_synthetic, y_synthetic, test_size=0.15, random_state=42)
 
-# Convert to numpy arrays
 X_train_synth = X_train_synth.values
 y_train_synth = y_train_synth.values
 
-# === Analyze counterexamples before training ===
+# === COUNTEREXAMPLE ANALYSIS ===
 print("\n=== COUNTEREXAMPLE ANALYSIS ===")
 print(f"Original training size: {len(X_train_orig)}")
 print(f"Synthetic training size: {len(X_train_synth)}")
@@ -273,89 +486,69 @@ print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 print(f"Original positive class ratio: {np.mean(y_train_orig):.3f}")
 print(f"Synthetic positive class ratio: {np.mean(y_train_synth):.3f}")
 
-# === Measure original model fairness ===
+# === MEASURE ORIGINAL MODEL FAIRNESS ===
 print("\n=== ORIGINAL MODEL FAIRNESS ===")
 original_dp = measure_fairness(original_model, X_test_orig)
 original_tpr_diff, original_fpr_diff = measure_equalized_odds(original_model, X_test_orig, y_test_orig)
 
-# === Combine datasets ===
-X_train_combined = np.concatenate([X_train_orig, X_train_synth], axis=0)
-y_train_combined = np.concatenate([y_train_orig, y_train_synth], axis=0)
+# === TWO-STAGE RETRAINING ===
+print("\n=== TWO-STAGE RETRAINING ===")
 
-print(f"Combined training size: {len(X_train_combined)}")
-
-# === CREATE SAMPLE WEIGHTS FOR WEIGHTED TRAINING ===
-orig_weight = 1.0
-synth_weight = 50.0  # High weight for counterexamples
-sample_weights = np.concatenate([
-    np.full(len(X_train_orig), orig_weight),
-    np.full(len(X_train_synth), synth_weight)
-])
-
-print(f"Sample weight ratio: {synth_weight}:1 (synthetic:original)")
-
-# === Clone and retrain model (Fix 1: Remove validation) ===
-print("\n=== RETRAINING MODEL ===")
-# Create a copy of the model to retrain
+# Load original model fresh
 model = load_model('Fairify/models/adult/AC-1.h5')
 
-optimizer = Adam(learning_rate=0.01)
-model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+# Reset final layer to force adaptation
+x = model.layers[-2].output
+new_output = Dense(1, activation='sigmoid', name='new_output')(x)
+two_stage_model = Model(model.input, new_output)
 
-# FIX 1: Train without validation to avoid early stopping on original distribution
-history = model.fit(
-    X_train_combined, y_train_combined,
-    sample_weight=sample_weights,
-    epochs=25,  # Fixed small number of epochs instead of early stopping
+# Compile
+optimizer = Adam(learning_rate=0.01)
+two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+# -----------------------------
+# 🧪 Stage 1: Train on Counterexamples Only
+# -----------------------------
+print("\n--- PHASE 1: Training on Counterexamples ---")
+history_fair = two_stage_model.fit(
+    X_train_synth, y_train_synth,
+    epochs=15,
     batch_size=32,
+    validation_data=(X_test_orig, y_test_orig),
     verbose=1
-    # NO validation_data - this was causing the fairness regression
 )
 
-# === Measure retrained model fairness (Fix 2) ===
-print("\n=== RETRAINED MODEL FAIRNESS ===")
-retrained_dp = measure_fairness(model, X_test_orig)
-retrained_tpr_diff, retrained_fpr_diff = measure_equalized_odds(model, X_test_orig, y_test_orig)
+# -----------------------------
+# 🎯 Stage 2: Fine-tune on Original Data
+# -----------------------------
+print("\n--- PHASE 2: Fine-tuning on Original Data ---")
+optimizer = Adam(learning_rate=0.001)
+two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-# === Compare fairness improvements ===
-print("\n=== FAIRNESS COMPARISON ===")
-if original_dp is not None and retrained_dp is not None:
-    dp_improvement = original_dp - retrained_dp
-    print(f"Demographic Parity improvement: {dp_improvement:.3f}")
-    print(f"  Original DP difference: {original_dp:.3f}")
-    print(f"  Retrained DP difference: {retrained_dp:.3f}")
-    
-    if dp_improvement > 0:
-        print("✅ FAIRNESS IMPROVED!")
-    else:
-        print("❌ Fairness did not improve")
+history_acc = two_stage_model.fit(
+    X_train_orig, y_train_orig,
+    epochs=10,
+    batch_size=32,
+    validation_data=(X_test_orig, y_test_orig),
+    verbose=1
+)
 
-if original_tpr_diff is not None and retrained_tpr_diff is not None:
-    tpr_improvement = original_tpr_diff - retrained_tpr_diff
-    fpr_improvement = original_fpr_diff - retrained_fpr_diff
-    print(f"TPR difference improvement: {tpr_improvement:.3f}")
-    print(f"FPR difference improvement: {fpr_improvement:.3f}")
+# === FINAL FAIRNESS EVALUATION ===
+print("\n=== FINAL MODEL FAIRNESS ===")
+final_dp = measure_fairness(two_stage_model, X_test_orig)
+final_tpr_diff, final_fpr_diff = measure_equalized_odds(two_stage_model, X_test_orig, y_test_orig)
 
-# === Test accuracy preservation ===
-print("\n=== ACCURACY COMPARISON ===")
+# === FINAL ACCURACY EVALUATION ===
+print("\n=== FINAL ACCURACY ===")
 original_acc = original_model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
-retrained_acc = model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
+final_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
 print(f"Original accuracy: {original_acc:.3f}")
-print(f"Retrained accuracy: {retrained_acc:.3f}")
-print(f"Accuracy change: {retrained_acc - original_acc:.3f}")
+print(f"Final accuracy: {final_acc:.3f}")
+print(f"Accuracy change: {final_acc - original_acc:.3f}")
 
 # Save retrained model
-model.save('Fairify/models/adult/AC-14.h5')
-print("\nModel retrained and saved as AC-14.h5")
-
-# === Additional Debugging Information ===
-print("\n=== DEBUGGING INFO ===")
-print("If fairness is still not improving, check:")
-print("1. Are counterexamples actually targeting the right bias?")
-print("2. Is the sex column index correct?")
-print("3. Try increasing epochs or learning rate")
-print("4. Consider generating more counterexamples")
-print(f"5. Current counterexample ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
+two_stage_model.save('Fairify/models/adult/AC-14.h5')
+print("\nTwo-stage model saved as AC-14.h5")
 
 ###########################################################################################################################
 

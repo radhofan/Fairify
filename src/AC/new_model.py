@@ -440,7 +440,7 @@ def measure_equalized_odds(model, X_test, y_test):
 
 # Load pre-trained adult model
 print("Loading original model...")
-original_model = load_model('Fairify/models/adult/AC-1.h5')
+original_model = load_model('Fairify/models/adult/AC-2.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
@@ -448,7 +448,7 @@ df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = lo
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-1.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-2.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)

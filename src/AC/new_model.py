@@ -366,7 +366,8 @@ src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
 sys.path.append(src_dir)
 import pandas as pd
 import numpy as np
-from tensorflow.keras.models import load_model, Model
+from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Model as KerasModel  # Explicit import with alias
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
@@ -500,7 +501,7 @@ model = load_model('Fairify/models/adult/AC-1.h5')
 # Reset final layer to force adaptation
 x = model.layers[-2].output
 new_output = Dense(1, activation='sigmoid', name='new_output')(x)
-two_stage_model = Model(model.input, new_output)
+two_stage_model = KerasModel(model.input, new_output)  # Use explicit KerasModel
 
 # Compile
 optimizer = Adam(learning_rate=0.01)

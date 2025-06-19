@@ -440,7 +440,7 @@ def measure_equalized_odds(model, X_test, y_test):
 
 # Load pre-trained adult model
 print("Loading original model...")
-original_model = load_model('Fairify/models/adult/AC-2.h5')
+original_model = load_model('Fairify/models/adult/AC-3.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
@@ -448,7 +448,7 @@ df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = lo
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-2.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
@@ -496,7 +496,7 @@ original_tpr_diff, original_fpr_diff = measure_equalized_odds(original_model, X_
 print("\n=== TWO-STAGE RETRAINING ===")
 
 # Load original model fresh - this preserves the original architecture
-two_stage_model = load_model('Fairify/models/adult/AC-2.h5')
+two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
 
 # Compile
 optimizer = Adam(learning_rate=0.01)
@@ -570,8 +570,8 @@ print(f"Final accuracy: {final_acc:.3f}")
 print(f"Accuracy change: {final_acc - original_acc:.3f}")
 
 # Save retrained model
-two_stage_model.save('Fairify/models/adult/AC-15.h5')
-print("\nTwo-stage model saved as AC-15.h5")
+two_stage_model.save('Fairify/models/adult/AC-16.h5')
+print("\nTwo-stage model saved as AC-16.h5")
 
 ###########################################################################################################################
 

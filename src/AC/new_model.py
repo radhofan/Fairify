@@ -140,7 +140,7 @@ print("\n=== TWO-STAGE RETRAINING ===")
 two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
 
 # Compile
-optimizer = Adam(learning_rate=0.0001)
+optimizer = Adam(learning_rate=0.01)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # -----------------------------

@@ -493,7 +493,27 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         
         # Convert partition center to input format
         sample_input = np.zeros(13)  # Adjust based on your feature count
-        # TODO: Map partition_center to sample_input based on your feature mapping
+        
+        # Map partition attributes to feature indices based on Adult dataset structure
+        feature_mapping = {
+            'age': 0,
+            'workclass': 1,
+            'education': 2,
+            'education-num': 3,
+            'marital-status': 4,
+            'occupation': 5,
+            'relationship': 6,
+            'race': 7,
+            'sex': 8,
+            'capital-gain': 9,
+            'capital-loss': 10,
+            'hours-per-week': 11,
+            'native-country': 12
+        }
+        
+        for attr_name, value in partition_center.items():
+            if attr_name in feature_mapping:
+                sample_input[feature_mapping[attr_name]] = value
         
         # Check if this partition requires switching to AC-16
         should_use_ac16, rule_id, improvement = detector.should_use_ac16(

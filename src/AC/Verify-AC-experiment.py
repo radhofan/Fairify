@@ -88,7 +88,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     if not model_file.startswith("AC-16."):
         continue
 
-    
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]
     if model_name == '':

@@ -32,7 +32,7 @@ python Fairify/src/AC/new_model.py
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py
-bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment.py
+bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new.py
 # bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment.py
 # bash Fairify/src/fairify.sh Fairify/src/CP/Verify-CP.py
 # bash Fairify/src/fairify.sh Fairify/src/DF/Verify-DF.py

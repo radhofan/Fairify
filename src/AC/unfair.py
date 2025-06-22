@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Unfairness Region Detection for Model Switching (AC-3 vs AC-16)
+Identifies where AC-3 is most unfair to guide when to use AC-16
+"""
+
+import numpy as np
+import pandas as pd
+from sklearn.metrics import accuracy_score
+from sklearn.cluster import DBSCAN
+from collections import defaultdict
+import warnings
+warnings.filterwarnings('ignore')
+
+class UnfairnessRegionDetector:
+    def __init__(self, ac3_model, ac16_model, net_func):
+        """
+        Initialize detector for AC-3 vs AC-16 model switching
+        
+        Args:
+            ac3_model: (weights, biases) for AC-3 model
+            ac16_model: (weights, biases) for AC-16 model  
+            net_func: Network prediction function
+        """
+        self.ac3_w, self.ac3_b = ac3_model
+        self.ac16_w, self.ac16_b = ac16_model
+        self.net = net_func
+        self.unfair_zones = {}
+        
+    def compute_prediction_gap(self, X):
+        """
+        Compute prediction differences between AC-3 and AC-16
+        Large gaps indicate regions where fairness intervention matters most
+        """
+        ac3_preds = self.get_predictions(X, self.ac3_w, self.ac3_b)
+        ac16_preds = self.get_predictions(X, self.ac16_w, self.ac16_b)
+        
+        # Prediction gaps (how much AC-16 changes from AC-3)
+        pred_gaps = np.abs(ac3_preds - ac16_preds)
+        
+        # Decision flips (where models disagree on classification)
+        ac3_classes = ac3_preds > 0.5
+        ac16_classes = ac16_preds > 0.5
+        decision_flips = ac3_classes != ac16_classes
+        
+        return pred_gaps, decision_flips
+    
+    def identify_unfair_subgroups(self, X, partition_ranges=None):
+        """
+        Identify subgroups where AC-3 shows high unfairness
+        These are prime candidates for using AC-16 instead
+        """
+        sex_idx = 8  # Protected attribute index
+        
+        # Get predictions from both models
+        ac3_preds = self.get_predictions(X, self.ac3_w, self.ac3_b)
+        ac16_preds = self.get_predictions(X, self.ac16_w, self.ac16_b)
+        
+        unfair_regions = []
+        
+        # Create subgroups based on feature combinations
+        subgroups = self._create_demographic_subgroups(X)
+        
+        for subgroup_name, indices in subgroups.items():
+            if len(indices) < 10:  # Skip tiny subgroups
+                continue
+                
+            subgroup_X = X[indices]
+            subgroup_ac3 = ac3_preds[indices]
+            subgroup_ac16 = ac16_preds[indices]
+            
+            # Compute fairness metrics for this subgroup
+            fairness_metrics = self._compute_subgroup_fairness(
+                subgroup_X, subgroup_ac3, subgroup_ac16
+            )
+            
+            # Flag as unfair region if AC-3 shows bias
+            if self._is_unfair_region(fairness_metrics):
+                pred_gaps, decision_flips = self.compute_prediction_gap(subgroup_X)
+                
+                unfair_regions.append({
+                    'subgroup': subgroup_name,
+                    'size': len(indices),
+                    'indices': indices,
+                    'ac3_bias_score': fairness_metrics['ac3_bias'],
+                    'ac16_improvement': fairness_metrics['ac16_improvement'],
+                    'avg_prediction_gap': np.mean(pred_gaps),
+                    'decision_flip_rate': np.mean(decision_flips),
+                    'unfairness_severity': fairness_metrics['severity']
+                })
+        
+        # Sort by unfairness severity
+        unfair_regions.sort(key=lambda x: x['unfairness_severity'], reverse=True)
+        return unfair_regions
+    
+    def create_switching_rules(self, X, unfair_regions):
+        """
+        Create rules for when to switch from AC-3 to AC-16
+        """
+        switching_rules = []
+        
+        for region in unfair_regions[:10]:  # Top 10 most unfair regions
+            # Extract the demographic characteristics of this region
+            subgroup_indices = region['indices']
+            subgroup_X = X[subgroup_indices]
+            
+            # Find common characteristics (feature ranges) in this subgroup
+            feature_ranges = self._extract_feature_patterns(subgroup_X)
+            
+            switching_rules.append({
+                'rule_id': len(switching_rules),
+                'feature_conditions': feature_ranges,
+                'expected_improvement': region['ac16_improvement'],
+                'affected_population_size': region['size'],
+                'priority_score': region['unfairness_severity']
+            })
+        
+        return switching_rules
+    
+    def should_use_ac16(self, input_sample, switching_rules, threshold=0.3):
+        """
+        Determine if AC-16 should be used instead of AC-3 for a given input
+        
+        Args:
+            input_sample: Single input sample
+            switching_rules: Rules generated by create_switching_rules
+            threshold: Minimum improvement threshold to switch
+            
+        Returns:
+            bool: True if should use AC-16, False if use AC-3
+        """
+        for rule in switching_rules:
+            if self._matches_rule(input_sample, rule['feature_conditions']):
+                if rule['expected_improvement'] > threshold:
+                    return True, rule['rule_id'], rule['expected_improvement']
+        
+        return False, None, 0.0
+    
+    def analyze_model_differences(self, X, detailed=False):
+        """
+        Comprehensive analysis of where and why models differ
+        """
+        pred_gaps, decision_flips = self.compute_prediction_gap(X)
+        
+        analysis = {
+            'total_samples': len(X),
+            'decision_flip_count': np.sum(decision_flips),
+            'decision_flip_rate': np.mean(decision_flips),
+            'avg_prediction_gap': np.mean(pred_gaps),
+            'high_gap_samples': np.sum(pred_gaps > 0.3),
+        }
+        
+        if detailed:
+            # Find samples with largest prediction gaps
+            top_gap_indices = np.argsort(pred_gaps)[-20:]
+            analysis['top_gap_samples'] = {
+                'indices': top_gap_indices.tolist(),
+                'gaps': pred_gaps[top_gap_indices].tolist()
+            }
+            
+            # Analyze by demographic groups
+            sex_idx = 8
+            for sex_val in [0, 1]:
+                sex_mask = X[:, sex_idx] == sex_val
+                group_name = f"sex_{sex_val}"
+                analysis[f'{group_name}_flip_rate'] = np.mean(decision_flips[sex_mask])
+                analysis[f'{group_name}_avg_gap'] = np.mean(pred_gaps[sex_mask])
+        
+        return analysis
+    
+    def get_predictions(self, X, w, b):
+        """Get model predictions"""
+        if len(X.shape) == 1:
+            X = X.reshape(1, -1)
+        
+        predictions = []
+        for i in range(len(X)):
+            pred = self.net(X[i], w, b)
+            predictions.append(1 / (1 + np.exp(-pred)))  # sigmoid
+        
+        return np.array(predictions)
+    
+    def _create_demographic_subgroups(self, X):
+        """Create subgroups based on demographic combinations"""
+        sex_idx = 8
+        age_idx = 0
+        
+        subgroups = {}
+        
+        # Basic demographic splits
+        for sex_val in [0, 1]:
+            sex_mask = X[:, sex_idx] == sex_val
+            subgroups[f'sex_{sex_val}'] = np.where(sex_mask)[0]
+            
+            # Age-sex combinations
+            for age_range in [(0, 5), (6, 10), (11, 15), (16, 19)]:
+                age_mask = (X[:, age_idx] >= age_range[0]) & (X[:, age_idx] <= age_range[1])
+                combined_mask = sex_mask & age_mask
+                if np.sum(combined_mask) > 0:
+                    subgroups[f'sex_{sex_val}_age_{age_range[0]}_{age_range[1]}'] = np.where(combined_mask)[0]
+        
+        return subgroups
+    
+    def _compute_subgroup_fairness(self, subgroup_X, ac3_preds, ac16_preds):
+        """Compute fairness metrics for a subgroup"""
+        sex_idx = 8
+        
+        # Split by protected attribute within subgroup
+        privileged_mask = subgroup_X[:, sex_idx] == 1
+        unprivileged_mask = subgroup_X[:, sex_idx] == 0
+        
+        if np.sum(privileged_mask) == 0 or np.sum(unprivileged_mask) == 0:
+            return {'ac3_bias': 0, 'ac16_improvement': 0, 'severity': 0}
+        
+        # AC-3 fairness metrics
+        ac3_priv_rate = np.mean(ac3_preds[privileged_mask])
+        ac3_unpriv_rate = np.mean(ac3_preds[unprivileged_mask])
+        ac3_disparate_impact = ac3_unpriv_rate / (ac3_priv_rate + 1e-8)
+        ac3_spd = abs(ac3_priv_rate - ac3_unpriv_rate)
+        
+        # AC-16 fairness metrics
+        ac16_priv_rate = np.mean(ac16_preds[privileged_mask])
+        ac16_unpriv_rate = np.mean(ac16_preds[unprivileged_mask])
+        ac16_disparate_impact = ac16_unpriv_rate / (ac16_priv_rate + 1e-8)
+        ac16_spd = abs(ac16_priv_rate - ac16_unpriv_rate)
+        
+        # Compute bias scores
+        ac3_bias = max(abs(1 - ac3_disparate_impact), ac3_spd)
+        ac16_bias = max(abs(1 - ac16_disparate_impact), ac16_spd)
+        
+        improvement = ac3_bias - ac16_bias
+        severity = ac3_bias * len(subgroup_X)  # Weighted by subgroup size
+        
+        return {
+            'ac3_bias': ac3_bias,
+            'ac16_bias': ac16_bias,
+            'ac16_improvement': improvement,
+            'severity': severity
+        }
+    
+    def _is_unfair_region(self, fairness_metrics, bias_threshold=0.1):
+        """Determine if a region shows significant unfairness"""
+        return (fairness_metrics['ac3_bias'] > bias_threshold and 
+                fairness_metrics['ac16_improvement'] > 0.05)
+    
+    def _extract_feature_patterns(self, subgroup_X):
+        """Extract common feature patterns in a subgroup"""
+        feature_ranges = {}
+        
+        for feature_idx in range(subgroup_X.shape[1]):
+            values = subgroup_X[:, feature_idx]
+            feature_ranges[feature_idx] = {
+                'min': np.min(values),
+                'max': np.max(values),
+                'mode': stats.mode(values)[0][0] if len(stats.mode(values)[0]) > 0 else np.median(values)
+            }
+        
+        return feature_ranges
+    
+    def _matches_rule(self, input_sample, feature_conditions):
+        """Check if input sample matches a switching rule"""
+        for feature_idx, conditions in feature_conditions.items():
+            value = input_sample[feature_idx]
+            if not (conditions['min'] <= value <= conditions['max']):
+                return False
+        return True
+
+
+# Integration with your existing code
+def enhance_fairify_with_unfairness_detection(model_dir, X_test, y_test, net_func):
+    """
+    Enhance your existing Fairify workflow with unfairness detection
+    """
+    # Load both models
+    ac3_model = load_model(model_dir + 'AC-3.h5')  # Adjust filename as needed
+    ac16_model = load_model(model_dir + 'AC-16.h5')
+    
+    # Extract weights and biases
+    ac3_w, ac3_b = [], []
+    ac16_w, ac16_b = [], []
+    
+    for i in range(len(ac3_model.layers)):
+        ac3_w.append(ac3_model.layers[i].get_weights()[0])
+        ac3_b.append(ac3_model.layers[i].get_weights()[1])
+        
+    for i in range(len(ac16_model.layers)):
+        ac16_w.append(ac16_model.layers[i].get_weights()[0])
+        ac16_b.append(ac16_model.layers[i].get_weights()[1])
+    
+    # Initialize detector
+    detector = UnfairnessRegionDetector(
+        (ac3_w, ac3_b), 
+        (ac16_w, ac16_b), 
+        net_func
+    )
+    
+    # Identify unfair regions
+    unfair_regions = detector.identify_unfair_subgroups(X_test)
+    
+    # Create switching rules
+    switching_rules = detector.create_switching_rules(X_test, unfair_regions)
+    
+    print(f"Found {len(unfair_regions)} unfair regions")
+    print(f"Created {len(switching_rules)} switching rules")
+    
+    # Test the switching logic
+    correct_switches = 0
+    total_switches = 0
+    
+    for i, sample in enumerate(X_test[:1000]):  # Test on subset
+        should_switch, rule_id, improvement = detector.should_use_ac16(
+            sample, switching_rules
+        )
+        
+        if should_switch:
+            total_switches += 1
+            # Verify the switch actually improves fairness
+            # You can add your own verification logic here
+            print(f"Sample {i}: Switch to AC-16 (Rule {rule_id}, Improvement: {improvement:.3f})")
+    
+    return detector, unfair_regions, switching_rules
+
+
+# Usage example for your Fairify integration:
+# Integration with your existing Fairify code:
+
+# First, load both models and analyze unfairness patterns
+print("Analyzing unfairness patterns...")
+ac3_file = None
+ac16_file = None
+for f in model_files:
+    if f.startswith("AC-3."):
+        ac3_file = f
+    elif f.startswith("AC-16."):
+        ac16_file = f
+
+# Only process if we have both models (AC-3 is main, AC-16 for switching)
+if ac3_file and ac16_file:
+    print(f"Found AC-3: {ac3_file}, AC-16 for switching: {ac16_file}")
+    
+    # Load both models
+    ac3_model = load_model(model_dir + ac3_file)
+    ac16_model = load_model(model_dir + ac16_file)
+    
+    # Extract weights from both models
+    ac3_w, ac3_b = [], []
+    ac16_w, ac16_b = [], []
+    
+    for i in range(len(ac3_model.layers)):
+        if ac3_model.layers[i].get_weights():
+            ac3_w.append(ac3_model.layers[i].get_weights()[0])
+            ac3_b.append(ac3_model.layers[i].get_weights()[1])
+    
+    for i in range(len(ac16_model.layers)):
+        if ac16_model.layers[i].get_weights():
+            ac16_w.append(ac16_model.layers[i].get_weights()[0])
+            ac16_b.append(ac16_model.layers[i].get_weights()[1])
+    
+    # Create unfairness detector
+    detector = UnfairnessRegionDetector((ac3_w, ac3_b), (ac16_w, ac16_b), net)
+    unfair_regions = detector.identify_unfair_subgroups(X_test)
+    switching_rules = detector.create_switching_rules(X_test, unfair_regions)
+    
+    print(f"Found {len(unfair_regions)} unfair regions")
+    
+    # Process partitions using AC-3 with switching to AC-16 when unfairness detected
+    for p in tqdm(p_list, desc="Processing AC-3 Partitions with Fairness Switching"):
+        partition_id += 1
+        
+        # Calculate partition center for unfairness detection
+        partition_center = {}
+        for attr in p:
+            if isinstance(p[attr], tuple):
+                partition_center[attr] = (p[attr][0] + p[attr][1]) / 2
+            else:
+                partition_center[attr] = p[attr]
+        
+        # Convert partition center to input format
+        sample_input = np.zeros(13)  # Adjust based on your feature count
+        # TODO: Map partition_center to sample_input based on your feature mapping
+        
+        # Check if this partition requires switching to AC-16
+        should_use_ac16, rule_id, improvement = detector.should_use_ac16(
+            sample_input, switching_rules, threshold=0.1
+        )
+        
+        if should_use_ac16:
+            # Switch to AC-16 for this unfair region
+            model_file = ac16_file
+            w, b = ac16_w, ac16_b
+            print(f"Partition {partition_id}: Switching to AC-16 (unfair region detected, rule {rule_id})")
+        else:
+            # Use default AC-3 model
+            model_file = ac3_file
+            w, b = ac3_w, ac3_b
+            print(f"Partition {partition_id}: Using AC-3 (fair region)")
+        
+        # Continue with your existing verification logic using w, b
+        # ... rest of your partition processing code ...
+
+else:
+    print("AC-3 or AC-16 model not found - cannot perform fairness switching")
+    # Handle the case where models are missing

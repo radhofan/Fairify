@@ -472,8 +472,12 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
 
         # AIF360 Metrics
+        # Replace the AIF360 Metrics section with this corrected version:
+
+        # AIF360 Metrics - USE SWITCHED MODEL PREDICTIONS
         y_true = y_test 
-        y_pred = get_y_pred(net, w, b, X_test)
+        # FIXED: Use switched model predictions instead of original model
+        y_pred = get_y_pred(net, selected_w, selected_b, X_test)  # Use switched model
 
         sex_index = 8  
         prot_attr = X_test[:, sex_index]
@@ -493,9 +497,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         unprivileged_groups = [{'sex': 0}]
         privileged_groups = [{'sex': 1}]
         classified_metric = ClassificationMetric(dataset,
-                                                 dataset_pred,
-                                                 unprivileged_groups=unprivileged_groups,
-                                                 privileged_groups=privileged_groups)
+                                                dataset_pred,
+                                                unprivileged_groups=unprivileged_groups,
+                                                privileged_groups=privileged_groups)
         metric_pred = BinaryLabelDatasetMetric(dataset_pred,
                                                 unprivileged_groups=unprivileged_groups,
                                                 privileged_groups=privileged_groups)
@@ -504,27 +508,45 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print(y_true)
         print("True:", (y_true == True).sum(), "| False:", (y_true == False).sum())
 
-        print("y_pred")
+        print("y_pred (SWITCHED MODEL)")
         print(y_pred)
         print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
 
         print("prot_attr")
         print(prot_attr)
-        
 
         di = classified_metric.disparate_impact()
-        spd =  classified_metric.mean_difference()
+        spd = classified_metric.mean_difference()
         eod = classified_metric.equal_opportunity_difference()
         aod = classified_metric.average_odds_difference()
         erd = classified_metric.error_rate_difference()
         cnt = metric_pred.consistency()
         ti = classified_metric.theil_index()
 
-        # Save metric to csv
+        # ALSO FIXED: Calculate fairness metrics for both models for comparison
+        orig_y_pred = get_y_pred(net, w, b, X_test)  # Original model predictions
+        orig_dataset_pred = pd.concat([X_test_copy, pd.Series(np.array(orig_y_pred).ravel()).rename('income-per-year')], axis=1)
+        orig_dataset_pred = BinaryLabelDataset(df=orig_dataset_pred, label_names=['income-per-year'], protected_attribute_names=['sex'])
+        orig_classified_metric = ClassificationMetric(dataset,
+                                                    orig_dataset_pred,
+                                                    unprivileged_groups=unprivileged_groups,
+                                                    privileged_groups=privileged_groups)
+
+        orig_di = orig_classified_metric.disparate_impact()
+        orig_spd = orig_classified_metric.mean_difference()
+        orig_eod = orig_classified_metric.equal_opportunity_difference()
+
+        print(f"Original Model - DI: {orig_di:.4f}, SPD: {orig_spd:.4f}, EOD: {orig_eod:.4f}")
+        print(f"Switched Model - DI: {di:.4f}, SPD: {spd:.4f}, EOD: {eod:.4f}")
+
+        # Save metric to csv - UPDATED to include both original and switched metrics
         model_prefix = next((prefix for prefix in ["AC"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
-        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
-        data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
+        cols = ['Partition ID', 'Selected Model', 'Verification Result', 'Original Accuracy', 'Original F1 Score', 
+                'Switched Accuracy', 'Switched F1', 'Orig_DI', 'Orig_SPD', 'Orig_EOD', 
+                'Switched_DI', 'Switched_SPD', 'Switched_EOD', 'Switched_AOD', 'Switched_ERD', 'Switched_CNT', 'Switched_TI']
+        data_row = [partition_id, selected_model, str(res), orig_acc, orig_f1, switched_acc, switched_f1, 
+                orig_di, orig_spd, orig_eod, di, spd, eod, aod, erd, cnt, ti]
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')

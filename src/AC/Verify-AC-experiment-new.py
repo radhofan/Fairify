@@ -44,22 +44,6 @@ SOFT_TIMEOUT = 100
 HARD_TIMEOUT = 30 * 60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
-# Load both models for switching
-orig_model = load_model(model_dir + "AC-3.h5")
-fairer_model = load_model(model_dir + "AC-16.h5")
-
-# Extract weights for both models
-orig_w = []
-orig_b = []
-for i in range(len(orig_model.layers)):
-    orig_w.append(orig_model.layers[i].get_weights()[0])
-    orig_b.append(orig_model.layers[i].get_weights()[1])
-
-fairer_w = []
-fairer_b = []
-for i in range(len(fairer_model.layers)):
-    fairer_w.append(fairer_model.layers[i].get_weights()[0])
-    fairer_b.append(fairer_model.layers[i].get_weights()[1])
 
 # In[]
 ## Domain
@@ -95,13 +79,20 @@ print('Number of partitions: ', len(p_list))
 # Shuffle partitions
 shuffle(p_list)
 
+# Store partition results for hybrid prediction
+partition_results = {}  # Format: {partition_bounds: result_status}
+
+def partition_to_key(partition):
+    """Convert partition bounds to a hashable key"""
+    return tuple(sorted([(k, tuple(v)) for k, v in partition.items()]))
+
 # Process each model file with a progress bar
 model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
     # if not model_file.endswith('.h5'):
     #     continue
 
-    if not model_file.startswith("AC-3."):
+    if not model_file.startswith("AC-16."):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -187,6 +178,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     
         print('Verifying ...')
         res = s.check()
+
+        # Inside the partition loop, after res = s.check()
+        partition_key = partition_to_key(p)
+        partition_results[partition_key] = str(res)  # 'sat', 'unsat', or 'unknown'
     
         print(res)
         if res == sat:
@@ -406,29 +401,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         pruned_acc = accuracy_score(sim_y_orig, sim_y)
         pruned_f1 = f1_score(sim_y_orig, sim_y)
 
-        # Model switching logic
-        if res == unsat:
-            # Use original model AC-3
-            selected_model = "AC-3"
-            selected_w = orig_w
-            selected_b = orig_b
-        else:
-            # Use fairer model AC-16 (SAT or UNKNOWN)
-            selected_model = "AC-16"
-            selected_w = fairer_w
-            selected_b = fairer_b
-
-        # Get predictions using the selected model
-        switched_y_pred = get_y_pred(net, selected_w, selected_b, X_test)
-        switched_acc = accuracy_score(y_test, switched_y_pred)
-        switched_f1 = f1_score(y_test, switched_y_pred)
-
-        print(f"Partition {partition_id}: Using model {selected_model}")
-
         # In[]
         res_cols = ['Partition_ID', 'Verification', 'SAT_count', 'UNSAT_count', 'UNK_count', 'h_attempt', 'h_success', \
                     'B_compression', 'S_compression', 'ST_compression', 'H_compression', 'T_compression', 'SV-time', 'S-time', 'HV-Time', 'H-Time', 'Total-Time', 'C-check',\
-                    'V-accurate', 'Original-acc', 'Pruned-acc', 'Acc-dec', 'Selected-Model', 'Switched-Acc', 'Switched-F1', 'C1', 'C2']
+                    'V-accurate', 'Original-acc', 'Pruned-acc', 'Acc-dec', 'C1', 'C2']
     
         result.append(partition_id)
         result.append(str(res))
@@ -453,9 +429,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         result.append(round(pruned_acc, 4))
         result.append('-')
         # result.append(round(orig_acc - pruned_acc, 4))
-        result.append(selected_model)
-        result.append(round(switched_acc, 4))
-        result.append(round(switched_f1, 4))
         result.append(d1)
         result.append(d2)
     
@@ -472,9 +445,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
 
         # AIF360 Metrics
-        # Replace the AIF360 Metrics section with this corrected version:
         y_true = y_test 
-        y_pred = get_y_pred(net, selected_w, selected_b, X_test)  # Switched model predictions
+        y_pred = get_y_pred(net, w, b, X_test)
 
         sex_index = 8  
         prot_attr = X_test[:, sex_index]
@@ -484,64 +456,257 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        X_test_copy.rename(columns={X_test_copy.columns[sex_index]: 'sex'}, inplace=True)
-
+        print('7 column')
+        print(X_test_copy.iloc[:, 8])
+        X_test_copy.rename(columns={X_test_copy.columns[8]: 'sex'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('income-per-year')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('income-per-year')], axis=1)
-
         dataset = BinaryLabelDataset(df=dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
         dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['income-per-year'], protected_attribute_names=['sex'])
-
         unprivileged_groups = [{'sex': 0}]
         privileged_groups = [{'sex': 1}]
-
         classified_metric = ClassificationMetric(dataset,
-                                                dataset_pred,
+                                                 dataset_pred,
+                                                 unprivileged_groups=unprivileged_groups,
+                                                 privileged_groups=privileged_groups)
+        metric_pred = BinaryLabelDatasetMetric(dataset_pred,
                                                 unprivileged_groups=unprivileged_groups,
                                                 privileged_groups=privileged_groups)
 
-        metric_pred = BinaryLabelDatasetMetric(dataset_pred,
-                                            unprivileged_groups=unprivileged_groups,
-                                            privileged_groups=privileged_groups)
+        print("y_true")
+        print(y_true)
+        print("True:", (y_true == True).sum(), "| False:", (y_true == False).sum())
 
-        # Fairness metrics for switched model
+        print("y_pred")
+        print(y_pred)
+        print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
+
+        print("prot_attr")
+        print(prot_attr)
+        
+
         di = classified_metric.disparate_impact()
-        spd = classified_metric.mean_difference()
+        spd =  classified_metric.mean_difference()
         eod = classified_metric.equal_opportunity_difference()
         aod = classified_metric.average_odds_difference()
         erd = classified_metric.error_rate_difference()
         cnt = metric_pred.consistency()
         ti = classified_metric.theil_index()
 
-        # Logging
-        print("y_pred (SWITCHED MODEL)")
-        print(y_pred)
-        print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
-        print("prot_attr")
-        print(prot_attr)
-
-        print(f"Switched Model - DI: {float(di):.4f}, SPD: {float(spd):.4f}, EOD: {float(eod):.4f}, "
-              f"AOD: {float(aod):.4f}, ERD: {float(erd):.4f}, CNT: {float(cnt):.4f}, TI: {float(ti):.4f}")
-
-
-        # Save metric to CSV
+        # Save metric to csv
         model_prefix = next((prefix for prefix in ["AC"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
-        cols = ['Partition ID', 'Selected Model', 'Verification Result', 'Switched Accuracy', 'Switched F1', 
-                'Switched_DI', 'Switched_SPD', 'Switched_EOD', 'Switched_AOD', 'Switched_ERD', 'Switched_CNT', 'Switched_TI']
-        data_row = [partition_id, selected_model, str(res), switched_acc, switched_f1, di, spd, eod, aod, erd, cnt, ti]
-        data_row = [
-            partition_id, selected_model, str(res), switched_acc, switched_f1,
-            float(di), float(spd), float(eod), float(aod), float(erd), float(cnt), float(ti)
-        ]
-
+        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
+        data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')
             if not file_exists:
                 wr.writerow(cols)
+            
             wr.writerow(data_row)
-
+        
         if cumulative_time > HARD_TIMEOUT:
             print('==================  COMPLETED MODEL ' + model_file)
             break
+
+
+def find_data_partition(data_point, p_list):
+    """Find which partition a data point belongs to"""
+    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                     'capital-loss', 'hours-per-week', 'native-country']
+    
+    for partition in p_list:
+        belongs_to_partition = True
+        for i, feature in enumerate(feature_names):
+            if feature in partition:
+                min_val, max_val = partition[feature]
+                if not (min_val <= data_point[i] <= max_val):
+                    belongs_to_partition = False
+                    break
+        if belongs_to_partition:
+            return partition
+    return None
+
+def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list):
+    """Predict using hybrid approach based on partition fairness"""
+    partition = find_data_partition(data_point, p_list)
+    
+    if partition is None:
+        # Partition not found, use original model AC-3
+        return model_ac3.predict(data_point.reshape(1, -1))[0]
+    
+    partition_key = partition_to_key(partition)
+    
+    if partition_key not in partition_results:
+        # Partition result not saved/found, use original model AC-3
+        return model_ac3.predict(data_point.reshape(1, -1))[0]
+    
+    result_status = partition_results[partition_key]
+    
+    if result_status == 'sat':  # Unfair partition
+        # Use original model AC-3
+        return model_ac3.predict(data_point.reshape(1, -1))[0]
+    else:  # 'unsat' or 'unknown' - fair or uncertain
+        # Use fairer model AC-16
+        return model_ac16.predict(data_point.reshape(1, -1))[0]
+    
+# After processing all models and partitions - COMPLETE HYBRID EVALUATION
+
+# Load the two models for hybrid prediction
+model_ac3 = load_model('Fairify/models/adult/AC-3.h5')  # Original model
+model_ac16 = load_model('Fairify/models/adult/AC-16.h5')  # Fairer model
+
+# Function to determine which partition a data point belongs to
+def find_data_partition(data_point, p_list):
+    """Find which partition a data point belongs to"""
+    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                     'capital-loss', 'hours-per-week', 'native-country']
+    
+    for partition in p_list:
+        belongs_to_partition = True
+        for i, feature in enumerate(feature_names):
+            if feature in partition:
+                min_val, max_val = partition[feature]
+                if not (min_val <= data_point[i] <= max_val):
+                    belongs_to_partition = False
+                    break
+        if belongs_to_partition:
+            return partition
+    return None
+
+def partition_to_key(partition):
+    """Convert partition bounds to a hashable key"""
+    return tuple(sorted([(k, tuple(v)) for k, v in partition.items()]))
+
+def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list):
+    """Predict using hybrid approach based on partition fairness"""
+    partition = find_data_partition(data_point, p_list)
+    
+    if partition is None:
+        # Partition not found, use original model AC-3
+        return model_ac3.predict(data_point.reshape(1, -1))[0]
+    
+    partition_key = partition_to_key(partition)
+    
+    if partition_key not in partition_results:
+        # Partition result not saved/found, use original model AC-3
+        return model_ac3.predict(data_point.reshape(1, -1))[0]
+    
+    result_status = partition_results[partition_key]
+    
+    if result_status == 'sat':  # Unfair partition
+        # Use original model AC-3
+        return model_ac3.predict(data_point.reshape(1, -1))[0]
+    else:  # 'unsat' or 'unknown' - fair or uncertain
+        # Use fairer model AC-16
+        return model_ac16.predict(data_point.reshape(1, -1))[0]
+
+# Evaluate hybrid approach on test set
+print("Evaluating Hybrid Prediction Approach...")
+hybrid_predictions = []
+ac3_predictions = []
+ac16_predictions = []
+
+for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
+    data_point = X_test[i]
+    
+    # Hybrid prediction
+    hybrid_pred = hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
+    hybrid_predictions.append(hybrid_pred)
+    
+    # Individual model predictions for comparison
+    ac3_pred = model_ac3.predict(data_point.reshape(1, -1))[0]
+    ac16_pred = model_ac16.predict(data_point.reshape(1, -1))[0]
+    ac3_predictions.append(ac3_pred)
+    ac16_predictions.append(ac16_pred)
+
+# Convert to binary predictions
+hybrid_predictions = np.array(hybrid_predictions) > 0.5
+ac3_predictions = np.array(ac3_predictions) > 0.5
+ac16_predictions = np.array(ac16_predictions) > 0.5
+
+# Calculate accuracy metrics
+hybrid_accuracy = accuracy_score(y_test, hybrid_predictions)
+ac3_accuracy = accuracy_score(y_test, ac3_predictions)
+ac16_accuracy = accuracy_score(y_test, ac16_predictions)
+
+print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
+print(f"AC-3 (Original) Accuracy: {ac3_accuracy:.4f}")
+print(f"AC-16 (Fairer) Accuracy: {ac16_accuracy:.4f}")
+
+# Calculate fairness metrics for hybrid approach
+sex_index = 8
+prot_attr = X_test[:, sex_index]
+
+# Create datasets for fairness evaluation
+X_test_df = pd.DataFrame(X_test)
+X_test_df.rename(columns={X_test_df.columns[8]: 'sex'}, inplace=True)
+
+# Hybrid predictions dataset
+hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions, name='income-per-year')], axis=1)
+hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+# True labels dataset
+true_dataset = pd.concat([X_test_df, pd.Series(y_test, name='income-per-year')], axis=1)
+true_dataset = BinaryLabelDataset(df=true_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+# Calculate fairness metrics
+unprivileged_groups = [{'sex': 0}]
+privileged_groups = [{'sex': 1}]
+
+hybrid_metric = ClassificationMetric(true_dataset, hybrid_dataset,
+                                   unprivileged_groups=unprivileged_groups,
+                                   privileged_groups=privileged_groups)
+
+hybrid_di = hybrid_metric.disparate_impact()
+hybrid_spd = hybrid_metric.mean_difference()
+hybrid_eod = hybrid_metric.equal_opportunity_difference()
+hybrid_aod = hybrid_metric.average_odds_difference()
+
+print(f"\nHybrid Approach Fairness Metrics:")
+print(f"Disparate Impact: {hybrid_di:.4f}")
+print(f"Statistical Parity Difference: {hybrid_spd:.4f}")
+print(f"Equal Opportunity Difference: {hybrid_eod:.4f}")
+print(f"Average Odds Difference: {hybrid_aod:.4f}")
+
+# Save results
+hybrid_results_file = result_dir + 'hybrid_approach_results.csv'
+hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD']
+hybrid_data = [
+    ['Hybrid', hybrid_accuracy, hybrid_di, hybrid_spd, hybrid_eod, hybrid_aod],
+    ['AC-3 Original', ac3_accuracy, '-', '-', '-', '-'],
+    ['AC-16 Fairer', ac16_accuracy, '-', '-', '-', '-']
+]
+
+with open(hybrid_results_file, 'w', newline='') as fp:
+    wr = csv.writer(fp, dialect='excel')
+    wr.writerow(hybrid_cols)
+    for row in hybrid_data:
+        wr.writerow(row)
+
+print(f"\nResults saved to: {hybrid_results_file}")
+
+# Save partition statistics
+partition_stats_file = result_dir + 'partition_statistics.csv'
+sat_count_total = sum(1 for result in partition_results.values() if result == 'sat')
+unsat_count_total = sum(1 for result in partition_results.values() if result == 'unsat')
+unk_count_total = sum(1 for result in partition_results.values() if result == 'unknown')
+
+partition_stats = [
+    ['Total Partitions', len(partition_results)],
+    ['SAT (Unfair)', sat_count_total],
+    ['UNSAT (Fair)', unsat_count_total],
+    ['Unknown', unk_count_total],
+    ['SAT Percentage', f"{(sat_count_total/len(partition_results)*100):.2f}%" if partition_results else "0%"]
+]
+
+with open(partition_stats_file, 'w', newline='') as fp:
+    wr = csv.writer(fp, dialect='excel')
+    wr.writerow(['Metric', 'Value'])
+    for row in partition_stats:
+        wr.writerow(row)
+
+print(f"Partition statistics saved to: {partition_stats_file}")

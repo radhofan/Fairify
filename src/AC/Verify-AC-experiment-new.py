@@ -644,6 +644,11 @@ hybrid_predictions_binary = hybrid_predictions > 0.5
 ac3_predictions_binary = ac3_predictions > 0.5
 ac16_predictions_binary = ac16_predictions > 0.5
 
+# Calculate accuracy metrics
+hybrid_accuracy = accuracy_score(y_test, hybrid_predictions_binary)
+ac3_accuracy = accuracy_score(y_test, ac3_predictions_binary)
+ac16_accuracy = accuracy_score(y_test, ac16_predictions_binary)
+
 print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 print(f"AC-3 (Original) Accuracy: {ac3_accuracy:.4f}")
 print(f"AC-16 (Fairer) Accuracy: {ac16_accuracy:.4f}")

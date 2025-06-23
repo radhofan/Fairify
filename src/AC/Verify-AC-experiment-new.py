@@ -587,22 +587,26 @@ def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
     
     if partition is None:
         # Partition not found, use original model AC-3
-        return model_ac3.predict(data_point.reshape(1, -1))[0]
+        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     partition_key = partition_to_key(partition)
     
     if partition_key not in partition_results:
         # Partition result not saved/found, use original model AC-3
-        return model_ac3.predict(data_point.reshape(1, -1))[0]
+        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     result_status = partition_results[partition_key]
     
     if result_status == 'sat':  # Unfair partition
         # Use original model AC-3
-        return model_ac3.predict(data_point.reshape(1, -1))[0]
+        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     else:  # 'unsat' or 'unknown' - fair or uncertain
         # Use fairer model AC-16
-        return model_ac16.predict(data_point.reshape(1, -1))[0]
+        pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 
 # Evaluate hybrid approach on test set
 print("Evaluating Hybrid Prediction Approach...")
@@ -613,25 +617,32 @@ ac16_predictions = []
 for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
     data_point = X_test[i]
     
-    # Hybrid prediction
+    # Hybrid prediction - flatten to ensure 1D
     hybrid_pred = hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
+    if isinstance(hybrid_pred, np.ndarray):
+        hybrid_pred = hybrid_pred.flatten()[0]  # Take first element if array
     hybrid_predictions.append(hybrid_pred)
     
-    # Individual model predictions for comparison
-    ac3_pred = model_ac3.predict(data_point.reshape(1, -1))[0]
-    ac16_pred = model_ac16.predict(data_point.reshape(1, -1))[0]
+    # Individual model predictions for comparison - flatten to ensure 1D
+    ac3_pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+    if isinstance(ac3_pred, np.ndarray):
+        ac3_pred = ac3_pred.flatten()[0]
     ac3_predictions.append(ac3_pred)
+    
+    ac16_pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
+    if isinstance(ac16_pred, np.ndarray):
+        ac16_pred = ac16_pred.flatten()[0]
     ac16_predictions.append(ac16_pred)
 
-# Convert to binary predictions
-hybrid_predictions = np.array(hybrid_predictions) > 0.5
-ac3_predictions = np.array(ac3_predictions) > 0.5
-ac16_predictions = np.array(ac16_predictions) > 0.5
+# Convert to numpy arrays and ensure 1D
+hybrid_predictions = np.array(hybrid_predictions).flatten()
+ac3_predictions = np.array(ac3_predictions).flatten()
+ac16_predictions = np.array(ac16_predictions).flatten()
 
-# Calculate accuracy metrics
-hybrid_accuracy = accuracy_score(y_test, hybrid_predictions)
-ac3_accuracy = accuracy_score(y_test, ac3_predictions)
-ac16_accuracy = accuracy_score(y_test, ac16_predictions)
+# Convert to binary predictions
+hybrid_predictions_binary = hybrid_predictions > 0.5
+ac3_predictions_binary = ac3_predictions > 0.5
+ac16_predictions_binary = ac16_predictions > 0.5
 
 print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 print(f"AC-3 (Original) Accuracy: {ac3_accuracy:.4f}")

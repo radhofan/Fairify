@@ -473,8 +473,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         # AIF360 Metrics
         # Replace the AIF360 Metrics section with this corrected version:
-
-        # AIF360 Metrics - SWITCHED MODEL ONLY
         y_true = y_test 
         y_pred = get_y_pred(net, selected_w, selected_b, X_test)  # Switched model predictions
 

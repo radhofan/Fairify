@@ -474,10 +474,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         # AIF360 Metrics
         # Replace the AIF360 Metrics section with this corrected version:
 
-        # AIF360 Metrics - USE SWITCHED MODEL PREDICTIONS
+        # AIF360 Metrics - SWITCHED MODEL ONLY
         y_true = y_test 
-        # FIXED: Use switched model predictions instead of original model
-        y_pred = get_y_pred(net, selected_w, selected_b, X_test)  # Use switched model
+        y_pred = get_y_pred(net, selected_w, selected_b, X_test)  # Switched model predictions
 
         sex_index = 8  
         prot_attr = X_test[:, sex_index]
@@ -487,34 +486,27 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        print('7 column')
-        print(X_test_copy.iloc[:, 8])
-        X_test_copy.rename(columns={X_test_copy.columns[8]: 'sex'}, inplace=True)
+        X_test_copy.rename(columns={X_test_copy.columns[sex_index]: 'sex'}, inplace=True)
+
         dataset = pd.concat([X_test_copy, y_true.rename('income-per-year')], axis=1)
         dataset_pred = pd.concat([X_test_copy, y_pred.rename('income-per-year')], axis=1)
+
         dataset = BinaryLabelDataset(df=dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
         dataset_pred = BinaryLabelDataset(df=dataset_pred, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
         unprivileged_groups = [{'sex': 0}]
         privileged_groups = [{'sex': 1}]
+
         classified_metric = ClassificationMetric(dataset,
                                                 dataset_pred,
                                                 unprivileged_groups=unprivileged_groups,
                                                 privileged_groups=privileged_groups)
+
         metric_pred = BinaryLabelDatasetMetric(dataset_pred,
-                                                unprivileged_groups=unprivileged_groups,
-                                                privileged_groups=privileged_groups)
+                                            unprivileged_groups=unprivileged_groups,
+                                            privileged_groups=privileged_groups)
 
-        print("y_true")
-        print(y_true)
-        print("True:", (y_true == True).sum(), "| False:", (y_true == False).sum())
-
-        print("y_pred (SWITCHED MODEL)")
-        print(y_pred)
-        print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
-
-        print("prot_attr")
-        print(prot_attr)
-
+        # Fairness metrics for switched model
         di = classified_metric.disparate_impact()
         spd = classified_metric.mean_difference()
         eod = classified_metric.equal_opportunity_difference()
@@ -523,38 +515,29 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         cnt = metric_pred.consistency()
         ti = classified_metric.theil_index()
 
-        # ALSO FIXED: Calculate fairness metrics for both models for comparison
-        orig_y_pred = get_y_pred(net, w, b, X_test)  # Original model predictions
-        orig_dataset_pred = pd.concat([X_test_copy, pd.Series(np.array(orig_y_pred).ravel()).rename('income-per-year')], axis=1)
-        orig_dataset_pred = BinaryLabelDataset(df=orig_dataset_pred, label_names=['income-per-year'], protected_attribute_names=['sex'])
-        orig_classified_metric = ClassificationMetric(dataset,
-                                                    orig_dataset_pred,
-                                                    unprivileged_groups=unprivileged_groups,
-                                                    privileged_groups=privileged_groups)
+        # Logging
+        print("y_pred (SWITCHED MODEL)")
+        print(y_pred)
+        print("True:", (y_pred == True).sum(), "| False:", (y_pred == False).sum())
+        print("prot_attr")
+        print(prot_attr)
 
-        orig_di = orig_classified_metric.disparate_impact()
-        orig_spd = orig_classified_metric.mean_difference()
-        orig_eod = orig_classified_metric.equal_opportunity_difference()
+        print(f"Switched Model - DI: {di:.4f}, SPD: {spd:.4f}, EOD: {eod:.4f}, AOD: {aod:.4f}, ERD: {erd:.4f}, CNT: {cnt:.4f}, TI: {ti:.4f}")
 
-        print(f"Original Model - DI: {orig_di:.4f}, SPD: {orig_spd:.4f}, EOD: {orig_eod:.4f}")
-        print(f"Switched Model - DI: {di:.4f}, SPD: {spd:.4f}, EOD: {eod:.4f}")
-
-        # Save metric to csv - UPDATED to include both original and switched metrics
+        # Save metric to CSV
         model_prefix = next((prefix for prefix in ["AC"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-adult-predicted-{model_prefix}-metrics.csv"
-        cols = ['Partition ID', 'Selected Model', 'Verification Result', 'Original Accuracy', 'Original F1 Score', 
-                'Switched Accuracy', 'Switched F1', 'Orig_DI', 'Orig_SPD', 'Orig_EOD', 
+        cols = ['Partition ID', 'Selected Model', 'Verification Result', 'Switched Accuracy', 'Switched F1', 
                 'Switched_DI', 'Switched_SPD', 'Switched_EOD', 'Switched_AOD', 'Switched_ERD', 'Switched_CNT', 'Switched_TI']
-        data_row = [partition_id, selected_model, str(res), orig_acc, orig_f1, switched_acc, switched_f1, 
-                orig_di, orig_spd, orig_eod, di, spd, eod, aod, erd, cnt, ti]
+        data_row = [partition_id, selected_model, str(res), switched_acc, switched_f1, di, spd, eod, aod, erd, cnt, ti]
+
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')
             if not file_exists:
                 wr.writerow(cols)
-            
             wr.writerow(data_row)
-        
+
         if cumulative_time > HARD_TIMEOUT:
             print('==================  COMPLETED MODEL ' + model_file)
             break

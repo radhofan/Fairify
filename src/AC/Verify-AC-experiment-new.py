@@ -520,7 +520,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print("prot_attr")
         print(prot_attr)
 
-        print(f"Switched Model - DI: {di:.4f}, SPD: {spd:.4f}, EOD: {eod:.4f}, AOD: {aod:.4f}, ERD: {erd:.4f}, CNT: {cnt:.4f}, TI: {ti:.4f}")
+        print(f"Switched Model - DI: {float(di):.4f}, SPD: {float(spd):.4f}, EOD: {float(eod):.4f}, "
+              f"AOD: {float(aod):.4f}, ERD: {float(erd):.4f}, CNT: {float(cnt):.4f}, TI: {float(ti):.4f}")
+
 
         # Save metric to CSV
         model_prefix = next((prefix for prefix in ["AC"] if model_file.startswith(prefix)), "unknown")
@@ -528,6 +530,10 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         cols = ['Partition ID', 'Selected Model', 'Verification Result', 'Switched Accuracy', 'Switched F1', 
                 'Switched_DI', 'Switched_SPD', 'Switched_EOD', 'Switched_AOD', 'Switched_ERD', 'Switched_CNT', 'Switched_TI']
         data_row = [partition_id, selected_model, str(res), switched_acc, switched_f1, di, spd, eod, aod, erd, cnt, ti]
+        data_row = [
+            partition_id, selected_model, str(res), switched_acc, switched_f1,
+            float(di), float(spd), float(eod), float(aod), float(erd), float(cnt), float(ti)
+        ]
 
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:

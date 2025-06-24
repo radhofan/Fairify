@@ -529,54 +529,6 @@ def find_data_partition(data_point, p_list):
             return partition
     return None
 
-def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list):
-    """Predict using hybrid approach based on partition fairness"""
-    partition = find_data_partition(data_point, p_list)
-    
-    if partition is None:
-        # Partition not found, use original model AC-3
-        return model_ac3.predict(data_point.reshape(1, -1))[0]
-    
-    partition_key = partition_to_key(partition)
-    
-    if partition_key not in partition_results:
-        # Partition result not saved/found, use original model AC-3
-        return model_ac3.predict(data_point.reshape(1, -1))[0]
-    
-    result_status = partition_results[partition_key]
-    
-    if result_status == 'sat':  # Unfair partition
-        # Use original model AC-3
-        return model_ac3.predict(data_point.reshape(1, -1))[0]
-    else:  # 'unsat' or 'unknown' - fair or uncertain
-        # Use fairer model AC-16
-        return model_ac16.predict(data_point.reshape(1, -1))[0]
-    
-# After processing all models and partitions - COMPLETE HYBRID EVALUATION
-
-# Load the two models for hybrid prediction
-model_ac3 = load_model('Fairify/models/adult/AC-3.h5')  # Original model
-model_ac16 = load_model('Fairify/models/adult/AC-16.h5')  # Fairer model
-
-# Function to determine which partition a data point belongs to
-def find_data_partition(data_point, p_list):
-    """Find which partition a data point belongs to"""
-    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                     'capital-loss', 'hours-per-week', 'native-country']
-    
-    for partition in p_list:
-        belongs_to_partition = True
-        for i, feature in enumerate(feature_names):
-            if feature in partition:
-                min_val, max_val = partition[feature]
-                if not (min_val <= data_point[i] <= max_val):
-                    belongs_to_partition = False
-                    break
-        if belongs_to_partition:
-            return partition
-    return None
-
 def partition_to_key(partition):
     """Convert partition bounds to a hashable key"""
     return tuple(sorted([(k, tuple(v)) for k, v in partition.items()]))
@@ -607,6 +559,12 @@ def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
         # Use fairer model AC-16
         pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+
+# After processing all models and partitions - COMPLETE HYBRID EVALUATION
+
+# Load the two models for hybrid prediction
+model_ac3 = load_model('Fairify/models/adult/AC-3.h5')  # Original model
+model_ac16 = load_model('Fairify/models/adult/AC-16.h5')  # Fairer model
 
 # Evaluate hybrid approach on test set
 print("Evaluating Hybrid Prediction Approach...")
@@ -653,48 +611,67 @@ print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 print(f"AC-3 (Original) Accuracy: {ac3_accuracy:.4f}")
 print(f"AC-16 (Fairer) Accuracy: {ac16_accuracy:.4f}")
 
-# Calculate fairness metrics for hybrid approach
+# Calculate fairness metrics for all approaches
 sex_index = 8
 prot_attr = X_test[:, sex_index]
 
-# Create datasets for fairness evaluation
+# Create base dataframe for fairness evaluation
 X_test_df = pd.DataFrame(X_test)
 X_test_df.rename(columns={X_test_df.columns[8]: 'sex'}, inplace=True)
 
-# Hybrid predictions dataset
-hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions, name='income-per-year')], axis=1)
+# Convert all predictions to binary integers - THIS IS THE KEY FIX
+hybrid_predictions_binary_int = (hybrid_predictions > 0.5).astype(int)
+ac3_predictions_binary_int = (ac3_predictions > 0.5).astype(int)
+ac16_predictions_binary_int = (ac16_predictions > 0.5).astype(int)
+y_test_int = y_test.astype(int)
+
+# Create datasets for fairness evaluation
+hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
 hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
-# True labels dataset
-true_dataset = pd.concat([X_test_df, pd.Series(y_test, name='income-per-year')], axis=1)
+ac3_dataset = pd.concat([X_test_df, pd.Series(ac3_predictions_binary_int, name='income-per-year')], axis=1)
+ac3_dataset = BinaryLabelDataset(df=ac3_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+ac16_dataset = pd.concat([X_test_df, pd.Series(ac16_predictions_binary_int, name='income-per-year')], axis=1)
+ac16_dataset = BinaryLabelDataset(df=ac16_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+true_dataset = pd.concat([X_test_df, pd.Series(y_test_int, name='income-per-year')], axis=1)
 true_dataset = BinaryLabelDataset(df=true_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
-# Calculate fairness metrics
+# Define groups
 unprivileged_groups = [{'sex': 0}]
 privileged_groups = [{'sex': 1}]
 
-hybrid_metric = ClassificationMetric(true_dataset, hybrid_dataset,
-                                   unprivileged_groups=unprivileged_groups,
-                                   privileged_groups=privileged_groups)
+# Calculate fairness metrics for each approach
+def calculate_fairness_metrics(true_ds, pred_ds):
+    metric = ClassificationMetric(true_ds, pred_ds,
+                                unprivileged_groups=unprivileged_groups,
+                                privileged_groups=privileged_groups)
+    return {
+        'di': metric.disparate_impact(),
+        'spd': metric.mean_difference(),
+        'eod': metric.equal_opportunity_difference(),
+        'aod': metric.average_odds_difference()
+    }
 
-hybrid_di = hybrid_metric.disparate_impact()
-hybrid_spd = hybrid_metric.mean_difference()
-hybrid_eod = hybrid_metric.equal_opportunity_difference()
-hybrid_aod = hybrid_metric.average_odds_difference()
+hybrid_metrics = calculate_fairness_metrics(true_dataset, hybrid_dataset)
+ac3_metrics = calculate_fairness_metrics(true_dataset, ac3_dataset)
+ac16_metrics = calculate_fairness_metrics(true_dataset, ac16_dataset)
 
-print(f"\nHybrid Approach Fairness Metrics:")
-print(f"Disparate Impact: {hybrid_di:.4f}")
-print(f"Statistical Parity Difference: {hybrid_spd:.4f}")
-print(f"Equal Opportunity Difference: {hybrid_eod:.4f}")
-print(f"Average Odds Difference: {hybrid_aod:.4f}")
+print(f"\nFairness Metrics Comparison:")
+print(f"{'Approach':<12} {'Accuracy':<10} {'DI':<8} {'SPD':<8} {'EOD':<8} {'AOD':<8}")
+print("-" * 60)
+print(f"{'Hybrid':<12} {hybrid_accuracy:<10.4f} {hybrid_metrics['di']:<8.4f} {hybrid_metrics['spd']:<8.4f} {hybrid_metrics['eod']:<8.4f} {hybrid_metrics['aod']:<8.4f}")
+print(f"{'AC-3':<12} {ac3_accuracy:<10.4f} {ac3_metrics['di']:<8.4f} {ac3_metrics['spd']:<8.4f} {ac3_metrics['eod']:<8.4f} {ac3_metrics['aod']:<8.4f}")
+print(f"{'AC-16':<12} {ac16_accuracy:<10.4f} {ac16_metrics['di']:<8.4f} {ac16_metrics['spd']:<8.4f} {ac16_metrics['eod']:<8.4f} {ac16_metrics['aod']:<8.4f}")
 
-# Save results
+# Save results with complete fairness metrics
 hybrid_results_file = result_dir + 'hybrid_approach_results.csv'
 hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD']
 hybrid_data = [
-    ['Hybrid', hybrid_accuracy, hybrid_di, hybrid_spd, hybrid_eod, hybrid_aod],
-    ['AC-3 Original', ac3_accuracy, '-', '-', '-', '-'],
-    ['AC-16 Fairer', ac16_accuracy, '-', '-', '-', '-']
+    ['Hybrid', hybrid_accuracy, hybrid_metrics['di'], hybrid_metrics['spd'], hybrid_metrics['eod'], hybrid_metrics['aod']],
+    ['AC-3 Original', ac3_accuracy, ac3_metrics['di'], ac3_metrics['spd'], ac3_metrics['eod'], ac3_metrics['aod']],
+    ['AC-16 Fairer', ac16_accuracy, ac16_metrics['di'], ac16_metrics['spd'], ac16_metrics['eod'], ac16_metrics['aod']]
 ]
 
 with open(hybrid_results_file, 'w', newline='') as fp:
@@ -726,3 +703,44 @@ with open(partition_stats_file, 'w', newline='') as fp:
         wr.writerow(row)
 
 print(f"Partition statistics saved to: {partition_stats_file}")
+
+# Additional analysis: Count how many predictions used each model
+partition_usage = {'ac3_used': 0, 'ac16_used': 0, 'no_partition': 0}
+
+for i in range(len(X_test)):
+    data_point = X_test[i]
+    partition = find_data_partition(data_point, p_list)
+    
+    if partition is None:
+        partition_usage['no_partition'] += 1
+    else:
+        partition_key = partition_to_key(partition)
+        if partition_key not in partition_results:
+            partition_usage['no_partition'] += 1
+        else:
+            result_status = partition_results[partition_key]
+            if result_status == 'sat':
+                partition_usage['ac3_used'] += 1
+            else:
+                partition_usage['ac16_used'] += 1
+
+print(f"\nModel Usage Statistics:")
+print(f"AC-3 (Original) used: {partition_usage['ac3_used']} times ({partition_usage['ac3_used']/len(X_test)*100:.2f}%)")
+print(f"AC-16 (Fairer) used: {partition_usage['ac16_used']} times ({partition_usage['ac16_used']/len(X_test)*100:.2f}%)")
+print(f"No partition found: {partition_usage['no_partition']} times ({partition_usage['no_partition']/len(X_test)*100:.2f}%)")
+
+# Save model usage statistics
+usage_stats_file = result_dir + 'model_usage_statistics.csv'
+usage_data = [
+    ['Model', 'Usage Count', 'Usage Percentage'],
+    ['AC-3 (Original)', partition_usage['ac3_used'], f"{partition_usage['ac3_used']/len(X_test)*100:.2f}%"],
+    ['AC-16 (Fairer)', partition_usage['ac16_used'], f"{partition_usage['ac16_used']/len(X_test)*100:.2f}%"],
+    ['No Partition Found', partition_usage['no_partition'], f"{partition_usage['no_partition']/len(X_test)*100:.2f}%"]
+]
+
+with open(usage_stats_file, 'w', newline='') as fp:
+    wr = csv.writer(fp, dialect='excel')
+    for row in usage_data:
+        wr.writerow(row)
+
+print(f"Model usage statistics saved to: {usage_stats_file}")

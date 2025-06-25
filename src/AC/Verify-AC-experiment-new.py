@@ -8,6 +8,7 @@ src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
 sys.path.append(src_dir)
 
 import time
+import csv
 import numpy as np
 from tqdm import tqdm  # Import tqdm for progress bars
 from z3 import *
@@ -83,8 +84,16 @@ shuffle(p_list)
 partition_results = {}  # Format: {partition_bounds: result_status}
 
 def partition_to_key(partition):
-    """Convert partition bounds to a hashable key"""
-    return tuple(sorted([(k, tuple(v)) for k, v in partition.items()]))
+    """Convert partition bounds to a hashable key - FIXED VERSION"""
+    # Sort by attribute name to ensure consistent ordering
+    key_parts = []
+    for attr in sorted(partition.keys()):
+        bounds = partition[attr]
+        if isinstance(bounds, list) and len(bounds) == 2:
+            key_parts.append((attr, bounds[0], bounds[1]))
+        else:
+            key_parts.append((attr, tuple(bounds) if isinstance(bounds, list) else bounds))
+    return tuple(key_parts)
 
 # Process each model file with a progress bar
 model_files = os.listdir(model_dir)
@@ -284,27 +293,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print("class_1_orig: ", class_1_orig)
             print("class_2_orig: ", class_2_orig)
 
-            # Save counterexamples to csv
-            # import csv
-            # cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-            #         'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-            #         'capital-loss', 'hours-per-week', 'native-country']
-            # file_name =  result_dir + 'counterexample-adult-empty.csv'
-            # file_exists = os.path.isfile(file_name)
-            # with open(file_name, "a", newline='') as fp:
-            #     if not file_exists:
-            #         wr = csv.writer(fp, dialect='excel')
-            #         wr.writerow(cols)
-            #     wr = csv.writer(fp)
-            #     csv_row1 = copy.deepcopy(inp1)
-            #     csv_row2 = copy.deepcopy(inp2)
-            #     csv_row1.append(int(class_1))
-            #     csv_row2.append(int(class_2))
-            #     wr.writerow(csv_row1)
-            #     wr.writerow(csv_row2)
-
-            # Save counterexamples to csv
-            import csv
 
             def decode_counterexample(encoded_row, encoders):
                 """Decode numerical values back to original format using the actual encoders"""
@@ -511,34 +499,56 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             break
 
 
-def find_data_partition(data_point, p_list):
-    """Find which partition a data point belongs to"""
+def point_in_partition(point, partition):
+    """Check if a data point falls within partition bounds - FIXED VERSION"""
     feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                     'capital-loss', 'hours-per-week', 'native-country']
+                    'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                    'capital-loss', 'hours-per-week', 'native-country']
     
+    for i, feature_name in enumerate(feature_names):
+        if feature_name in partition:
+            bounds = partition[feature_name]
+            # Handle different bound formats
+            if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                lower, upper = bounds
+                if not (lower <= point[i] <= upper):
+                    return False
+            elif isinstance(bounds, (int, float)):
+                # Single value bounds
+                if point[i] != bounds:
+                    return False
+    return True
+
+def find_partition_for_point(point, p_list):
+    """Find which partition contains the given point - FIXED VERSION"""
     for partition in p_list:
-        belongs_to_partition = True
-        for i, feature in enumerate(feature_names):
-            if feature in partition:
-                min_val, max_val = partition[feature]
-                if not (min_val <= data_point[i] <= max_val):
-                    belongs_to_partition = False
-                    break
-        if belongs_to_partition:
+        if point_in_partition(point, partition):
             return partition
     return None
 
+def find_data_partition(data_point, p_list):
+    """Find which partition a data point belongs to - FIXED VERSION"""
+    return find_partition_for_point(data_point, p_list)
+
 def partition_to_key(partition):
-    """Convert partition bounds to a hashable key"""
-    return tuple(sorted([(k, tuple(v)) for k, v in partition.items()]))
+    """Convert partition bounds to a hashable key - FIXED VERSION"""
+    # Sort by attribute name to ensure consistent ordering
+    key_parts = []
+    for attr in sorted(partition.keys()):
+        bounds = partition[attr]
+        if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+            key_parts.append((attr, bounds[0], bounds[1]))
+        elif isinstance(bounds, (list, tuple)):
+            key_parts.append((attr, tuple(bounds)))
+        else:
+            key_parts.append((attr, bounds))
+    return tuple(key_parts)
 
 def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters):
-    """Predict using hybrid approach based on partition fairness"""
+    """FIXED hybrid prediction function"""
     partition = find_data_partition(data_point, p_list)
     
     if partition is None:
-        # Case 1: Partition not found, use original model AC-3
         debug_counters['no_partition_found'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
@@ -546,25 +556,21 @@ def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list,
     partition_key = partition_to_key(partition)
     
     if partition_key not in partition_results:
-        # Case 2: Partition result not saved/found, use original model AC-3
         debug_counters['partition_result_not_found'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     result_status = partition_results[partition_key]
     
-    if result_status == 'sat':  # Unfair partition
-        # Case 3: Use fairer model AC-16
+    if result_status == 'sat':  # Unfair partition - use fairer model
         debug_counters['sat_unfair_ac16_used'] += 1
         pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
-    elif result_status == 'unsat':  # Fair partition
-        # Case 4: Use original model AC-3
+    elif result_status == 'unsat':  # Fair partition - use original model
         debug_counters['unsat_fair_ac3_used'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
-    else:  # 'unknown' - uncertain
-        # Case 5: Use original model AC-3
+    else:  # 'unknown' - use original model
         debug_counters['unknown_ac3_used'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred

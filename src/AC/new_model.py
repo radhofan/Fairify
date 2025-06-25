@@ -54,91 +54,55 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
     print(f"F1 Score: {f1:.3f}")
     
     # Create AIF360 datasets
-    try:
-        # Original dataset (ground truth)
-        dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
-        
-        # Predicted dataset
-        dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
-        
-        # Dataset metrics (for original data)
-        dataset_metric = BinaryLabelDatasetMetric(
-            dataset_orig, 
-            unprivileged_groups=[{protected_attribute: 0}],  # Assuming 0 is unprivileged
-            privileged_groups=[{protected_attribute: 1}]     # Assuming 1 is privileged
-        )
-        
-        # Classification metrics (comparing predictions to ground truth)
-        classified_metric = ClassificationMetric(
-            dataset_orig, dataset_pred,
-            unprivileged_groups=[{protected_attribute: 0}],
-            privileged_groups=[{protected_attribute: 1}]
-        )
-        
-        # Calculate all fairness metrics
-        di = classified_metric.disparate_impact()
-        spd = classified_metric.mean_difference()
-        eod = classified_metric.equal_opportunity_difference()
-        aod = classified_metric.average_odds_difference()
-        erd = classified_metric.error_rate_difference()
-        ti = classified_metric.theil_index()
-        
-        # For consistency, we need a different metric object
-        from aif360.metrics import SampleDistortionMetric
-        metric_pred = SampleDistortionMetric(
-            dataset_orig, dataset_pred,
-            unprivileged_groups=[{protected_attribute: 0}],
-            privileged_groups=[{protected_attribute: 1}]
-        )
-        cnt = metric_pred.consistency()
-        
-        # Print results
-        print(f"\n=== FAIRNESS METRICS (AIF360) ===")
-        print(f"Disparate Impact (DI): {di:.3f}")
-        print(f"Statistical Parity Difference (SPD): {spd:.3f}")
-        print(f"Equal Opportunity Difference (EOD): {eod:.3f}")
-        print(f"Average Odds Difference (AOD): {aod:.3f}")
-        print(f"Error Rate Difference (ERD): {erd:.3f}")
-        print(f"Consistency (CNT): {cnt:.3f}")
-        print(f"Theil Index (TI): {ti:.3f}")
-        
-        return {
-            'accuracy': acc,
-            'f1_score': f1,
-            'disparate_impact': di,
-            'statistical_parity_diff': spd,
-            'equal_opportunity_diff': eod,
-            'average_odds_diff': aod,
-            'error_rate_diff': erd,
-            'consistency': cnt,
-            'theil_index': ti
-        }
-        
-    except Exception as e:
-        print(f"Error calculating AIF360 metrics: {e}")
-        print("Falling back to basic fairness calculation...")
-        
-        # Fallback to basic calculation
-        sex_values = X_test[:, sex_col_idx]
-        unique_sex = np.unique(sex_values)
-        
-        if len(unique_sex) >= 2:
-            group1_mask = sex_values == unique_sex[0]
-            group2_mask = sex_values == unique_sex[1]
-            
-            group1_positive_rate = np.mean(pred_binary[group1_mask])
-            group2_positive_rate = np.mean(pred_binary[group2_mask])
-            dp_diff = abs(group1_positive_rate - group2_positive_rate)
-            
-            print(f"Basic Demographic Parity Difference: {dp_diff:.3f}")
-            
-            return {
-                'accuracy': acc,
-                'f1_score': f1,
-                'basic_dp_diff': dp_diff
-            }
-        
-        return {'accuracy': acc, 'f1_score': f1}
+    dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
+    
+    # Predicted dataset
+    dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
+    
+    # Dataset metrics (for original data)
+    dataset_metric = BinaryLabelDatasetMetric(
+        dataset_orig, 
+        unprivileged_groups=[{protected_attribute: 0}],  # Assuming 0 is unprivileged
+        privileged_groups=[{protected_attribute: 1}]     # Assuming 1 is privileged
+    )
+    
+    # Classification metrics (comparing predictions to ground truth)
+    classified_metric = ClassificationMetric(
+        dataset_orig, dataset_pred,
+        unprivileged_groups=[{protected_attribute: 0}],
+        privileged_groups=[{protected_attribute: 1}]
+    )
+    
+    # Calculate all fairness metrics
+    di = classified_metric.disparate_impact()
+    spd = classified_metric.mean_difference()
+    eod = classified_metric.equal_opportunity_difference()
+    aod = classified_metric.average_odds_difference()
+    erd = classified_metric.error_rate_difference()
+    ti = classified_metric.theil_index()
+    cnt = classified_metric.consistency()  # CNT directly from ClassificationMetric
+    
+    # Print results
+    print(f"\n=== FAIRNESS METRICS (AIF360) ===")
+    print(f"Disparate Impact (DI): {di:.3f}")
+    print(f"Statistical Parity Difference (SPD): {spd:.3f}")
+    print(f"Equal Opportunity Difference (EOD): {eod:.3f}")
+    print(f"Average Odds Difference (AOD): {aod:.3f}")
+    print(f"Error Rate Difference (ERD): {erd:.3f}")
+    print(f"Consistency (CNT): {cnt:.3f}")
+    print(f"Theil Index (TI): {ti:.3f}")
+    
+    return {
+        'accuracy': acc,
+        'f1_score': f1,
+        'disparate_impact': di,
+        'statistical_parity_diff': spd,
+        'equal_opportunity_diff': eod,
+        'average_odds_diff': aod,
+        'error_rate_diff': erd,
+        'consistency': cnt,
+        'theil_index': ti
+    }
 
 # Load pre-trained adult model
 print("Loading original model...")
@@ -283,6 +247,7 @@ if 'disparate_impact' in original_metrics and 'disparate_impact' in final_metric
     print(f"Equal Opportunity Diff: {original_metrics['equal_opportunity_diff']:.3f} → {final_metrics['equal_opportunity_diff']:.3f}")
     print(f"Average Odds Diff: {original_metrics['average_odds_diff']:.3f} → {final_metrics['average_odds_diff']:.3f}")
     print(f"Error Rate Diff: {original_metrics['error_rate_diff']:.3f} → {final_metrics['error_rate_diff']:.3f}")
+    print(f"Consistency (CNT): {original_metrics['consistency']:.3f} → {final_metrics['consistency']:.3f}")
     print(f"Theil Index: {original_metrics['theil_index']:.3f} → {final_metrics['theil_index']:.3f}")
 
 print(f"Accuracy: {original_metrics['accuracy']:.3f} → {final_metrics['accuracy']:.3f}")

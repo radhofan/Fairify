@@ -501,6 +501,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             break
 
 
+ORIGINAL_MODEL_NAME = "AC-3"  
+FAIRER_MODEL_NAME = "AC-16"   
+
+# Construct file paths dynamically
+ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
+FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
+
 def find_data_partition(point, p_list):
    """Find which partition a data point belongs to"""
    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
@@ -525,96 +532,102 @@ def find_data_partition(point, p_list):
            return partition
    return None
 
-def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters):
-    """FIXED hybrid prediction function"""
+def hybrid_predict(data_point, original_model, fairer_model, partition_results, p_list, debug_counters, 
+                  original_name, fairer_name):
+    """Hybrid prediction function with dynamic model names"""
     partition = find_data_partition(data_point, p_list)
     
     if partition is None:
         debug_counters['no_partition_found'] += 1
-        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     partition_key = partition_to_key(partition)
     
     if partition_key not in partition_results:
         debug_counters['partition_result_not_found'] += 1
-        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     result_status = partition_results[partition_key]
     
     if result_status == 'sat':  # Unfair partition - use fairer model
-        debug_counters['sat_unfair_ac16_used'] += 1
-        pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
+        debug_counters[f'sat_unfair_{fairer_name.lower()}_used'] += 1
+        pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     elif result_status == 'unsat':  # Fair partition - use original model
-        debug_counters['unsat_fair_ac3_used'] += 1
-        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        debug_counters[f'unsat_fair_{original_name.lower()}_used'] += 1
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     else:  # 'unknown' - use original model
-        debug_counters['unknown_ac3_used'] += 1
-        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        debug_counters[f'unknown_{original_name.lower()}_used'] += 1
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 
 # After processing all models and partitions - COMPLETE HYBRID EVALUATION
 
-# Load the two models for hybrid prediction
-model_ac3 = load_model('Fairify/models/adult/AC-3.h5')  # Original model
-model_ac16 = load_model('Fairify/models/adult/AC-16.h5')  # Fairer model
+# Load the two models for hybrid prediction using dynamic paths
+print(f"Loading models:")
+print(f"  Original model: {ORIGINAL_MODEL_PATH}")
+print(f"  Fairer model: {FAIRER_MODEL_PATH}")
 
-# Initialize debug counters
+original_model = load_model(ORIGINAL_MODEL_PATH)
+fairer_model = load_model(FAIRER_MODEL_PATH)
+
+# Initialize debug counters with dynamic keys
 debug_counters = {
     'no_partition_found': 0,           # Case 1: No partition found
     'partition_result_not_found': 0,   # Case 2: Partition found but result not in partition_results
-    'sat_unfair_ac16_used': 0,         # Case 3: SAT (unfair) - use AC-16
-    'unsat_fair_ac3_used': 0,          # Case 4: UNSAT (fair) - use AC-3
-    'unknown_ac3_used': 0              # Case 5: Unknown - use AC-3
+    f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used': 0,         # Case 3: SAT (unfair) - use fairer model
+    f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used': 0,       # Case 4: UNSAT (fair) - use original model
+    f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used': 0           # Case 5: Unknown - use original model
 }
 
 # Evaluate hybrid approach on test set
 print("Evaluating Hybrid Prediction Approach...")
 hybrid_predictions = []
-ac3_predictions = []
-ac16_predictions = []
+original_predictions = []
+fairer_predictions = []
 
 for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
     data_point = X_test[i]
     
     # Hybrid prediction - flatten to ensure 1D
-    hybrid_pred = hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters)
+    hybrid_pred = hybrid_predict(data_point, original_model, fairer_model, partition_results, p_list, 
+                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
     if isinstance(hybrid_pred, np.ndarray):
         hybrid_pred = hybrid_pred.flatten()[0]  # Take first element if array
     hybrid_predictions.append(hybrid_pred)
     
     # Individual model predictions for comparison - flatten to ensure 1D
-    ac3_pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
-    if isinstance(ac3_pred, np.ndarray):
-        ac3_pred = ac3_pred.flatten()[0]
-    ac3_predictions.append(ac3_pred)
+    orig_pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
+    if isinstance(orig_pred, np.ndarray):
+        orig_pred = orig_pred.flatten()[0]
+    original_predictions.append(orig_pred)
     
-    ac16_pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
-    if isinstance(ac16_pred, np.ndarray):
-        ac16_pred = ac16_pred.flatten()[0]
-    ac16_predictions.append(ac16_pred)
+    fair_pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
+    if isinstance(fair_pred, np.ndarray):
+        fair_pred = fair_pred.flatten()[0]
+    fairer_predictions.append(fair_pred)
 
 # Convert to numpy arrays and ensure 1D
 hybrid_predictions = np.array(hybrid_predictions).flatten()
-ac3_predictions = np.array(ac3_predictions).flatten()
-ac16_predictions = np.array(ac16_predictions).flatten()
+original_predictions = np.array(original_predictions).flatten()
+fairer_predictions = np.array(fairer_predictions).flatten()
 
 # Convert to binary predictions
 hybrid_predictions_binary = hybrid_predictions > 0.5
-ac3_predictions_binary = ac3_predictions > 0.5
-ac16_predictions_binary = ac16_predictions > 0.5
+original_predictions_binary = original_predictions > 0.5
+fairer_predictions_binary = fairer_predictions > 0.5
 
 # Calculate accuracy metrics
 hybrid_accuracy = accuracy_score(y_test, hybrid_predictions_binary)
-ac3_accuracy = accuracy_score(y_test, ac3_predictions_binary)
-ac16_accuracy = accuracy_score(y_test, ac16_predictions_binary)
+original_accuracy = accuracy_score(y_test, original_predictions_binary)
+fairer_accuracy = accuracy_score(y_test, fairer_predictions_binary)
 
 print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
-print(f"AC-3 (Original) Accuracy: {ac3_accuracy:.4f}")
-print(f"AC-16 (Fairer) Accuracy: {ac16_accuracy:.4f}")
+print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
+print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
 
 # Calculate fairness metrics for all approaches
 sex_index = 8
@@ -626,19 +639,19 @@ X_test_df.rename(columns={X_test_df.columns[8]: 'sex'}, inplace=True)
 
 # Convert all predictions to binary integers - THIS IS THE KEY FIX
 hybrid_predictions_binary_int = (hybrid_predictions > 0.5).astype(int)
-ac3_predictions_binary_int = (ac3_predictions > 0.5).astype(int)
-ac16_predictions_binary_int = (ac16_predictions > 0.5).astype(int)
+original_predictions_binary_int = (original_predictions > 0.5).astype(int)
+fairer_predictions_binary_int = (fairer_predictions > 0.5).astype(int)
 y_test_int = y_test.astype(int)
 
 # Create datasets for fairness evaluation
 hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
 hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
-ac3_dataset = pd.concat([X_test_df, pd.Series(ac3_predictions_binary_int, name='income-per-year')], axis=1)
-ac3_dataset = BinaryLabelDataset(df=ac3_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+original_dataset = pd.concat([X_test_df, pd.Series(original_predictions_binary_int, name='income-per-year')], axis=1)
+original_dataset = BinaryLabelDataset(df=original_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
-ac16_dataset = pd.concat([X_test_df, pd.Series(ac16_predictions_binary_int, name='income-per-year')], axis=1)
-ac16_dataset = BinaryLabelDataset(df=ac16_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+fairer_dataset = pd.concat([X_test_df, pd.Series(fairer_predictions_binary_int, name='income-per-year')], axis=1)
+fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
 true_dataset = pd.concat([X_test_df, pd.Series(y_test_int, name='income-per-year')], axis=1)
 true_dataset = BinaryLabelDataset(df=true_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
@@ -660,23 +673,23 @@ def calculate_fairness_metrics(true_ds, pred_ds):
     }
 
 hybrid_metrics = calculate_fairness_metrics(true_dataset, hybrid_dataset)
-ac3_metrics = calculate_fairness_metrics(true_dataset, ac3_dataset)
-ac16_metrics = calculate_fairness_metrics(true_dataset, ac16_dataset)
+original_metrics = calculate_fairness_metrics(true_dataset, original_dataset)
+fairer_metrics = calculate_fairness_metrics(true_dataset, fairer_dataset)
 
 print(f"\nFairness Metrics Comparison:")
 print(f"{'Approach':<12} {'Accuracy':<10} {'DI':<8} {'SPD':<8} {'EOD':<8} {'AOD':<8}")
 print("-" * 60)
 print(f"{'Hybrid':<12} {hybrid_accuracy:<10.4f} {hybrid_metrics['di']:<8.4f} {hybrid_metrics['spd']:<8.4f} {hybrid_metrics['eod']:<8.4f} {hybrid_metrics['aod']:<8.4f}")
-print(f"{'AC-3':<12} {ac3_accuracy:<10.4f} {ac3_metrics['di']:<8.4f} {ac3_metrics['spd']:<8.4f} {ac3_metrics['eod']:<8.4f} {ac3_metrics['aod']:<8.4f}")
-print(f"{'AC-16':<12} {ac16_accuracy:<10.4f} {ac16_metrics['di']:<8.4f} {ac16_metrics['spd']:<8.4f} {ac16_metrics['eod']:<8.4f} {ac16_metrics['aod']:<8.4f}")
+print(f"{ORIGINAL_MODEL_NAME:<12} {original_accuracy:<10.4f} {original_metrics['di']:<8.4f} {original_metrics['spd']:<8.4f} {original_metrics['eod']:<8.4f} {original_metrics['aod']:<8.4f}")
+print(f"{FAIRER_MODEL_NAME:<12} {fairer_accuracy:<10.4f} {fairer_metrics['di']:<8.4f} {fairer_metrics['spd']:<8.4f} {fairer_metrics['eod']:<8.4f} {fairer_metrics['aod']:<8.4f}")
 
 # Save results with complete fairness metrics
 hybrid_results_file = result_dir + 'hybrid_approach_results.csv'
 hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD']
 hybrid_data = [
     ['Hybrid', hybrid_accuracy, hybrid_metrics['di'], hybrid_metrics['spd'], hybrid_metrics['eod'], hybrid_metrics['aod']],
-    ['AC-3 Original', ac3_accuracy, ac3_metrics['di'], ac3_metrics['spd'], ac3_metrics['eod'], ac3_metrics['aod']],
-    ['AC-16 Fairer', ac16_accuracy, ac16_metrics['di'], ac16_metrics['spd'], ac16_metrics['eod'], ac16_metrics['aod']]
+    [f'{ORIGINAL_MODEL_NAME} Original', original_accuracy, original_metrics['di'], original_metrics['spd'], original_metrics['eod'], original_metrics['aod']],
+    [f'{FAIRER_MODEL_NAME} Fairer', fairer_accuracy, fairer_metrics['di'], fairer_metrics['spd'], fairer_metrics['eod'], fairer_metrics['aod']]
 ]
 
 with open(hybrid_results_file, 'w', newline='') as fp:
@@ -714,25 +727,25 @@ print(f"\n" + "="*80)
 print(f"DEBUG: PREDICTION CASE BREAKDOWN")
 print(f"="*80)
 
-# Calculate totals
-total_ac3_used = (debug_counters['no_partition_found'] + 
-                 debug_counters['partition_result_not_found'] + 
-                 debug_counters['unsat_fair_ac3_used'] + 
-                 debug_counters['unknown_ac3_used'])
-total_ac16_used = debug_counters['sat_unfair_ac16_used']
+# Calculate totals using dynamic keys
+total_original_used = (debug_counters['no_partition_found'] + 
+                      debug_counters['partition_result_not_found'] + 
+                      debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used'] + 
+                      debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used'])
+total_fairer_used = debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used']
 total_predictions = sum(debug_counters.values())
 
 # Prepare data for both print and CSV
 debug_data = [
    ['Case', 'Description', 'Model Used', 'Count', 'Percentage'],
-   ['Case 1', 'No partition found', 'AC-3', debug_counters['no_partition_found'], f"{debug_counters['no_partition_found']/len(X_test)*100:.2f}%"],
-   ['Case 2', 'Partition found but result not available', 'AC-3', debug_counters['partition_result_not_found'], f"{debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%"],
-   ['Case 3', 'SAT/Unfair partition', 'AC-16', debug_counters['sat_unfair_ac16_used'], f"{debug_counters['sat_unfair_ac16_used']/len(X_test)*100:.2f}%"],
-   ['Case 4', 'UNSAT/Fair partition', 'AC-3', debug_counters['unsat_fair_ac3_used'], f"{debug_counters['unsat_fair_ac3_used']/len(X_test)*100:.2f}%"],
-   ['Case 5', 'Unknown partition', 'AC-3', debug_counters['unknown_ac3_used'], f"{debug_counters['unknown_ac3_used']/len(X_test)*100:.2f}%"],
+   ['Case 1', 'No partition found', ORIGINAL_MODEL_NAME, debug_counters['no_partition_found'], f"{debug_counters['no_partition_found']/len(X_test)*100:.2f}%"],
+   ['Case 2', 'Partition found but result not available', ORIGINAL_MODEL_NAME, debug_counters['partition_result_not_found'], f"{debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%"],
+   ['Case 3', 'SAT/Unfair partition', FAIRER_MODEL_NAME, debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used'], f"{debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
+   ['Case 4', 'UNSAT/Fair partition', ORIGINAL_MODEL_NAME, debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used'], f"{debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
+   ['Case 5', 'Unknown partition', ORIGINAL_MODEL_NAME, debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used'], f"{debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
    ['', '', '', '', ''],
-   ['SUMMARY', 'Total AC-3 used', 'AC-3', total_ac3_used, f"{total_ac3_used/len(X_test)*100:.2f}%"],
-   ['SUMMARY', 'Total AC-16 used', 'AC-16', total_ac16_used, f"{total_ac16_used/len(X_test)*100:.2f}%"],
+   ['SUMMARY', f'Total {ORIGINAL_MODEL_NAME} used', ORIGINAL_MODEL_NAME, total_original_used, f"{total_original_used/len(X_test)*100:.2f}%"],
+   ['SUMMARY', f'Total {FAIRER_MODEL_NAME} used', FAIRER_MODEL_NAME, total_fairer_used, f"{total_fairer_used/len(X_test)*100:.2f}%"],
    ['SUMMARY', 'Total predictions', 'Both', total_predictions, f"{total_predictions/len(X_test)*100:.2f}%"],
    ['SUMMARY', 'Test set size', '-', len(X_test), '100.00%'],
    ['SUMMARY', 'Verification passed', '-', str(total_predictions == len(X_test)), '-']
@@ -755,3 +768,11 @@ with open(debug_stats_file, 'w', newline='') as fp:
        wr.writerow(row)
 
 print(f"Debug case breakdown saved to: {debug_stats_file}")
+
+print(f"\n" + "="*80)
+print(f"CONFIGURATION SUMMARY")
+print(f"="*80)
+print(f"Original Model: {ORIGINAL_MODEL_NAME} ({ORIGINAL_MODEL_PATH})")
+print(f"Fairer Model: {FAIRER_MODEL_NAME} ({FAIRER_MODEL_PATH})")
+print(f"Hybrid Logic: Use {FAIRER_MODEL_NAME} for unfair partitions, {ORIGINAL_MODEL_NAME} elsewhere")
+print("="*80)

@@ -89,10 +89,12 @@ def partition_to_key(partition):
     key_parts = []
     for attr in sorted(partition.keys()):
         bounds = partition[attr]
-        if isinstance(bounds, list) and len(bounds) == 2:
+        if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
             key_parts.append((attr, bounds[0], bounds[1]))
+        elif isinstance(bounds, (list, tuple)):
+            key_parts.append((attr, tuple(bounds)))
         else:
-            key_parts.append((attr, tuple(bounds) if isinstance(bounds, list) else bounds))
+            key_parts.append((attr, bounds))
     return tuple(key_parts)
 
 # Process each model file with a progress bar
@@ -529,20 +531,6 @@ def find_partition_for_point(point, p_list):
 def find_data_partition(data_point, p_list):
     """Find which partition a data point belongs to - FIXED VERSION"""
     return find_partition_for_point(data_point, p_list)
-
-def partition_to_key(partition):
-    """Convert partition bounds to a hashable key - FIXED VERSION"""
-    # Sort by attribute name to ensure consistent ordering
-    key_parts = []
-    for attr in sorted(partition.keys()):
-        bounds = partition[attr]
-        if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
-            key_parts.append((attr, bounds[0], bounds[1]))
-        elif isinstance(bounds, (list, tuple)):
-            key_parts.append((attr, tuple(bounds)))
-        else:
-            key_parts.append((attr, bounds))
-    return tuple(key_parts)
 
 def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters):
     """FIXED hybrid prediction function"""

@@ -39,15 +39,13 @@ bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new.py
 
 source ~/openrc
 
-bucket_name="bare_metal_experiment_pattern_data"  # Simple, static bucket name
+bucket_name="bare_metal_experiment_pattern_data" 
 file_to_upload="Fairify/src/AC/res/counterexample.csv"
 
 echo
 echo "Uploading results to the object store container $bucket_name"
-# Create the bucket if it doesn't exist
 swift post $bucket_name
 
-# Upload just the counterexamples.csv file
 if [ -f "$file_to_upload" ]; then
     echo "Uploading $file_to_upload"
     swift upload "$bucket_name" "$file_to_upload" --object-name "counterexamples.csv"

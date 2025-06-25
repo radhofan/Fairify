@@ -1,5 +1,3 @@
-###########################################################################################################################
-
 import sys
 import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,70 +12,133 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+from sklearn.metrics import accuracy_score, f1_score
 from utils.verif_utils import *
 
-def measure_fairness(model, X_test, feature_names=None):
-    predictions = model.predict(X_test)
-    pred_binary = (predictions > 0.5).astype(int).flatten()
-    
-    sex_col_idx = 8  
-    if X_test.shape[1] <= sex_col_idx:
-        print(f"Warning: Sex column index {sex_col_idx} out of bounds. Using last column.")
-        sex_col_idx = X_test.shape[1] - 1
-    
-    sex_values = X_test[:, sex_col_idx]
-    unique_sex = np.unique(sex_values)
-    
-    print(f"Sex column values: {unique_sex}")
-    print(f"Sex distribution: {np.bincount(sex_values.astype(int))}")
-    
-    if len(unique_sex) >= 2:
-        group1_mask = sex_values == unique_sex[0]
-        group2_mask = sex_values == unique_sex[1]
-        
-        group1_positive_rate = np.mean(pred_binary[group1_mask])
-        group2_positive_rate = np.mean(pred_binary[group2_mask])
-        dp_diff = abs(group1_positive_rate - group2_positive_rate)
-        
-        print(f"Group 1 (sex={unique_sex[0]}) positive rate: {group1_positive_rate:.3f}")
-        print(f"Group 2 (sex={unique_sex[1]}) positive rate: {group2_positive_rate:.3f}")
-        print(f"Demographic Parity Difference: {dp_diff:.3f}")
-        
-        return dp_diff
-    else:
-        print("Cannot compute fairness - only one group found in sex column")
-        return None
+# AIF360 imports
+from aif360.datasets import BinaryLabelDataset
+from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 
-def measure_equalized_odds(model, X_test, y_test):
+def create_aif360_dataset(X, y, feature_names, protected_attribute='sex', 
+                         favorable_label=1, unfavorable_label=0):
+    """Create AIF360 BinaryLabelDataset from numpy arrays."""
+    # Convert to DataFrame
+    df = pd.DataFrame(X, columns=feature_names)
+    df['label'] = y
+    
+    # Create AIF360 dataset
+    dataset = BinaryLabelDataset(
+        favorable_label=favorable_label,
+        unfavorable_label=unfavorable_label,
+        df=df,
+        label_names=['label'],
+        protected_attribute_names=[protected_attribute]
+    )
+    return dataset
+
+def measure_fairness_aif360(model, X_test, y_test, feature_names, 
+                           protected_attribute='sex', sex_col_idx=8):
+    """
+    Measure fairness using proper AIF360 metrics.
+    Returns: dict with all fairness metrics
+    """
+    # Get predictions
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
     
-    sex_col_idx = 8  
-    if X_test.shape[1] <= sex_col_idx:
-        sex_col_idx = X_test.shape[1] - 1
+    # Calculate accuracy and F1
+    acc = accuracy_score(y_test, pred_binary)
+    f1 = f1_score(y_test, pred_binary)
     
-    sex_values = X_test[:, sex_col_idx]
-    unique_sex = np.unique(sex_values)
+    print(f"Accuracy: {acc:.3f}")
+    print(f"F1 Score: {f1:.3f}")
     
-    if len(unique_sex) >= 2:
-        group1_mask = sex_values == unique_sex[0]
-        group2_mask = sex_values == unique_sex[1]
+    # Create AIF360 datasets
+    try:
+        # Original dataset (ground truth)
+        dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
         
-        group1_tpr = np.mean(pred_binary[group1_mask & (y_test == 1)])
-        group2_tpr = np.mean(pred_binary[group2_mask & (y_test == 1)])
-        tpr_diff = abs(group1_tpr - group2_tpr)
+        # Predicted dataset
+        dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
         
-        group1_fpr = np.mean(pred_binary[group1_mask & (y_test == 0)])
-        group2_fpr = np.mean(pred_binary[group2_mask & (y_test == 0)])
-        fpr_diff = abs(group1_fpr - group2_fpr)
+        # Dataset metrics (for original data)
+        dataset_metric = BinaryLabelDatasetMetric(
+            dataset_orig, 
+            unprivileged_groups=[{protected_attribute: 0}],  # Assuming 0 is unprivileged
+            privileged_groups=[{protected_attribute: 1}]     # Assuming 1 is privileged
+        )
         
-        print(f"True Positive Rate difference: {tpr_diff:.3f}")
-        print(f"False Positive Rate difference: {fpr_diff:.3f}")
-        print(f"Equalized Odds violation: {max(tpr_diff, fpr_diff):.3f}")
+        # Classification metrics (comparing predictions to ground truth)
+        classified_metric = ClassificationMetric(
+            dataset_orig, dataset_pred,
+            unprivileged_groups=[{protected_attribute: 0}],
+            privileged_groups=[{protected_attribute: 1}]
+        )
         
-        return tpr_diff, fpr_diff
-    
-    return None, None
+        # Calculate all fairness metrics
+        di = classified_metric.disparate_impact()
+        spd = classified_metric.mean_difference()
+        eod = classified_metric.equal_opportunity_difference()
+        aod = classified_metric.average_odds_difference()
+        erd = classified_metric.error_rate_difference()
+        ti = classified_metric.theil_index()
+        
+        # For consistency, we need a different metric object
+        from aif360.metrics import SampleDistortionMetric
+        metric_pred = SampleDistortionMetric(
+            dataset_orig, dataset_pred,
+            unprivileged_groups=[{protected_attribute: 0}],
+            privileged_groups=[{protected_attribute: 1}]
+        )
+        cnt = metric_pred.consistency()
+        
+        # Print results
+        print(f"\n=== FAIRNESS METRICS (AIF360) ===")
+        print(f"Disparate Impact (DI): {di:.3f}")
+        print(f"Statistical Parity Difference (SPD): {spd:.3f}")
+        print(f"Equal Opportunity Difference (EOD): {eod:.3f}")
+        print(f"Average Odds Difference (AOD): {aod:.3f}")
+        print(f"Error Rate Difference (ERD): {erd:.3f}")
+        print(f"Consistency (CNT): {cnt:.3f}")
+        print(f"Theil Index (TI): {ti:.3f}")
+        
+        return {
+            'accuracy': acc,
+            'f1_score': f1,
+            'disparate_impact': di,
+            'statistical_parity_diff': spd,
+            'equal_opportunity_diff': eod,
+            'average_odds_diff': aod,
+            'error_rate_diff': erd,
+            'consistency': cnt,
+            'theil_index': ti
+        }
+        
+    except Exception as e:
+        print(f"Error calculating AIF360 metrics: {e}")
+        print("Falling back to basic fairness calculation...")
+        
+        # Fallback to basic calculation
+        sex_values = X_test[:, sex_col_idx]
+        unique_sex = np.unique(sex_values)
+        
+        if len(unique_sex) >= 2:
+            group1_mask = sex_values == unique_sex[0]
+            group2_mask = sex_values == unique_sex[1]
+            
+            group1_positive_rate = np.mean(pred_binary[group1_mask])
+            group2_positive_rate = np.mean(pred_binary[group2_mask])
+            dp_diff = abs(group1_positive_rate - group2_positive_rate)
+            
+            print(f"Basic Demographic Parity Difference: {dp_diff:.3f}")
+            
+            return {
+                'accuracy': acc,
+                'f1_score': f1,
+                'basic_dp_diff': dp_diff
+            }
+        
+        return {'accuracy': acc, 'f1_score': f1}
 
 # Load pre-trained adult model
 print("Loading original model...")
@@ -86,6 +147,18 @@ print(original_model.summary())
 
 # Load original dataset using your function
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
+
+# Define feature names (you might need to adjust these based on your actual dataset)
+feature_names = ['age', 'workclass', 'fnlwgt', 'education', 'education-num',
+                'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+
+# Ensure we have the right number of feature names
+if len(feature_names) != X_test_orig.shape[1]:
+    print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
+    # Generate generic names if needed
+    feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
+    feature_names[8] = 'sex'  # Ensure sex column is properly named
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
@@ -128,10 +201,10 @@ print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
 print(f"Original positive class ratio: {np.mean(y_train_orig):.3f}")
 print(f"Synthetic positive class ratio: {np.mean(y_train_synth):.3f}")
 
-# === MEASURE ORIGINAL MODEL FAIRNESS ===
-print("\n=== ORIGINAL MODEL FAIRNESS ===")
-original_dp = measure_fairness(original_model, X_test_orig)
-original_tpr_diff, original_fpr_diff = measure_equalized_odds(original_model, X_test_orig, y_test_orig)
+# === MEASURE ORIGINAL MODEL FAIRNESS WITH AIF360 ===
+print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
+original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_orig, 
+                                         feature_names, protected_attribute='sex')
 
 # === TWO-STAGE RETRAINING ===
 print("\n=== TWO-STAGE RETRAINING ===")
@@ -182,7 +255,7 @@ for epoch in range(5):  # Only 5 epochs
         X_batch = X_train_synth[i:i+batch_size]
         y_batch = y_train_synth[i:i+batch_size]
         
-        if len(X_batch) < batch_size // 2:  # Skip very small batches
+        if len(X_batch) < batch_size // 2:  
             continue
             
         # Single gradient step
@@ -197,20 +270,24 @@ for epoch in range(5):  # Only 5 epochs
         print("Stopping early - accuracy threshold reached")
         break
 
-# === FINAL FAIRNESS EVALUATION ===
-print("\n=== FINAL MODEL FAIRNESS ===")
-final_dp = measure_fairness(two_stage_model, X_test_orig)
-final_tpr_diff, final_fpr_diff = measure_equalized_odds(two_stage_model, X_test_orig, y_test_orig)
+# === FINAL FAIRNESS EVALUATION WITH AIF360 ===
+print("\n=== FINAL MODEL FAIRNESS (AIF360) ===")
+final_metrics = measure_fairness_aif360(two_stage_model, X_test_orig, y_test_orig, 
+                                      feature_names, protected_attribute='sex')
 
-# === FINAL ACCURACY EVALUATION ===
-print("\n=== FINAL ACCURACY ===")
-original_acc = original_model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
-final_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
-print(f"Original accuracy: {original_acc:.3f}")
-print(f"Final accuracy: {final_acc:.3f}")
-print(f"Accuracy change: {final_acc - original_acc:.3f}")
+# === COMPARISON SUMMARY ===
+print("\n=== FAIRNESS IMPROVEMENT SUMMARY ===")
+if 'disparate_impact' in original_metrics and 'disparate_impact' in final_metrics:
+    print(f"Disparate Impact: {original_metrics['disparate_impact']:.3f} → {final_metrics['disparate_impact']:.3f}")
+    print(f"Statistical Parity Diff: {original_metrics['statistical_parity_diff']:.3f} → {final_metrics['statistical_parity_diff']:.3f}")
+    print(f"Equal Opportunity Diff: {original_metrics['equal_opportunity_diff']:.3f} → {final_metrics['equal_opportunity_diff']:.3f}")
+    print(f"Average Odds Diff: {original_metrics['average_odds_diff']:.3f} → {final_metrics['average_odds_diff']:.3f}")
+    print(f"Error Rate Diff: {original_metrics['error_rate_diff']:.3f} → {final_metrics['error_rate_diff']:.3f}")
+    print(f"Theil Index: {original_metrics['theil_index']:.3f} → {final_metrics['theil_index']:.3f}")
+
+print(f"Accuracy: {original_metrics['accuracy']:.3f} → {final_metrics['accuracy']:.3f}")
+print(f"F1 Score: {original_metrics['f1_score']:.3f} → {final_metrics['f1_score']:.3f}")
 
 # Save retrained model
 two_stage_model.save('Fairify/models/adult/AC-16.h5')
 print("\nTwo-stage model saved as AC-16.h5")
-

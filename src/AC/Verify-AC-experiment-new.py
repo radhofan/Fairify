@@ -501,36 +501,29 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             break
 
 
-def point_in_partition(point, partition):
-    """Check if a data point falls within partition bounds - FIXED VERSION"""
-    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                    'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                    'capital-loss', 'hours-per-week', 'native-country']
-    
-    for i, feature_name in enumerate(feature_names):
-        if feature_name in partition:
-            bounds = partition[feature_name]
-            # Handle different bound formats
-            if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
-                lower, upper = bounds
-                if not (lower <= point[i] <= upper):
-                    return False
-            elif isinstance(bounds, (int, float)):
-                # Single value bounds
-                if point[i] != bounds:
-                    return False
-    return True
-
-def find_partition_for_point(point, p_list):
-    """Find which partition contains the given point - FIXED VERSION"""
-    for partition in p_list:
-        if point_in_partition(point, partition):
-            return partition
-    return None
-
-def find_data_partition(data_point, p_list):
-    """Find which partition a data point belongs to - FIXED VERSION"""
-    return find_partition_for_point(data_point, p_list)
+def find_data_partition(point, p_list):
+   """Find which partition a data point belongs to"""
+   feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                   'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                   'capital-loss', 'hours-per-week', 'native-country']
+   
+   for partition in p_list:
+       matches = True
+       for i, feature_name in enumerate(feature_names):
+           if feature_name in partition:
+               bounds = partition[feature_name]
+               if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                   lower, upper = bounds
+                   if not (lower <= point[i] <= upper):
+                       matches = False
+                       break
+               elif isinstance(bounds, (int, float)):
+                   if point[i] != bounds:
+                       matches = False
+                       break
+       if matches:
+           return partition
+   return None
 
 def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters):
     """FIXED hybrid prediction function"""
@@ -716,79 +709,49 @@ with open(partition_stats_file, 'w', newline='') as fp:
 
 print(f"Partition statistics saved to: {partition_stats_file}")
 
-# Print debug case counts
+# Print and save debug case breakdown
 print(f"\n" + "="*80)
 print(f"DEBUG: PREDICTION CASE BREAKDOWN")
 print(f"="*80)
-print(f"Case 1 - No partition found (use AC-3): {debug_counters['no_partition_found']} ({debug_counters['no_partition_found']/len(X_test)*100:.2f}%)")
-print(f"Case 2 - Partition found but result not available (use AC-3): {debug_counters['partition_result_not_found']} ({debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%)")
-print(f"Case 3 - SAT/Unfair partition (use AC-16): {debug_counters['sat_unfair_ac16_used']} ({debug_counters['sat_unfair_ac16_used']/len(X_test)*100:.2f}%)")
-print(f"Case 4 - UNSAT/Fair partition (use AC-3): {debug_counters['unsat_fair_ac3_used']} ({debug_counters['unsat_fair_ac3_used']/len(X_test)*100:.2f}%)")
-print(f"Case 5 - Unknown partition (use AC-3): {debug_counters['unknown_ac3_used']} ({debug_counters['unknown_ac3_used']/len(X_test)*100:.2f}%)")
-print(f"="*80)
 
-# Calculate totals for verification
+# Calculate totals
 total_ac3_used = (debug_counters['no_partition_found'] + 
-                  debug_counters['partition_result_not_found'] + 
-                  debug_counters['unsat_fair_ac3_used'] + 
-                  debug_counters['unknown_ac3_used'])
+                 debug_counters['partition_result_not_found'] + 
+                 debug_counters['unsat_fair_ac3_used'] + 
+                 debug_counters['unknown_ac3_used'])
 total_ac16_used = debug_counters['sat_unfair_ac16_used']
 total_predictions = sum(debug_counters.values())
 
-print(f"SUMMARY:")
-print(f"Total AC-3 used: {total_ac3_used} ({total_ac3_used/len(X_test)*100:.2f}%)")
-print(f"Total AC-16 used: {total_ac16_used} ({total_ac16_used/len(X_test)*100:.2f}%)")
-print(f"Total predictions: {total_predictions}")
-print(f"Test set size: {len(X_test)}")
-print(f"Verification: {total_predictions == len(X_test)}")
-print(f"="*80)
-
-# Save detailed debug statistics
-debug_stats_file = result_dir + 'debug_case_breakdown.csv'
+# Prepare data for both print and CSV
 debug_data = [
-    ['Case', 'Description', 'Model Used', 'Count', 'Percentage'],
-    ['Case 1', 'No partition found', 'AC-3', debug_counters['no_partition_found'], f"{debug_counters['no_partition_found']/len(X_test)*100:.2f}%"],
-    ['Case 2', 'Partition found but result not available', 'AC-3', debug_counters['partition_result_not_found'], f"{debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%"],
-    ['Case 3', 'SAT/Unfair partition', 'AC-16', debug_counters['sat_unfair_ac16_used'], f"{debug_counters['sat_unfair_ac16_used']/len(X_test)*100:.2f}%"],
-    ['Case 4', 'UNSAT/Fair partition', 'AC-3', debug_counters['unsat_fair_ac3_used'], f"{debug_counters['unsat_fair_ac3_used']/len(X_test)*100:.2f}%"],
-    ['Case 5', 'Unknown partition', 'AC-3', debug_counters['unknown_ac3_used'], f"{debug_counters['unknown_ac3_used']/len(X_test)*100:.2f}%"],
-    ['', '', '', '', ''],
-    ['SUMMARY', 'Total AC-3 used', 'AC-3', total_ac3_used, f"{total_ac3_used/len(X_test)*100:.2f}%"],
-    ['SUMMARY', 'Total AC-16 used', 'AC-16', total_ac16_used, f"{total_ac16_used/len(X_test)*100:.2f}%"],
-    ['SUMMARY', 'Total predictions', 'Both', total_predictions, f"{total_predictions/len(X_test)*100:.2f}%"]
+   ['Case', 'Description', 'Model Used', 'Count', 'Percentage'],
+   ['Case 1', 'No partition found', 'AC-3', debug_counters['no_partition_found'], f"{debug_counters['no_partition_found']/len(X_test)*100:.2f}%"],
+   ['Case 2', 'Partition found but result not available', 'AC-3', debug_counters['partition_result_not_found'], f"{debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%"],
+   ['Case 3', 'SAT/Unfair partition', 'AC-16', debug_counters['sat_unfair_ac16_used'], f"{debug_counters['sat_unfair_ac16_used']/len(X_test)*100:.2f}%"],
+   ['Case 4', 'UNSAT/Fair partition', 'AC-3', debug_counters['unsat_fair_ac3_used'], f"{debug_counters['unsat_fair_ac3_used']/len(X_test)*100:.2f}%"],
+   ['Case 5', 'Unknown partition', 'AC-3', debug_counters['unknown_ac3_used'], f"{debug_counters['unknown_ac3_used']/len(X_test)*100:.2f}%"],
+   ['', '', '', '', ''],
+   ['SUMMARY', 'Total AC-3 used', 'AC-3', total_ac3_used, f"{total_ac3_used/len(X_test)*100:.2f}%"],
+   ['SUMMARY', 'Total AC-16 used', 'AC-16', total_ac16_used, f"{total_ac16_used/len(X_test)*100:.2f}%"],
+   ['SUMMARY', 'Total predictions', 'Both', total_predictions, f"{total_predictions/len(X_test)*100:.2f}%"],
+   ['SUMMARY', 'Test set size', '-', len(X_test), '100.00%'],
+   ['SUMMARY', 'Verification passed', '-', str(total_predictions == len(X_test)), '-']
 ]
 
+# Print to console (skip header)
+for row in debug_data[1:]:
+   if row[0] == '':
+       print("-" * 80)
+   else:
+       print(f"{row[0]:<12} {row[1]:<45} {row[2]:<8} {row[3]:<8} {row[4]}")
+
+print("="*80)
+
+# Save to CSV
+debug_stats_file = result_dir + 'debug_case_breakdown.csv'
 with open(debug_stats_file, 'w', newline='') as fp:
-    wr = csv.writer(fp, dialect='excel')
-    for row in debug_data:
-        wr.writerow(row)
+   wr = csv.writer(fp, dialect='excel')
+   for row in debug_data:
+       wr.writerow(row)
 
 print(f"Debug case breakdown saved to: {debug_stats_file}")
-
-# FIXED: Additional analysis: Count how many predictions used each model (OLD VERSION - REPLACED BY DEBUG)
-partition_usage = {'ac3_used': total_ac3_used, 'ac16_used': total_ac16_used, 'no_partition': debug_counters['no_partition_found']}
-
-print(f"\nModel Usage Statistics (Legacy):")
-print(f"AC-3 (Original) used: {partition_usage['ac3_used']} times ({partition_usage['ac3_used']/len(X_test)*100:.2f}%)")
-print(f"AC-16 (Fairer) used: {partition_usage['ac16_used']} times ({partition_usage['ac16_used']/len(X_test)*100:.2f}%)")
-print(f"No partition found: {partition_usage['no_partition']} times ({partition_usage['no_partition']/len(X_test)*100:.2f}%)")
-
-# Verify totals
-print(f"Total predictions: {partition_usage['ac3_used'] + partition_usage['ac16_used']}")
-print(f"Should equal test set size: {len(X_test)}")
-
-# Save model usage statistics
-usage_stats_file = result_dir + 'model_usage_statistics.csv'
-usage_data = [
-    ['Model', 'Usage Count', 'Usage Percentage'],
-    ['AC-3 (Original)', partition_usage['ac3_used'], f"{partition_usage['ac3_used']/len(X_test)*100:.2f}%"],
-    ['AC-16 (Fairer)', partition_usage['ac16_used'], f"{partition_usage['ac16_used']/len(X_test)*100:.2f}%"],
-    ['No Partition Found', partition_usage['no_partition'], f"{partition_usage['no_partition']/len(X_test)*100:.2f}%"]
-]
-
-with open(usage_stats_file, 'w', newline='') as fp:
-    wr = csv.writer(fp, dialect='excel')
-    for row in usage_data:
-        wr.writerow(row)
-
-print(f"Model usage statistics saved to: {usage_stats_file}")

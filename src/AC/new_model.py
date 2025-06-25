@@ -36,6 +36,16 @@ def create_aif360_dataset(X, y, feature_names, protected_attribute='sex',
     )
     return dataset
 
+def safe_metric_value(metric_value):
+    """Safely extract scalar value from metric result."""
+    if isinstance(metric_value, np.ndarray):
+        if metric_value.size == 1:
+            return metric_value.item()
+        else:
+            # For arrays with multiple values, return the mean or first value
+            return np.mean(metric_value)
+    return metric_value
+
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
                            protected_attribute='sex', sex_col_idx=8):
     """
@@ -73,36 +83,57 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
         privileged_groups=[{protected_attribute: 1}]
     )
     
-    # Calculate all fairness metrics
-    di = classified_metric.disparate_impact()
-    spd = classified_metric.mean_difference()
-    eod = classified_metric.equal_opportunity_difference()
-    aod = classified_metric.average_odds_difference()
-    erd = classified_metric.error_rate_difference()
-    ti = classified_metric.theil_index()
-    cnt = classified_metric.consistency()  # CNT directly from ClassificationMetric
-    
-    # Print results
-    print(f"\n=== FAIRNESS METRICS (AIF360) ===")
-    print(f"Disparate Impact (DI): {di:.3f}")
-    print(f"Statistical Parity Difference (SPD): {spd:.3f}")
-    print(f"Equal Opportunity Difference (EOD): {eod:.3f}")
-    print(f"Average Odds Difference (AOD): {aod:.3f}")
-    print(f"Error Rate Difference (ERD): {erd:.3f}")
-    print(f"Consistency (CNT): {cnt:.3f}")
-    print(f"Theil Index (TI): {ti:.3f}")
-    
-    return {
-        'accuracy': acc,
-        'f1_score': f1,
-        'disparate_impact': di,
-        'statistical_parity_diff': spd,
-        'equal_opportunity_diff': eod,
-        'average_odds_diff': aod,
-        'error_rate_diff': erd,
-        'consistency': cnt,
-        'theil_index': ti
-    }
+    # Calculate all fairness metrics with safe extraction
+    try:
+        di = safe_metric_value(classified_metric.disparate_impact())
+        spd = safe_metric_value(classified_metric.mean_difference())
+        eod = safe_metric_value(classified_metric.equal_opportunity_difference())
+        aod = safe_metric_value(classified_metric.average_odds_difference())
+        erd = safe_metric_value(classified_metric.error_rate_difference())
+        ti = safe_metric_value(classified_metric.theil_index())
+        
+        # Consistency can be problematic, handle separately
+        try:
+            cnt_raw = classified_metric.consistency()
+            cnt = safe_metric_value(cnt_raw)
+        except Exception as e:
+            print(f"Warning: Could not calculate consistency metric: {e}")
+            cnt = 0.0
+        
+        print(f"\n=== FAIRNESS METRICS (AIF360) ===")
+        print(f"Disparate Impact (DI): {di:.3f}")
+        print(f"Statistical Parity Difference (SPD): {spd:.3f}")
+        print(f"Equal Opportunity Difference (EOD): {eod:.3f}")
+        print(f"Average Odds Difference (AOD): {aod:.3f}")
+        print(f"Error Rate Difference (ERD): {erd:.3f}")
+        print(f"Consistency (CNT): {cnt:.3f}")
+        print(f"Theil Index (TI): {ti:.3f}")
+        
+        return {
+            'accuracy': acc,
+            'f1_score': f1,
+            'disparate_impact': di,
+            'statistical_parity_diff': spd,
+            'equal_opportunity_diff': eod,
+            'average_odds_diff': aod,
+            'error_rate_diff': erd,
+            'consistency': cnt,
+            'theil_index': ti
+        }
+        
+    except Exception as e:
+        print(f"Error calculating fairness metrics: {e}")
+        return {
+            'accuracy': acc,
+            'f1_score': f1,
+            'disparate_impact': 0.0,
+            'statistical_parity_diff': 0.0,
+            'equal_opportunity_diff': 0.0,
+            'average_odds_diff': 0.0,
+            'error_rate_diff': 0.0,
+            'consistency': 0.0,
+            'theil_index': 0.0
+        }
 
 # Load pre-trained adult model
 print("Loading original model...")

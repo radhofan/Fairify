@@ -552,12 +552,12 @@ def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
     result_status = partition_results[partition_key]
     
     if result_status == 'sat':  # Unfair partition
-        # Use original model AC-3
-        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        # Use fairer model AC-16 (FIXED)
+        pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     else:  # 'unsat' or 'unknown' - fair or uncertain
-        # Use fairer model AC-16
-        pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
+        # Use original model AC-3 (FIXED)
+        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 
 # After processing all models and partitions - COMPLETE HYBRID EVALUATION
@@ -704,7 +704,7 @@ with open(partition_stats_file, 'w', newline='') as fp:
 
 print(f"Partition statistics saved to: {partition_stats_file}")
 
-# Additional analysis: Count how many predictions used each model
+# FIXED: Additional analysis: Count how many predictions used each model
 partition_usage = {'ac3_used': 0, 'ac16_used': 0, 'no_partition': 0}
 
 for i in range(len(X_test)):
@@ -712,22 +712,27 @@ for i in range(len(X_test)):
     partition = find_data_partition(data_point, p_list)
     
     if partition is None:
-        partition_usage['no_partition'] += 1
+        partition_usage['ac3_used'] += 1  # AC-3 used when no partition found
+        partition_usage['no_partition'] += 1  # Track that no partition was found
     else:
         partition_key = partition_to_key(partition)
         if partition_key not in partition_results:
-            partition_usage['no_partition'] += 1
+            partition_usage['ac3_used'] += 1  # AC-3 used when partition result not found
         else:
             result_status = partition_results[partition_key]
-            if result_status == 'sat':
-                partition_usage['ac3_used'] += 1
-            else:
-                partition_usage['ac16_used'] += 1
+            if result_status == 'sat':  # Unfair partition
+                partition_usage['ac16_used'] += 1  # AC-16 used for unfair partitions (FIXED)
+            else:  # 'unsat' or 'unknown' - fair or uncertain
+                partition_usage['ac3_used'] += 1  # AC-3 used for fair/unknown partitions (FIXED)
 
 print(f"\nModel Usage Statistics:")
 print(f"AC-3 (Original) used: {partition_usage['ac3_used']} times ({partition_usage['ac3_used']/len(X_test)*100:.2f}%)")
 print(f"AC-16 (Fairer) used: {partition_usage['ac16_used']} times ({partition_usage['ac16_used']/len(X_test)*100:.2f}%)")
 print(f"No partition found: {partition_usage['no_partition']} times ({partition_usage['no_partition']/len(X_test)*100:.2f}%)")
+
+# Verify totals
+print(f"Total predictions: {partition_usage['ac3_used'] + partition_usage['ac16_used']}")
+print(f"Should equal test set size: {len(X_test)}")
 
 # Save model usage statistics
 usage_stats_file = result_dir + 'model_usage_statistics.csv'

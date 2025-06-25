@@ -533,30 +533,39 @@ def partition_to_key(partition):
     """Convert partition bounds to a hashable key"""
     return tuple(sorted([(k, tuple(v)) for k, v in partition.items()]))
 
-def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list):
+def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters):
     """Predict using hybrid approach based on partition fairness"""
     partition = find_data_partition(data_point, p_list)
     
     if partition is None:
-        # Partition not found, use original model AC-3
+        # Case 1: Partition not found, use original model AC-3
+        debug_counters['no_partition_found'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     partition_key = partition_to_key(partition)
     
     if partition_key not in partition_results:
-        # Partition result not saved/found, use original model AC-3
+        # Case 2: Partition result not saved/found, use original model AC-3
+        debug_counters['partition_result_not_found'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
     result_status = partition_results[partition_key]
     
     if result_status == 'sat':  # Unfair partition
-        # Use fairer model AC-16 (FIXED)
+        # Case 3: Use fairer model AC-16
+        debug_counters['sat_unfair_ac16_used'] += 1
         pred = model_ac16.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
-    else:  # 'unsat' or 'unknown' - fair or uncertain
-        # Use original model AC-3 (FIXED)
+    elif result_status == 'unsat':  # Fair partition
+        # Case 4: Use original model AC-3
+        debug_counters['unsat_fair_ac3_used'] += 1
+        pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+    else:  # 'unknown' - uncertain
+        # Case 5: Use original model AC-3
+        debug_counters['unknown_ac3_used'] += 1
         pred = model_ac3.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 
@@ -565,6 +574,15 @@ def hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
 # Load the two models for hybrid prediction
 model_ac3 = load_model('Fairify/models/adult/AC-3.h5')  # Original model
 model_ac16 = load_model('Fairify/models/adult/AC-16.h5')  # Fairer model
+
+# Initialize debug counters
+debug_counters = {
+    'no_partition_found': 0,           # Case 1: No partition found
+    'partition_result_not_found': 0,   # Case 2: Partition found but result not in partition_results
+    'sat_unfair_ac16_used': 0,         # Case 3: SAT (unfair) - use AC-16
+    'unsat_fair_ac3_used': 0,          # Case 4: UNSAT (fair) - use AC-3
+    'unknown_ac3_used': 0              # Case 5: Unknown - use AC-3
+}
 
 # Evaluate hybrid approach on test set
 print("Evaluating Hybrid Prediction Approach...")
@@ -576,7 +594,7 @@ for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
     data_point = X_test[i]
     
     # Hybrid prediction - flatten to ensure 1D
-    hybrid_pred = hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list)
+    hybrid_pred = hybrid_predict(data_point, model_ac3, model_ac16, partition_results, p_list, debug_counters)
     if isinstance(hybrid_pred, np.ndarray):
         hybrid_pred = hybrid_pred.flatten()[0]  # Take first element if array
     hybrid_predictions.append(hybrid_pred)
@@ -704,28 +722,59 @@ with open(partition_stats_file, 'w', newline='') as fp:
 
 print(f"Partition statistics saved to: {partition_stats_file}")
 
-# FIXED: Additional analysis: Count how many predictions used each model
-partition_usage = {'ac3_used': 0, 'ac16_used': 0, 'no_partition': 0}
+# Print debug case counts
+print(f"\n" + "="*80)
+print(f"DEBUG: PREDICTION CASE BREAKDOWN")
+print(f"="*80)
+print(f"Case 1 - No partition found (use AC-3): {debug_counters['no_partition_found']} ({debug_counters['no_partition_found']/len(X_test)*100:.2f}%)")
+print(f"Case 2 - Partition found but result not available (use AC-3): {debug_counters['partition_result_not_found']} ({debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%)")
+print(f"Case 3 - SAT/Unfair partition (use AC-16): {debug_counters['sat_unfair_ac16_used']} ({debug_counters['sat_unfair_ac16_used']/len(X_test)*100:.2f}%)")
+print(f"Case 4 - UNSAT/Fair partition (use AC-3): {debug_counters['unsat_fair_ac3_used']} ({debug_counters['unsat_fair_ac3_used']/len(X_test)*100:.2f}%)")
+print(f"Case 5 - Unknown partition (use AC-3): {debug_counters['unknown_ac3_used']} ({debug_counters['unknown_ac3_used']/len(X_test)*100:.2f}%)")
+print(f"="*80)
 
-for i in range(len(X_test)):
-    data_point = X_test[i]
-    partition = find_data_partition(data_point, p_list)
-    
-    if partition is None:
-        partition_usage['ac3_used'] += 1  # AC-3 used when no partition found
-        partition_usage['no_partition'] += 1  # Track that no partition was found
-    else:
-        partition_key = partition_to_key(partition)
-        if partition_key not in partition_results:
-            partition_usage['ac3_used'] += 1  # AC-3 used when partition result not found
-        else:
-            result_status = partition_results[partition_key]
-            if result_status == 'sat':  # Unfair partition
-                partition_usage['ac16_used'] += 1  # AC-16 used for unfair partitions (FIXED)
-            else:  # 'unsat' or 'unknown' - fair or uncertain
-                partition_usage['ac3_used'] += 1  # AC-3 used for fair/unknown partitions (FIXED)
+# Calculate totals for verification
+total_ac3_used = (debug_counters['no_partition_found'] + 
+                  debug_counters['partition_result_not_found'] + 
+                  debug_counters['unsat_fair_ac3_used'] + 
+                  debug_counters['unknown_ac3_used'])
+total_ac16_used = debug_counters['sat_unfair_ac16_used']
+total_predictions = sum(debug_counters.values())
 
-print(f"\nModel Usage Statistics:")
+print(f"SUMMARY:")
+print(f"Total AC-3 used: {total_ac3_used} ({total_ac3_used/len(X_test)*100:.2f}%)")
+print(f"Total AC-16 used: {total_ac16_used} ({total_ac16_used/len(X_test)*100:.2f}%)")
+print(f"Total predictions: {total_predictions}")
+print(f"Test set size: {len(X_test)}")
+print(f"Verification: {total_predictions == len(X_test)}")
+print(f"="*80)
+
+# Save detailed debug statistics
+debug_stats_file = result_dir + 'debug_case_breakdown.csv'
+debug_data = [
+    ['Case', 'Description', 'Model Used', 'Count', 'Percentage'],
+    ['Case 1', 'No partition found', 'AC-3', debug_counters['no_partition_found'], f"{debug_counters['no_partition_found']/len(X_test)*100:.2f}%"],
+    ['Case 2', 'Partition found but result not available', 'AC-3', debug_counters['partition_result_not_found'], f"{debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%"],
+    ['Case 3', 'SAT/Unfair partition', 'AC-16', debug_counters['sat_unfair_ac16_used'], f"{debug_counters['sat_unfair_ac16_used']/len(X_test)*100:.2f}%"],
+    ['Case 4', 'UNSAT/Fair partition', 'AC-3', debug_counters['unsat_fair_ac3_used'], f"{debug_counters['unsat_fair_ac3_used']/len(X_test)*100:.2f}%"],
+    ['Case 5', 'Unknown partition', 'AC-3', debug_counters['unknown_ac3_used'], f"{debug_counters['unknown_ac3_used']/len(X_test)*100:.2f}%"],
+    ['', '', '', '', ''],
+    ['SUMMARY', 'Total AC-3 used', 'AC-3', total_ac3_used, f"{total_ac3_used/len(X_test)*100:.2f}%"],
+    ['SUMMARY', 'Total AC-16 used', 'AC-16', total_ac16_used, f"{total_ac16_used/len(X_test)*100:.2f}%"],
+    ['SUMMARY', 'Total predictions', 'Both', total_predictions, f"{total_predictions/len(X_test)*100:.2f}%"]
+]
+
+with open(debug_stats_file, 'w', newline='') as fp:
+    wr = csv.writer(fp, dialect='excel')
+    for row in debug_data:
+        wr.writerow(row)
+
+print(f"Debug case breakdown saved to: {debug_stats_file}")
+
+# FIXED: Additional analysis: Count how many predictions used each model (OLD VERSION - REPLACED BY DEBUG)
+partition_usage = {'ac3_used': total_ac3_used, 'ac16_used': total_ac16_used, 'no_partition': debug_counters['no_partition_found']}
+
+print(f"\nModel Usage Statistics (Legacy):")
 print(f"AC-3 (Original) used: {partition_usage['ac3_used']} times ({partition_usage['ac3_used']/len(X_test)*100:.2f}%)")
 print(f"AC-16 (Fairer) used: {partition_usage['ac16_used']} times ({partition_usage['ac16_used']/len(X_test)*100:.2f}%)")
 print(f"No partition found: {partition_usage['no_partition']} times ({partition_usage['no_partition']/len(X_test)*100:.2f}%)")

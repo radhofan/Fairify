@@ -572,7 +572,7 @@ def hybrid_predict(data_point, original_model, fairer_model, partition_results, 
     result_status, partition_key = find_partition_result_for_point(data_point, partition_results)
     
     if result_status is None:
-        # No matching partition found in partition_results - fallback to original model (AC-3)
+        # No matching partition found in partition_results - fallback to original model
         debug_counters['fallback_to_original'] += 1
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
@@ -587,7 +587,7 @@ def hybrid_predict(data_point, original_model, fairer_model, partition_results, 
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     else:  # 'unknown' - fallback to original model
-        debug_counters[f'unknown_fallback_{original_name.lower()}_used'] += 1
+        debug_counters[f'unknown_{original_name.lower()}_used'] += 1
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 
@@ -601,10 +601,9 @@ print(f"  Fairer model: {FAIRER_MODEL_PATH}")
 original_model = load_model(ORIGINAL_MODEL_PATH)
 fairer_model = load_model(FAIRER_MODEL_PATH)
 
-# Initialize debug counters with dynamic keys
+# Initialize debug counters with dynamic keys - FIXED
 debug_counters = {
-    'no_partition_found': 0,           # Case 1: No partition found
-    'partition_result_not_found': 0,   # Case 2: Partition found but result not in partition_results
+    'fallback_to_original': 0,           # Case 1: No partition found
     f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used': 0,         # Case 3: SAT (unfair) - use fairer model
     f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used': 0,       # Case 4: UNSAT (fair) - use original model
     f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used': 0           # Case 5: Unknown - use original model
@@ -770,9 +769,8 @@ print(f"\n" + "="*80)
 print(f"DEBUG: PREDICTION CASE BREAKDOWN")
 print(f"="*80)
 
-# Calculate totals using dynamic keys
-total_original_used = (debug_counters['no_partition_found'] + 
-                      debug_counters['partition_result_not_found'] + 
+# Calculate totals using fixed keys
+total_original_used = (debug_counters['fallback_to_original'] + 
                       debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used'] + 
                       debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used'])
 total_fairer_used = debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used']
@@ -781,8 +779,7 @@ total_predictions = sum(debug_counters.values())
 # Prepare data for both print and CSV
 debug_data = [
    ['Case', 'Description', 'Model Used', 'Count', 'Percentage'],
-   ['Case 1', 'No partition found', ORIGINAL_MODEL_NAME, debug_counters['no_partition_found'], f"{debug_counters['no_partition_found']/len(X_test)*100:.2f}%"],
-   ['Case 2', 'Partition found but result not available', ORIGINAL_MODEL_NAME, debug_counters['partition_result_not_found'], f"{debug_counters['partition_result_not_found']/len(X_test)*100:.2f}%"],
+   ['Case 1', 'No partition found', ORIGINAL_MODEL_NAME, debug_counters['fallback_to_original'], f"{debug_counters['fallback_to_original']/len(X_test)*100:.2f}%"],
    ['Case 3', 'SAT/Unfair partition', FAIRER_MODEL_NAME, debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used'], f"{debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
    ['Case 4', 'UNSAT/Fair partition', ORIGINAL_MODEL_NAME, debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used'], f"{debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
    ['Case 5', 'Unknown partition', ORIGINAL_MODEL_NAME, debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used'], f"{debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],

@@ -691,14 +691,15 @@ def calculate_fairness_metrics(true_ds, pred_ds):
     metric = ClassificationMetric(true_ds, pred_ds,
                                 unprivileged_groups=unprivileged_groups,
                                 privileged_groups=privileged_groups)
+    # Convert numpy arrays to scalars using .item() or float()
     return {
-        'di': metric.disparate_impact(),
-        'spd': metric.mean_difference(),
-        'eod': metric.equal_opportunity_difference(),
-        'aod': metric.average_odds_difference(),
-        'error_rate_diff': metric.error_rate_difference(),
-        'consistency': metric.consistency(),
-        'theil_index': metric.theil_index()
+        'di': float(metric.disparate_impact()),
+        'spd': float(metric.mean_difference()),
+        'eod': float(metric.equal_opportunity_difference()),
+        'aod': float(metric.average_odds_difference()),
+        'error_rate_diff': float(metric.error_rate_difference()),
+        'consistency': float(metric.consistency()),
+        'theil_index': float(metric.theil_index())
     }
 
 hybrid_metrics = calculate_fairness_metrics(true_dataset, hybrid_dataset)

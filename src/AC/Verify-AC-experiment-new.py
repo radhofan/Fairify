@@ -625,8 +625,8 @@ for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
     data_point = X_test[i]
     
     # Hybrid prediction - flatten to ensure 1D
-    hybrid_pred = hybrid_predict(data_point, original_model, fairer_model, partition_results, p_list, 
-                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
+    hybrid_pred = hybrid_predict(data_point, original_model, fairer_model, partition_results, 
+                                    debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
     if isinstance(hybrid_pred, np.ndarray):
         hybrid_pred = hybrid_pred.flatten()[0]  # Take first element if array
     hybrid_predictions.append(hybrid_pred)

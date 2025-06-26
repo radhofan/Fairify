@@ -193,6 +193,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         # Inside the partition loop, after res = s.check()
         partition_key = partition_to_key(p)
         partition_results[partition_key] = str(res)  # 'sat', 'unsat', or 'unknown'
+
+        print("Partition:", partition_key)
+        print("Result:", partition_results[partition_key])
     
         print(res)
         if res == sat:
@@ -669,7 +672,10 @@ def calculate_fairness_metrics(true_ds, pred_ds):
         'di': metric.disparate_impact(),
         'spd': metric.mean_difference(),
         'eod': metric.equal_opportunity_difference(),
-        'aod': metric.average_odds_difference()
+        'aod': metric.average_odds_difference(),
+        'error_rate_diff': metric.error_rate_difference(),
+        'consistency': metric.consistency(),
+        'theil_index': metric.theil_index()
     }
 
 hybrid_metrics = calculate_fairness_metrics(true_dataset, hybrid_dataset)
@@ -677,19 +683,32 @@ original_metrics = calculate_fairness_metrics(true_dataset, original_dataset)
 fairer_metrics = calculate_fairness_metrics(true_dataset, fairer_dataset)
 
 print(f"\nFairness Metrics Comparison:")
-print(f"{'Approach':<12} {'Accuracy':<10} {'DI':<8} {'SPD':<8} {'EOD':<8} {'AOD':<8}")
-print("-" * 60)
-print(f"{'Hybrid':<12} {hybrid_accuracy:<10.4f} {hybrid_metrics['di']:<8.4f} {hybrid_metrics['spd']:<8.4f} {hybrid_metrics['eod']:<8.4f} {hybrid_metrics['aod']:<8.4f}")
-print(f"{ORIGINAL_MODEL_NAME:<12} {original_accuracy:<10.4f} {original_metrics['di']:<8.4f} {original_metrics['spd']:<8.4f} {original_metrics['eod']:<8.4f} {original_metrics['aod']:<8.4f}")
-print(f"{FAIRER_MODEL_NAME:<12} {fairer_accuracy:<10.4f} {fairer_metrics['di']:<8.4f} {fairer_metrics['spd']:<8.4f} {fairer_metrics['eod']:<8.4f} {fairer_metrics['aod']:<8.4f}")
+print(f"{'Approach':<12} {'Accuracy':<10} {'DI':<8} {'SPD':<8} {'EOD':<8} {'AOD':<8} {'ERD':<8} {'CNT':<8} {'TI':<8}")
+print("-" * 100)
+print(f"{'Hybrid':<12} {hybrid_accuracy:<10.4f} {hybrid_metrics['di']:<8.4f} {hybrid_metrics['spd']:<8.4f} {hybrid_metrics['eod']:<8.4f} {hybrid_metrics['aod']:<8.4f} {hybrid_metrics['error_rate_diff']:<8.4f} {hybrid_metrics['consistency']:<8.4f} {hybrid_metrics['theil_index']:<8.4f}")
+print(f"{ORIGINAL_MODEL_NAME:<12} {original_accuracy:<10.4f} {original_metrics['di']:<8.4f} {original_metrics['spd']:<8.4f} {original_metrics['eod']:<8.4f} {original_metrics['aod']:<8.4f} {original_metrics['error_rate_diff']:<8.4f} {original_metrics['consistency']:<8.4f} {original_metrics['theil_index']:<8.4f}")
+print(f"{FAIRER_MODEL_NAME:<12} {fairer_accuracy:<10.4f} {fairer_metrics['di']:<8.4f} {fairer_metrics['spd']:<8.4f} {fairer_metrics['eod']:<8.4f} {fairer_metrics['aod']:<8.4f} {fairer_metrics['error_rate_diff']:<8.4f} {fairer_metrics['consistency']:<8.4f} {fairer_metrics['theil_index']:<8.4f}")
+
+# Print detailed before/after comparison
+print(f"\n" + "="*80)
+print(f"DETAILED FAIRNESS IMPROVEMENT ANALYSIS")
+print(f"="*80)
+print(f"Disparate Impact: {original_metrics['di']:.3f} → {hybrid_metrics['di']:.3f}")
+print(f"Statistical Parity Diff: {original_metrics['spd']:.3f} → {hybrid_metrics['spd']:.3f}")
+print(f"Equal Opportunity Diff: {original_metrics['eod']:.3f} → {hybrid_metrics['eod']:.3f}")
+print(f"Average Odds Diff: {original_metrics['aod']:.3f} → {hybrid_metrics['aod']:.3f}")
+print(f"Error Rate Diff: {original_metrics['error_rate_diff']:.3f} → {hybrid_metrics['error_rate_diff']:.3f}")
+print(f"Consistency (CNT): {original_metrics['consistency']:.3f} → {hybrid_metrics['consistency']:.3f}")
+print(f"Theil Index: {original_metrics['theil_index']:.3f} → {hybrid_metrics['theil_index']:.3f}")
+print("="*80)
 
 # Save results with complete fairness metrics
 hybrid_results_file = result_dir + 'hybrid_approach_results.csv'
-hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD']
+hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
 hybrid_data = [
-    ['Hybrid', hybrid_accuracy, hybrid_metrics['di'], hybrid_metrics['spd'], hybrid_metrics['eod'], hybrid_metrics['aod']],
-    [f'{ORIGINAL_MODEL_NAME} Original', original_accuracy, original_metrics['di'], original_metrics['spd'], original_metrics['eod'], original_metrics['aod']],
-    [f'{FAIRER_MODEL_NAME} Fairer', fairer_accuracy, fairer_metrics['di'], fairer_metrics['spd'], fairer_metrics['eod'], fairer_metrics['aod']]
+    ['Hybrid', hybrid_accuracy, hybrid_metrics['di'], hybrid_metrics['spd'], hybrid_metrics['eod'], hybrid_metrics['aod'], hybrid_metrics['error_rate_diff'], hybrid_metrics['consistency'], hybrid_metrics['theil_index']],
+    [f'{ORIGINAL_MODEL_NAME} Original', original_accuracy, original_metrics['di'], original_metrics['spd'], original_metrics['eod'], original_metrics['aod'], original_metrics['error_rate_diff'], original_metrics['consistency'], original_metrics['theil_index']],
+    [f'{FAIRER_MODEL_NAME} Fairer', fairer_accuracy, fairer_metrics['di'], fairer_metrics['spd'], fairer_metrics['eod'], fairer_metrics['aod'], fairer_metrics['error_rate_diff'], fairer_metrics['consistency'], fairer_metrics['theil_index']]
 ]
 
 with open(hybrid_results_file, 'w', newline='') as fp:

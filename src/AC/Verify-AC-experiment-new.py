@@ -517,25 +517,20 @@ def key_to_partition(partition_key):
     if not partition_key:
         return partition
     
-    pairs = partition_key.split(',')
-    for pair in pairs:
-        if '=' in pair:
-            feature, value_str = pair.split('=', 1)
-            
-            # Handle range format [lower:upper]
-            if value_str.startswith('[') and value_str.endswith(']') and ':' in value_str:
-                range_str = value_str[1:-1]  # Remove brackets
-                try:
-                    lower, upper = range_str.split(':')
-                    partition[feature] = (float(lower), float(upper))
-                except ValueError:
-                    continue
-            else:
-                # Handle single value
-                try:
-                    partition[feature] = float(value_str)
-                except ValueError:
-                    partition[feature] = value_str
+    # Handle tuple keys in format: ((attr, bound1, bound2), (attr, bound), ...)
+    if isinstance(partition_key, tuple):
+        for key_part in partition_key:
+            if isinstance(key_part, tuple) and len(key_part) >= 2:
+                attr = key_part[0]
+                if len(key_part) == 2:
+                    # Single value: (attr, value)
+                    partition[attr] = key_part[1]
+                elif len(key_part) == 3:
+                    # Range: (attr, lower, upper)
+                    partition[attr] = (key_part[1], key_part[2])
+                else:
+                    # Multiple values: (attr, tuple_of_values)
+                    partition[attr] = key_part[1]
     
     return partition
 

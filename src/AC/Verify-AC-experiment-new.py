@@ -511,49 +511,78 @@ FAIRER_MODEL_NAME = "AC-16"
 ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
 FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 
-def find_data_partition(point, p_list):
-   """Find which partition a data point belongs to"""
-   feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                   'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                   'capital-loss', 'hours-per-week', 'native-country']
-   
-   for partition in p_list:
-       matches = True
-       for i, feature_name in enumerate(feature_names):
-           if feature_name in partition:
-               bounds = partition[feature_name]
-               if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
-                   lower, upper = bounds
-                   if not (lower <= point[i] <= upper):
-                       matches = False
-                       break
-               elif isinstance(bounds, (int, float)):
-                   if point[i] != bounds:
-                       matches = False
-                       break
-       if matches:
-           return partition
-   return None
+def key_to_partition(partition_key):
+    """Convert a partition key back to partition dictionary format"""
+    partition = {}
+    if not partition_key:
+        return partition
+    
+    pairs = partition_key.split(',')
+    for pair in pairs:
+        if '=' in pair:
+            feature, value_str = pair.split('=', 1)
+            
+            # Handle range format [lower:upper]
+            if value_str.startswith('[') and value_str.endswith(']') and ':' in value_str:
+                range_str = value_str[1:-1]  # Remove brackets
+                try:
+                    lower, upper = range_str.split(':')
+                    partition[feature] = (float(lower), float(upper))
+                except ValueError:
+                    continue
+            else:
+                # Handle single value
+                try:
+                    partition[feature] = float(value_str)
+                except ValueError:
+                    partition[feature] = value_str
+    
+    return partition
 
-def hybrid_predict(data_point, original_model, fairer_model, partition_results, p_list, debug_counters, 
+def point_matches_partition(point, partition):
+    """Check if a data point matches a partition"""
+    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                    'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                    'capital-loss', 'hours-per-week', 'native-country']
+    
+    for i, feature_name in enumerate(feature_names):
+        if feature_name in partition:
+            bounds = partition[feature_name]
+            if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                lower, upper = bounds
+                if not (lower <= point[i] <= upper):
+                    return False
+            elif isinstance(bounds, (int, float)):
+                if point[i] != bounds:
+                    return False
+    return True
+
+def find_partition_result_for_point(point, partition_results):
+    """Find partition result directly from partition_results for a given data point"""
+    for partition_key, result_status in partition_results.items():
+        # Convert key back to partition format
+        partition = key_to_partition(partition_key)
+        
+        # Check if point matches this partition
+        if point_matches_partition(point, partition):
+            return result_status, partition_key
+    
+    return None, None
+
+def hybrid_predict(data_point, original_model, fairer_model, partition_results, debug_counters, 
                   original_name, fairer_name):
-    """Hybrid prediction function with dynamic model names"""
-    partition = find_data_partition(data_point, p_list)
+    """Hybrid prediction function - directly searches partition_results"""
     
-    if partition is None:
-        debug_counters['no_partition_found'] += 1
+    # Directly find if data point belongs to any evaluated partition
+    result_status, partition_key = find_partition_result_for_point(data_point, partition_results)
+    
+    if result_status is None:
+        # No matching partition found in partition_results - fallback to original model (AC-3)
+        debug_counters['fallback_to_original'] += 1
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
     
-    partition_key = partition_to_key(partition)
-    
-    if partition_key not in partition_results:
-        debug_counters['partition_result_not_found'] += 1
-        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
-        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
-    
-    result_status = partition_results[partition_key]
-    
+    # Partition found with result
     if result_status == 'sat':  # Unfair partition - use fairer model
         debug_counters[f'sat_unfair_{fairer_name.lower()}_used'] += 1
         pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
@@ -562,8 +591,8 @@ def hybrid_predict(data_point, original_model, fairer_model, partition_results, 
         debug_counters[f'unsat_fair_{original_name.lower()}_used'] += 1
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
-    else:  # 'unknown' - use original model
-        debug_counters[f'unknown_{original_name.lower()}_used'] += 1
+    else:  # 'unknown' - fallback to original model
+        debug_counters[f'unknown_fallback_{original_name.lower()}_used'] += 1
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 

@@ -754,19 +754,6 @@ print(f"{'Hybrid':<12} {hybrid_accuracy:<10.4f} {hybrid_metrics['di']:<8.4f} {hy
 print(f"{ORIGINAL_MODEL_NAME:<12} {original_accuracy:<10.4f} {original_metrics['di']:<8.4f} {original_metrics['spd']:<8.4f} {original_metrics['eod']:<8.4f} {original_metrics['aod']:<8.4f} {original_metrics['error_rate_diff']:<8.4f} {original_metrics['consistency']:<8.4f} {original_metrics['theil_index']:<8.4f}")
 print(f"{FAIRER_MODEL_NAME:<12} {fairer_accuracy:<10.4f} {fairer_metrics['di']:<8.4f} {fairer_metrics['spd']:<8.4f} {fairer_metrics['eod']:<8.4f} {fairer_metrics['aod']:<8.4f} {fairer_metrics['error_rate_diff']:<8.4f} {fairer_metrics['consistency']:<8.4f} {fairer_metrics['theil_index']:<8.4f}")
 
-# Print detailed before/after comparison
-print(f"\n" + "="*80)
-print(f"DETAILED FAIRNESS IMPROVEMENT ANALYSIS")
-print(f"="*80)
-print(f"Disparate Impact: {original_metrics['di']:.3f} → {hybrid_metrics['di']:.3f}")
-print(f"Statistical Parity Diff: {original_metrics['spd']:.3f} → {hybrid_metrics['spd']:.3f}")
-print(f"Equal Opportunity Diff: {original_metrics['eod']:.3f} → {hybrid_metrics['eod']:.3f}")
-print(f"Average Odds Diff: {original_metrics['aod']:.3f} → {hybrid_metrics['aod']:.3f}")
-print(f"Error Rate Diff: {original_metrics['error_rate_diff']:.3f} → {hybrid_metrics['error_rate_diff']:.3f}")
-print(f"Consistency (CNT): {original_metrics['consistency']:.3f} → {hybrid_metrics['consistency']:.3f}")
-print(f"Theil Index: {original_metrics['theil_index']:.3f} → {hybrid_metrics['theil_index']:.3f}")
-print("="*80)
-
 # Save results with complete fairness metrics
 hybrid_results_file = result_dir + 'hybrid_approach_results.csv'
 hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']

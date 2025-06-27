@@ -77,45 +77,45 @@ p_list = partitioned_ranges(A, PA, p_dict, range_dict)
 # p_density = p_list_density(range_dict, p_list, df)
 print('Number of partitions: ', len(p_list))
 
-print("All partitions in p_list:")
-print("=" * 50)
-for i, p in enumerate(p_list):
-    print(f"Partition {i+1}:")
-    partition_str = "{ "
-    for attr, bounds in p.items():
-        partition_str += f"'{attr}': {bounds}, "
-    partition_str = partition_str.rstrip(", ") + " }"
-    print(partition_str)
-    print("-" * 30)
+# print("All partitions in p_list:")
+# print("=" * 50)
+# for i, p in enumerate(p_list):
+#     print(f"Partition {i+1}:")
+#     partition_str = "{ "
+#     for attr, bounds in p.items():
+#         partition_str += f"'{attr}': {bounds}, "
+#     partition_str = partition_str.rstrip(", ") + " }"
+#     print(partition_str)
+#     print("-" * 30)
 
-included_count = 0
-not_found_count = 0
+# included_count = 0
+# not_found_count = 0
 
-attr_names = list(range_dict.keys())
+# attr_names = list(range_dict.keys())
 
-for test_point in X_test:
-   found_in_partition = False
+# for test_point in X_test:
+#    found_in_partition = False
    
-   for partition in p_list:
-       point_fits = True
-       for i, attr in enumerate(attr_names):
-           if attr in partition:
-               bounds = partition[attr]
-               if bounds[0] > test_point[i] or test_point[i] > bounds[1]:
-                   point_fits = False
-                   break
+#    for partition in p_list:
+#        point_fits = True
+#        for i, attr in enumerate(attr_names):
+#            if attr in partition:
+#                bounds = partition[attr]
+#                if bounds[0] > test_point[i] or test_point[i] > bounds[1]:
+#                    point_fits = False
+#                    break
        
-       if point_fits:
-           found_in_partition = True
-           break
+#        if point_fits:
+#            found_in_partition = True
+#            break
    
-   if found_in_partition:
-       included_count += 1
-   else:
-       not_found_count += 1
+#    if found_in_partition:
+#        included_count += 1
+#    else:
+#        not_found_count += 1
 
-print(f"Points in partitions: {included_count}")
-print(f"Points not found: {not_found_count}")
+# print(f"Points in partitions: {included_count}")
+# print(f"Points not found: {not_found_count}")
 
 # Shuffle partitions
 shuffle(p_list)
@@ -793,9 +793,6 @@ debug_data = [
    ['', '', '', '', ''],
    ['SUMMARY', f'Total {ORIGINAL_MODEL_NAME} used', ORIGINAL_MODEL_NAME, total_original_used, f"{total_original_used/len(X_test)*100:.2f}%"],
    ['SUMMARY', f'Total {FAIRER_MODEL_NAME} used', FAIRER_MODEL_NAME, total_fairer_used, f"{total_fairer_used/len(X_test)*100:.2f}%"],
-   ['SUMMARY', 'Total predictions', 'Both', total_predictions, f"{total_predictions/len(X_test)*100:.2f}%"],
-   ['SUMMARY', 'Test set size', '-', len(X_test), '100.00%'],
-   ['SUMMARY', 'Verification passed', '-', str(total_predictions == len(X_test)), '-']
 ]
 
 # Print to console (skip header)

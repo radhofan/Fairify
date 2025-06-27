@@ -545,64 +545,69 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
 
 print(f"partition_results has {len(partition_results)} entries")
+# for partition_key, result_status in partition_results.items():
+#     print(f"Partition: {partition_key}")
+#     print(f"Status: {result_status}")
+#     print()
+status_counts = {}
 for partition_key, result_status in partition_results.items():
-    print(f"Partition: {partition_key}")
-    print(f"Status: {result_status}")
-    print()
+   if result_status in status_counts:
+       status_counts[result_status] += 1
+   else:
+       status_counts[result_status] = 1
+
+print("Status counts:")
+for status, count in status_counts.items():
+   print(f"  {status}: {count}")
 
 ORIGINAL_MODEL_NAME = "AC-3"  
 FAIRER_MODEL_NAME = "AC-16"   
 
-# Construct file paths dynamically
 ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
 FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 
 def key_to_partition(partition_key):
-    partition = {}
-    if not partition_key:
-        return partition
-    
-    if isinstance(partition_key, tuple):
-        for key_part in partition_key:
-            if isinstance(key_part, tuple) and len(key_part) >= 2:
-                attr = key_part[0]
-                if len(key_part) == 3:
-                    # Range: (attr, lower, upper) - convert to list
-                    partition[attr] = [key_part[1], key_part[2]]  # Changed to list
-                elif len(key_part) == 2:
-                    partition[attr] = key_part[1]
-    
-    return partition
-
-def point_matches_partition(point, partition):
-    """Check if a data point matches a partition"""
-    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                    'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                    'capital-loss', 'hours-per-week', 'native-country']
-    
-    for i, feature_name in enumerate(feature_names):
-        if feature_name in partition:
-            bounds = partition[feature_name]
-            if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
-                lower, upper = bounds
-                if not (lower <= point[i] <= upper):
-                    return False
-            elif isinstance(bounds, (int, float)):
-                if point[i] != bounds:
-                    return False
-    return True
+   partition = {}
+   if not partition_key:
+       return partition
+  
+   if isinstance(partition_key, tuple):
+       for key_part in partition_key:
+           if isinstance(key_part, tuple) and len(key_part) >= 2:
+               attr = key_part[0]
+               if len(key_part) == 3:
+                   # Range: (attr, lower, upper) - convert to list
+                   partition[attr] = [key_part[1], key_part[2]]  
+               elif len(key_part) == 2:
+                   partition[attr] = key_part[1]
+  
+   return partition
 
 def find_partition_result_for_point(point, partition_results):
-    """Find partition result directly from partition_results for a given data point"""
-    for partition_key, result_status in partition_results.items():
-        # Convert key back to partition format
-        partition = key_to_partition(partition_key)
-        
-        # Check if point matches this partition
-        if point_matches_partition(point, partition):
-            return result_status, partition_key
-    
-    return None, None
+   """Find partition result directly from partition_results for a given data point"""
+   feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                   'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                   'capital-loss', 'hours-per-week', 'native-country']
+   
+   for partition_key, result_status in partition_results.items():
+       # Convert key back to partition format
+       partition = key_to_partition(partition_key)
+      
+       # Check if point matches this partition
+       for i, feature_name in enumerate(feature_names):
+           if feature_name in partition:
+               bounds = partition[feature_name]
+               if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                   lower, upper = bounds
+                   if not (lower <= point[i] <= upper):
+                       break
+               elif isinstance(bounds, (int, float)):
+                   if point[i] != bounds:
+                       break
+       else:
+           return result_status, partition_key
+   
+   return None, None
 
 def hybrid_predict(data_point, original_model, fairer_model, partition_results, debug_counters, 
                   original_name, fairer_name):
@@ -782,28 +787,6 @@ with open(hybrid_results_file, 'w', newline='') as fp:
         wr.writerow(row)
 
 print(f"\nResults saved to: {hybrid_results_file}")
-
-# Save partition statistics
-partition_stats_file = result_dir + 'partition_statistics.csv'
-sat_count_total = sum(1 for result in partition_results.values() if result == 'sat')
-unsat_count_total = sum(1 for result in partition_results.values() if result == 'unsat')
-unk_count_total = sum(1 for result in partition_results.values() if result == 'unknown')
-
-partition_stats = [
-    ['Total Partitions', len(partition_results)],
-    ['SAT (Unfair)', sat_count_total],
-    ['UNSAT (Fair)', unsat_count_total],
-    ['Unknown', unk_count_total],
-    ['SAT Percentage', f"{(sat_count_total/len(partition_results)*100):.2f}%" if partition_results else "0%"]
-]
-
-with open(partition_stats_file, 'w', newline='') as fp:
-    wr = csv.writer(fp, dialect='excel')
-    wr.writerow(['Metric', 'Value'])
-    for row in partition_stats:
-        wr.writerow(row)
-
-print(f"Partition statistics saved to: {partition_stats_file}")
 
 # Print and save debug case breakdown
 print(f"\n" + "="*80)

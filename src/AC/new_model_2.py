@@ -206,6 +206,7 @@ print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
 original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_orig, 
                                          feature_names, protected_attribute='sex')
 
+
 # === TWO-STAGE RETRAINING ===
 print("\n=== TWO-STAGE RETRAINING ===")
 two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
@@ -215,9 +216,9 @@ optimizer = Adam(learning_rate=0.05)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # -----------------------------
-# 🎯 Stage 1: Fine-tune on Original Data First
+# Phase 1: Fine-tune on Original Data
 # -----------------------------
-print("\n--- PHASE 1: Fine-tuning on Original Data ---")
+print("\n--- Phase 1: Fine-tuning on Original Data ---")
 history_acc = two_stage_model.fit(
     X_train_orig, y_train_orig,
     epochs=8,
@@ -235,7 +236,7 @@ for layer in two_stage_model.layers:
         original_weights.append([])
 
 # -----------------------------
-# 🎯 Build Adversarial Architecture AFTER Stage 1
+# Build Adversarial Architecture
 # -----------------------------
 # Extract the hidden layer (dense_8) from your predictor
 predictor_input = two_stage_model.input
@@ -254,51 +255,45 @@ adversarial_model = Model(inputs=predictor_input,
                          outputs=[predictor_output, discriminator_output])
 
 # -----------------------------
-# 🧪 Stage 2: Adversarial Debiasing Training
+# Phase 2: Adversarial Training with Synthetic Data
 # -----------------------------
-print("\n--- PHASE 2: Adversarial Debiasing Training ---")
+print("\n--- Phase 2: Adversarial Training with X_synth ---")
 
-# Combine original data and counterexamples
-X_combined = np.vstack([X_train_orig, X_train_synth])
-y_combined = np.hstack([y_train_orig, y_train_synth])
-protected_combined = np.hstack([protected_train_orig, protected_train_synth])
+lambda_adversarial = 0.01  # Keep it low to prevent collapse
 
-# CRITICAL FIX: Much lower lambda and separate training phases
-lambda_adversarial = 0.01  # Much lower to prevent collapse
-
-# Phase 2a: Train discriminator first to get it working
+# Train discriminator first to get it working
 print("Training discriminator...")
 discriminator_model = Model(inputs=predictor_input, outputs=discriminator_output)
 discriminator_model.compile(optimizer=Adam(learning_rate=0.001), 
                            loss='binary_crossentropy', 
                            metrics=['accuracy'])
 
-# Train discriminator for a few steps
-for i in range(0, min(len(X_combined), 320), 32):  # Just a few batches
-    X_batch = X_combined[i:i+32]
-    protected_batch = protected_combined[i:i+32]
+# Train discriminator for a few batches on synthetic data
+for i in range(0, min(len(X_train_synth), 320), 32):
+    X_batch = X_train_synth[i:i+32]
+    protected_batch = protected_train_synth[i:i+32]
     discriminator_model.train_on_batch(X_batch, protected_batch)
 
-# Phase 2b: Adversarial training with alternating updates
+# Adversarial training with alternating updates
 adversarial_model.compile(
-    optimizer=Adam(learning_rate=0.00001),
+    optimizer=Adam(learning_rate=0.0001),
     loss={'dense_9': 'binary_crossentropy', 'discriminator_out': 'binary_crossentropy'},
     loss_weights={'dense_9': 1.0, 'discriminator_out': -lambda_adversarial},
     metrics={'dense_9': 'accuracy', 'discriminator_out': 'accuracy'}
 )
 
-# Training loop with alternating updates
+# Training loop with X_synth
 for epoch in range(5):
     print(f"\nEpoch {epoch+1}/5")
     
-    # Shuffle data
-    indices = np.random.permutation(len(X_combined))
-    X_shuffled = X_combined[indices]
-    y_shuffled = y_combined[indices]
-    protected_shuffled = protected_combined[indices]
+    # Shuffle synthetic data
+    indices = np.random.permutation(len(X_train_synth))
+    X_shuffled = X_train_synth[indices]
+    y_shuffled = y_train_synth[indices]
+    protected_shuffled = protected_train_synth[indices]
     
     batch_size = 32
-    for i in range(0, len(X_combined), batch_size):
+    for i in range(0, len(X_train_synth), batch_size):
         X_batch = X_shuffled[i:i+batch_size]
         y_batch = y_shuffled[i:i+batch_size]
         protected_batch = protected_shuffled[i:i+batch_size]
@@ -320,8 +315,7 @@ for epoch in range(5):
     val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
     print(f"Validation accuracy: {val_acc:.4f}")
     
-    # More lenient stopping condition
-    if val_acc < 0.80:  # Lower threshold
+    if val_acc < 0.70:
         print("Stopping early - accuracy threshold reached")
         break
 

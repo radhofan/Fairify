@@ -77,6 +77,17 @@ p_list = partitioned_ranges(A, PA, p_dict, range_dict)
 # p_density = p_list_density(range_dict, p_list, df)
 print('Number of partitions: ', len(p_list))
 
+print("All partitions in p_list:")
+print("=" * 50)
+for i, p in enumerate(p_list):
+    print(f"Partition {i+1}:")
+    partition_str = "{ "
+    for attr, bounds in p.items():
+        partition_str += f"'{attr}': {bounds}, "
+    partition_str = partition_str.rstrip(", ") + " }"
+    print(partition_str)
+    print("-" * 30)
+
 # Shuffle partitions
 shuffle(p_list)
 

@@ -209,26 +209,7 @@ original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_o
 print("\n=== TWO-STAGE RETRAINING ===")
 two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
 
-# -----------------------------
-# 🎯 Build Adversarial Architecture
-# -----------------------------
-# Extract the hidden layer (dense_8) from your predictor
-predictor_input = two_stage_model.input
-hidden_layer = two_stage_model.get_layer('dense_8').output  
-predictor_output = two_stage_model.output
-
-# Build discriminator network
-discriminator_hidden = Dense(64, activation='relu')(hidden_layer)
-discriminator_hidden = Dropout(0.3)(discriminator_hidden)
-discriminator_hidden = Dense(32, activation='relu')(discriminator_hidden)
-discriminator_output = Dense(1, activation='sigmoid', name='discriminator_out')(discriminator_hidden)
-
-# Create the combined adversarial model
-from tensorflow.keras.models import Model
-adversarial_model = Model(inputs=predictor_input, 
-                         outputs=[predictor_output, discriminator_output])
-
-# Compile
+# Compile the original model first
 optimizer = Adam(learning_rate=0.05)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
@@ -253,6 +234,25 @@ for layer in two_stage_model.layers:
         original_weights.append([])
 
 # -----------------------------
+# 🎯 Build Adversarial Architecture AFTER Stage 1
+# -----------------------------
+# Extract the hidden layer (dense_8) from your predictor
+predictor_input = two_stage_model.input
+hidden_layer = two_stage_model.get_layer('dense_8').output  
+predictor_output = two_stage_model.output
+
+# Build discriminator network
+discriminator_hidden = Dense(64, activation='relu')(hidden_layer)
+discriminator_hidden = Dropout(0.3)(discriminator_hidden)
+discriminator_hidden = Dense(32, activation='relu')(discriminator_hidden)
+discriminator_output = Dense(1, activation='sigmoid', name='discriminator_out')(discriminator_hidden)
+
+# Create the combined adversarial model
+from tensorflow.keras.models import Model
+adversarial_model = Model(inputs=predictor_input, 
+                         outputs=[predictor_output, discriminator_output])
+
+# -----------------------------
 # 🧪 Stage 2: Adversarial Debiasing Training
 # -----------------------------
 print("\n--- PHASE 2: Adversarial Debiasing Training ---")
@@ -260,47 +260,67 @@ print("\n--- PHASE 2: Adversarial Debiasing Training ---")
 # Combine original data and counterexamples
 X_combined = np.vstack([X_train_orig, X_train_synth])
 y_combined = np.hstack([y_train_orig, y_train_synth])
+protected_combined = np.hstack([protected_train_orig, protected_train_synth])
 
-# You need to provide protected attributes for discriminator training
-# Assuming you have protected attributes for both datasets
-protected_combined = np.hstack([protected_train_orig, protected_train_synth])  # You need to define these
+# CRITICAL FIX: Much lower lambda and separate training phases
+lambda_adversarial = 0.01  # Much lower to prevent collapse
 
-# Compile adversarial model
-lambda_adversarial = 0.1  # Controls fairness vs accuracy trade-off
+# Phase 2a: Train discriminator first to get it working
+print("Training discriminator...")
+discriminator_model = Model(inputs=predictor_input, outputs=discriminator_output)
+discriminator_model.compile(optimizer=Adam(learning_rate=0.001), 
+                           loss='binary_crossentropy', 
+                           metrics=['accuracy'])
+
+# Train discriminator for a few steps
+for i in range(0, min(len(X_combined), 320), 32):  # Just a few batches
+    X_batch = X_combined[i:i+32]
+    protected_batch = protected_combined[i:i+32]
+    discriminator_model.train_on_batch(X_batch, protected_batch)
+
+# Phase 2b: Adversarial training with alternating updates
 adversarial_model.compile(
     optimizer=Adam(learning_rate=0.0001),
-    loss={'dense_9': 'binary_crossentropy',  # Your output layer name
-          'discriminator_out': 'binary_crossentropy'},
-    loss_weights={'dense_9': 1.0, 'discriminator_out': -lambda_adversarial},  # Note the negative weight!
+    loss={'dense_9': 'binary_crossentropy', 'discriminator_out': 'binary_crossentropy'},
+    loss_weights={'dense_9': 1.0, 'discriminator_out': -lambda_adversarial},
     metrics={'dense_9': 'accuracy', 'discriminator_out': 'accuracy'}
 )
 
-# Training loop
-for epoch in range(5):  # Only 5 epochs
+# Training loop with alternating updates
+for epoch in range(5):
     print(f"\nEpoch {epoch+1}/5")
     
-    # Train on small batches
-    batch_size = 16
+    # Shuffle data
+    indices = np.random.permutation(len(X_combined))
+    X_shuffled = X_combined[indices]
+    y_shuffled = y_combined[indices]
+    protected_shuffled = protected_combined[indices]
+    
+    batch_size = 32
     for i in range(0, len(X_combined), batch_size):
-        X_batch = X_combined[i:i+batch_size]
-        y_batch = y_combined[i:i+batch_size]
-        protected_batch = protected_combined[i:i+batch_size]
+        X_batch = X_shuffled[i:i+batch_size]
+        y_batch = y_shuffled[i:i+batch_size]
+        protected_batch = protected_shuffled[i:i+batch_size]
         
         if len(X_batch) < batch_size // 2:  
             continue
         
+        # Alternate between discriminator and adversarial training
+        if i % 64 == 0:  # Train discriminator every other batch
+            discriminator_model.train_on_batch(X_batch, protected_batch)
+        
         # Train adversarial model
         adversarial_model.train_on_batch(
             X_batch, 
-            {'dense_9': y_batch, 'discriminator_out': protected_batch}  # Your output layer name
+            {'dense_9': y_batch, 'discriminator_out': protected_batch}
         )
     
-    # Evaluate after each epoch (using original model for consistency)
+    # Evaluate after each epoch
     val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
     print(f"Validation accuracy: {val_acc:.4f}")
     
-    # Stop if accuracy drops too much
-    if val_acc < 0.75:  # Threshold to prevent collapse
+    # More lenient stopping condition
+    if val_acc < 0.70:  # Lower threshold
         print("Stopping early - accuracy threshold reached")
         break
 

@@ -207,19 +207,22 @@ original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_o
                                          feature_names, protected_attribute='sex')
 
 
-# === TWO-STAGE RETRAINING ===
-print("\n=== TWO-STAGE RETRAINING ===")
-two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
+# === GRADIENT SURGERY DEBIASING ===
+print("\n=== GRADIENT SURGERY DEBIASING ===")
+import tensorflow as tf
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import load_model
 
-# Compile the original model first
-optimizer = Adam(learning_rate=0.05)
-two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+# Load and prepare model
+surgery_model = load_model('Fairify/models/adult/AC-3.h5')
 
-# -----------------------------
-# Phase 1: Fine-tune on Original Data
-# -----------------------------
+# Phase 1: Fine-tune on original data first
 print("\n--- Phase 1: Fine-tuning on Original Data ---")
-history_acc = two_stage_model.fit(
+surgery_model.compile(optimizer=Adam(learning_rate=0.05), 
+                     loss='binary_crossentropy', 
+                     metrics=['accuracy'])
+
+history_acc = surgery_model.fit(
     X_train_orig, y_train_orig,
     epochs=8,
     batch_size=32,
@@ -227,96 +230,153 @@ history_acc = two_stage_model.fit(
     verbose=1
 )
 
-# Store original weights for regularization
-original_weights = []
-for layer in two_stage_model.layers:
-    if layer.get_weights():
-        original_weights.append([w.copy() for w in layer.get_weights()])
-    else:
-        original_weights.append([])
+# Phase 2: Gradient Surgery Training
+print("\n--- Phase 2: Gradient Surgery Training ---")
 
-# -----------------------------
-# Build Adversarial Architecture
-# -----------------------------
-# Extract the hidden layer (dense_8) from your predictor
-predictor_input = two_stage_model.input
-hidden_layer = two_stage_model.get_layer('dense_8').output  
-predictor_output = two_stage_model.output
-
-# Build discriminator network
-discriminator_hidden = Dense(64, activation='relu')(hidden_layer)
-discriminator_hidden = Dropout(0.3)(discriminator_hidden)
-discriminator_hidden = Dense(32, activation='relu')(discriminator_hidden)
-discriminator_output = Dense(1, activation='sigmoid', name='discriminator_out')(discriminator_hidden)
-
-# Create the combined adversarial model
-from tensorflow.keras.models import Model
-adversarial_model = Model(inputs=predictor_input, 
-                         outputs=[predictor_output, discriminator_output])
-
-# -----------------------------
-# Phase 2: Adversarial Training with Synthetic Data
-# -----------------------------
-print("\n--- Phase 2: Adversarial Training with X_synth ---")
-
-lambda_adversarial = 0.001  # Keep it low to prevent collapse
-
-# Train discriminator first to get it working
-print("Training discriminator...")
-discriminator_model = Model(inputs=predictor_input, outputs=discriminator_output)
-discriminator_model.compile(optimizer=Adam(learning_rate=0.001), 
-                           loss='binary_crossentropy', 
-                           metrics=['accuracy'])
-
-# Train discriminator for a few batches on synthetic data
-for i in range(0, min(len(X_train_synth), 320), 32):
-    X_batch = X_train_synth[i:i+32]
-    protected_batch = protected_train_synth[i:i+32]
-    discriminator_model.train_on_batch(X_batch, protected_batch)
-
-# Adversarial training with alternating updates
-adversarial_model.compile(
-    optimizer=Adam(learning_rate=0.0001),
-    loss={'dense_9': 'binary_crossentropy', 'discriminator_out': 'binary_crossentropy'},
-    loss_weights={'dense_9': 1.0, 'discriminator_out': -lambda_adversarial},
-    metrics={'dense_9': 'accuracy', 'discriminator_out': 'accuracy'}
-)
-
-# Training loop with X_synth
-for epoch in range(5):
-    print(f"\nEpoch {epoch+1}/5")
+class GradientSurgeryTrainer:
+    def __init__(self, model, task_weight=1.0, fairness_weight=0.1):
+        self.model = model
+        self.task_weight = task_weight
+        self.fairness_weight = fairness_weight
+        self.optimizer = Adam(learning_rate=0.001)
+        
+    def compute_gradients(self, X_batch, y_batch, protected_batch):
+        """Compute both task and fairness gradients"""
+        with tf.GradientTape(persistent=True) as tape:
+            predictions = self.model(X_batch, training=True)
+            
+            # Task loss (main prediction)
+            task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
+            task_loss = tf.reduce_mean(task_loss)
+            
+            # Fairness loss - encourage similar predictions across protected groups
+            # Split by protected attribute
+            group_0_mask = tf.equal(protected_batch, 0)
+            group_1_mask = tf.equal(protected_batch, 1)
+            
+            if tf.reduce_sum(tf.cast(group_0_mask, tf.float32)) > 0 and tf.reduce_sum(tf.cast(group_1_mask, tf.float32)) > 0:
+                group_0_preds = tf.boolean_mask(predictions, group_0_mask)
+                group_1_preds = tf.boolean_mask(predictions, group_1_mask)
+                
+                # Fairness loss: minimize difference in mean predictions
+                fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
+            else:
+                fairness_loss = 0.0
+        
+        # Compute gradients
+        task_grads = tape.gradient(task_loss, self.model.trainable_variables)
+        fairness_grads = tape.gradient(fairness_loss, self.model.trainable_variables)
+        
+        del tape
+        return task_grads, fairness_grads, task_loss, fairness_loss
     
+    def project_gradients(self, task_grads, fairness_grads):
+        """Perform gradient surgery - remove conflicting components"""
+        surgery_grads = []
+        
+        for task_grad, fairness_grad in zip(task_grads, fairness_grads):
+            if task_grad is None or fairness_grad is None:
+                surgery_grads.append(task_grad)
+                continue
+                
+            # Flatten gradients for dot product
+            task_flat = tf.reshape(task_grad, [-1])
+            fairness_flat = tf.reshape(fairness_grad, [-1])
+            
+            # Compute dot product
+            dot_product = tf.reduce_sum(task_flat * fairness_flat)
+            
+            # If gradients are conflicting (negative dot product), project
+            if dot_product < 0:
+                # Project fairness gradient onto task gradient
+                fairness_norm_sq = tf.reduce_sum(fairness_flat * fairness_flat)
+                if fairness_norm_sq > 1e-8:
+                    projection = (dot_product / fairness_norm_sq) * fairness_flat
+                    # Remove conflicting component from task gradient
+                    task_corrected = task_flat - projection
+                    surgery_grad = tf.reshape(task_corrected, tf.shape(task_grad))
+                else:
+                    surgery_grad = task_grad
+            else:
+                # No conflict, combine gradients
+                surgery_grad = self.task_weight * task_grad + self.fairness_weight * fairness_grad
+            
+            surgery_grads.append(surgery_grad)
+        
+        return surgery_grads
+    
+    def train_step(self, X_batch, y_batch, protected_batch):
+        """Single training step with gradient surgery"""
+        task_grads, fairness_grads, task_loss, fairness_loss = self.compute_gradients(
+            X_batch, y_batch, protected_batch)
+        
+        # Apply gradient surgery
+        final_grads = self.project_gradients(task_grads, fairness_grads)
+        
+        # Apply gradients
+        self.optimizer.apply_gradients(zip(final_grads, self.model.trainable_variables))
+        
+        return task_loss, fairness_loss
+
+# Initialize gradient surgery trainer
+trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.2)
+
+# Training loop with gradient surgery
+print("Starting gradient surgery training...")
+best_acc = 0
+patience = 0
+
+for epoch in range(10):
+    print(f"\nEpoch {epoch+1}/10")
+    
+    # Use ONLY synthetic counterexamples for training
     # Shuffle synthetic data
     indices = np.random.permutation(len(X_train_synth))
     X_shuffled = X_train_synth[indices]
     y_shuffled = y_train_synth[indices]
     protected_shuffled = protected_train_synth[indices]
     
+    epoch_task_loss = 0
+    epoch_fairness_loss = 0
+    num_batches = 0
+    
+    # Training batches
     batch_size = 32
-    for i in range(0, len(X_train_synth), batch_size):
+    for i in range(0, len(X_shuffled), batch_size):
         X_batch = X_shuffled[i:i+batch_size]
         y_batch = y_shuffled[i:i+batch_size]
         protected_batch = protected_shuffled[i:i+batch_size]
         
-        if len(X_batch) < batch_size // 2:  
+        if len(X_batch) < 8:
             continue
+            
+        # Convert to tensors
+        X_batch = tf.constant(X_batch, dtype=tf.float32)
+        y_batch = tf.constant(y_batch, dtype=tf.float32)
+        protected_batch = tf.constant(protected_batch, dtype=tf.float32)
         
-        # Alternate between discriminator and adversarial training
-        if i % 64 == 0:  # Train discriminator every other batch
-            discriminator_model.train_on_batch(X_batch, protected_batch)
+        task_loss, fairness_loss = trainer.train_step(X_batch, y_batch, protected_batch)
         
-        # Train adversarial model
-        adversarial_model.train_on_batch(
-            X_batch, 
-            {'dense_9': y_batch, 'discriminator_out': protected_batch}
-        )
+        epoch_task_loss += task_loss
+        epoch_fairness_loss += fairness_loss
+        num_batches += 1
     
-    # Evaluate after each epoch
-    val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
+    # Print epoch stats
+    print(f"Task Loss: {epoch_task_loss/num_batches:.4f}, Fairness Loss: {epoch_fairness_loss/num_batches:.4f}")
+    
+    # Evaluate
+    val_loss, val_acc = surgery_model.evaluate(X_test_orig, y_test_orig, verbose=0)
     print(f"Validation accuracy: {val_acc:.4f}")
     
-    if val_acc < 0.80:
-        print("Stopping early - accuracy threshold reached")
+    # Early stopping with patience
+    if val_acc > best_acc:
+        best_acc = val_acc
+        patience = 0
+    else:
+        patience += 1
+        
+    if patience >= 3:
+        print(f"Early stopping - best accuracy: {best_acc:.4f}")
         break
 
 # === FINAL FAIRNESS EVALUATION WITH AIF360 ===

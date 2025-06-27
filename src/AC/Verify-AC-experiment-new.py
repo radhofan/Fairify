@@ -557,24 +557,18 @@ ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
 FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 
 def key_to_partition(partition_key):
-    """Convert a partition key back to partition dictionary format"""
     partition = {}
     if not partition_key:
         return partition
     
-    # Handle tuple keys in format: ((attr, bound1, bound2), (attr, bound), ...)
     if isinstance(partition_key, tuple):
         for key_part in partition_key:
             if isinstance(key_part, tuple) and len(key_part) >= 2:
                 attr = key_part[0]
-                if len(key_part) == 2:
-                    # Single value: (attr, value)
-                    partition[attr] = key_part[1]
-                elif len(key_part) == 3:
-                    # Range: (attr, lower, upper)
-                    partition[attr] = (key_part[1], key_part[2])
-                else:
-                    # Multiple values: (attr, tuple_of_values)
+                if len(key_part) == 3:
+                    # Range: (attr, lower, upper) - convert to list
+                    partition[attr] = [key_part[1], key_part[2]]  # Changed to list
+                elif len(key_part) == 2:
                     partition[attr] = key_part[1]
     
     return partition

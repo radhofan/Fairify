@@ -281,7 +281,7 @@ for i in range(0, min(len(X_combined), 320), 32):  # Just a few batches
 
 # Phase 2b: Adversarial training with alternating updates
 adversarial_model.compile(
-    optimizer=Adam(learning_rate=0.0001),
+    optimizer=Adam(learning_rate=0.00001),
     loss={'dense_9': 'binary_crossentropy', 'discriminator_out': 'binary_crossentropy'},
     loss_weights={'dense_9': 1.0, 'discriminator_out': -lambda_adversarial},
     metrics={'dense_9': 'accuracy', 'discriminator_out': 'accuracy'}

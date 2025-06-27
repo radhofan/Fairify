@@ -144,7 +144,7 @@ print(original_model.summary())
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
 # Define feature names (you might need to adjust these based on your actual dataset)
-feature_names = ['age', 'workclass', 'fnlwgt', 'education', 'education-num',
+feature_names = ['age', 'workclass', 'education', 'education-num',
                 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
 

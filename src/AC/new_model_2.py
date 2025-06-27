@@ -145,9 +145,10 @@ print(original_model.summary())
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
 
 # Define feature names (you might need to adjust these based on your actual dataset)
-feature_names = ['age', 'workclass', 'fnlwgt', 'education', 'education-num',
-                'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+feature_names = ['age', 'workclass', 'education',
+                'education-num', 'marital-status', 'occupation', 'relationship',
+                'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week',
+                'native-country']
 
 # Ensure we have the right number of feature names
 if len(feature_names) != X_test_orig.shape[1]:
@@ -320,7 +321,7 @@ for epoch in range(5):
     print(f"Validation accuracy: {val_acc:.4f}")
     
     # More lenient stopping condition
-    if val_acc < 0.70:  # Lower threshold
+    if val_acc < 0.80:  # Lower threshold
         print("Stopping early - accuracy threshold reached")
         break
 

@@ -544,6 +544,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             break
 
 
+print(f"partition_results has {len(partition_results)} entries")
 for partition_key, result_status in partition_results.items():
     print(f"Partition: {partition_key}")
     print(f"Status: {result_status}")

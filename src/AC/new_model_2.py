@@ -381,7 +381,7 @@ for epoch in range(10):
 
 # === FINAL FAIRNESS EVALUATION WITH AIF360 ===
 print("\n=== FINAL MODEL FAIRNESS (AIF360) ===")
-final_metrics = measure_fairness_aif360(two_stage_model, X_test_orig, y_test_orig, 
+final_metrics = measure_fairness_aif360(surgery_model, X_test_orig, y_test_orig, 
                                       feature_names, protected_attribute='sex')
 
 # === COMPARISON SUMMARY ===
@@ -399,5 +399,5 @@ print(f"Accuracy: {original_metrics['accuracy']:.3f} → {final_metrics['accurac
 print(f"F1 Score: {original_metrics['f1_score']:.3f} → {final_metrics['f1_score']:.3f}")
 
 # Save retrained model
-two_stage_model.save('Fairify/models/adult/AC-16.h5')
+surgery_model.save('Fairify/models/adult/AC-16.h5')
 print("\nTwo-stage model saved as AC-16.h5")

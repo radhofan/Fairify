@@ -194,8 +194,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         partition_key = partition_to_key(p)
         partition_results[partition_key] = str(res)  # 'sat', 'unsat', or 'unknown'
 
-        print("Partition:", partition_key)
-        print("Result:", partition_results[partition_key])
+        # print("Partition:", partition_key)
+        # print("Result:", partition_results[partition_key])
     
         print(res)
         if res == sat:
@@ -503,6 +503,11 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print('==================  COMPLETED MODEL ' + model_file)
             break
 
+
+for partition_key, result_status in partition_results.items():
+    print(f"Partition: {partition_key}")
+    print(f"Status: {result_status}")
+    print()
 
 ORIGINAL_MODEL_NAME = "AC-3"  
 FAIRER_MODEL_NAME = "AC-16"   

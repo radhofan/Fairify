@@ -352,7 +352,7 @@ for epoch in range(10):
             
         # Convert to tensors
         X_batch = tf.constant(X_batch, dtype=tf.float32)
-        y_batch = tf.constant(y_batch, dtype=tf.float32)
+        y_batch = tf.reshape(y_batch, (-1, 1))
         protected_batch = tf.constant(protected_batch, dtype=tf.float32)
         
         task_loss, fairness_loss = trainer.train_step(X_batch, y_batch, protected_batch)

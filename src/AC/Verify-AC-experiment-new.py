@@ -88,6 +88,35 @@ for i, p in enumerate(p_list):
     print(partition_str)
     print("-" * 30)
 
+included_count = 0
+not_found_count = 0
+
+attr_names = list(range_dict.keys())
+
+for test_point in X_test:
+   found_in_partition = False
+   
+   for partition in p_list:
+       point_fits = True
+       for i, attr in enumerate(attr_names):
+           if attr in partition:
+               bounds = partition[attr]
+               if bounds[0] > test_point[i] or test_point[i] > bounds[1]:
+                   point_fits = False
+                   break
+       
+       if point_fits:
+           found_in_partition = True
+           break
+   
+   if found_in_partition:
+       included_count += 1
+   else:
+       not_found_count += 1
+
+print(f"Points in partitions: {included_count}")
+print(f"Points not found: {not_found_count}")
+
 # Shuffle partitions
 shuffle(p_list)
 

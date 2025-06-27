@@ -259,7 +259,7 @@ adversarial_model = Model(inputs=predictor_input,
 # -----------------------------
 print("\n--- Phase 2: Adversarial Training with X_synth ---")
 
-lambda_adversarial = 0.01  # Keep it low to prevent collapse
+lambda_adversarial = 0.001  # Keep it low to prevent collapse
 
 # Train discriminator first to get it working
 print("Training discriminator...")
@@ -315,7 +315,7 @@ for epoch in range(5):
     val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
     print(f"Validation accuracy: {val_acc:.4f}")
     
-    if val_acc < 0.70:
+    if val_acc < 0.80:
         print("Stopping early - accuracy threshold reached")
         break
 

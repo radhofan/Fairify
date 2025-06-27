@@ -261,7 +261,7 @@ class GradientSurgeryTrainer:
                 # Fairness loss: minimize difference in mean predictions
                 fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
             else:
-                fairness_loss = 0.0
+                fairness_loss = tf.constant(0.0, dtype=tf.float32)
         
         # Compute gradients
         task_grads = tape.gradient(task_loss, self.model.trainable_variables)

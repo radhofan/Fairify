@@ -207,22 +207,85 @@ original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_o
                                          feature_names, protected_attribute='sex')
 
 
-# === SELECTIVE LAYER TRAINING FOR DEBIASING ===
-print("\n=== SELECTIVE LAYER TRAINING FOR DEBIASING ===")
+# === TWO-STAGE RETRAINING WITH CONSISTENCY (CNT) TARGETING ===
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import load_model
+import numpy as np
 
-# Load and prepare model
-surgery_model = load_model('Fairify/models/adult/AC-3.h5')
+print("\n=== TWO-STAGE RETRAINING WITH CONSISTENCY (CNT) TARGETING ===")
 
-# Phase 1: Fine-tune on original data first
-print("\n--- Phase 1: Fine-tuning on Original Data ---")
-surgery_model.compile(optimizer=Adam(learning_rate=0.05), 
-                     loss='binary_crossentropy', 
-                     metrics=['accuracy'])
+# Load original model fresh - this preserves the original architecture
+two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
 
-history_acc = surgery_model.fit(
+# -----------------------------
+# 🎯 CONSISTENCY-SPECIFIC LOSS FUNCTION
+# -----------------------------
+def consistency_loss(y_true, y_pred, X_batch, lambda_cnt=0.5):
+    """
+    Custom loss that combines binary crossentropy with Consistency penalty
+    Penalizes different predictions for similar individuals
+    """
+    # Standard binary crossentropy
+    bce_loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+    
+    # Consistency penalty: penalize prediction differences for similar samples
+    # This is a simplified version - in practice you'd use your counterexample pairs
+    
+    # For each sample, find "similar" samples and penalize prediction differences
+    # This is a batch-wise approximation
+    y_pred_prob = tf.nn.sigmoid(y_pred) if len(y_pred.shape) == 1 else y_pred
+    
+    # Calculate pairwise prediction differences
+    pred_diff = tf.abs(tf.expand_dims(y_pred_prob, 1) - tf.expand_dims(y_pred_prob, 0))
+    
+    # Simple consistency penalty: minimize prediction variance
+    consistency_penalty = tf.reduce_mean(pred_diff)
+    
+    return bce_loss + lambda_cnt * consistency_penalty
+
+# Better approach: Use your counterexample pairs directly
+def counterexample_consistency_loss(y_true, y_pred, lambda_cnt=1.0):
+    """
+    Loss function specifically designed for counterexample pairs
+    Assumes y_true and y_pred come in pairs where consecutive samples are counterexamples
+    """
+    bce_loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+    
+    # Convert to probabilities
+    y_pred_prob = tf.nn.sigmoid(y_pred) if len(y_pred.shape) == 1 else y_pred
+    
+    # For counterexample pairs, penalize prediction differences
+    # Assumes pairs are [original, counterfactual, original, counterfactual, ...]
+    if tf.shape(y_pred_prob)[0] % 2 == 0:
+        # Split into pairs
+        originals = y_pred_prob[::2]  # Even indices
+        counterfactuals = y_pred_prob[1::2]  # Odd indices
+        
+        # Consistency penalty: minimize differences between counterexample pairs
+        consistency_penalty = tf.reduce_mean(tf.abs(originals - counterfactuals))
+    else:
+        consistency_penalty = 0.0
+    
+    return bce_loss + lambda_cnt * consistency_penalty
+
+def create_cnt_loss_function(lambda_cnt=1.0, use_pairs=True):
+    """Factory function to create CNT loss with specific lambda"""
+    if use_pairs:
+        def loss_fn(y_true, y_pred):
+            return counterexample_consistency_loss(y_true, y_pred, lambda_cnt)
+    else:
+        def loss_fn(y_true, y_pred):
+            return consistency_loss(y_true, y_pred, None, lambda_cnt)
+    return loss_fn
+
+# -----------------------------
+# 🎯 Stage 1: Fine-tune on Original Data First
+# -----------------------------
+print("\n--- PHASE 1: Fine-tuning on Original Data ---")
+optimizer = Adam(learning_rate=0.05)
+two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+history_acc = two_stage_model.fit(
     X_train_orig, y_train_orig,
     epochs=8,
     batch_size=32,
@@ -230,175 +293,117 @@ history_acc = surgery_model.fit(
     verbose=1
 )
 
-# Phase 2: Selective Layer Training
-print("\n--- Phase 2: Selective Layer Training ---")
+# -----------------------------
+# 🧪 Stage 2: CNT-Targeted Fairness Training
+# -----------------------------
+print("\n--- PHASE 2: CNT-Targeted Individual Fairness Training ---")
 
-class SelectiveLayerTrainer:
-    def __init__(self, model, learning_rate=0.001):
-        self.model = model
-        self.full_optimizer = Adam(learning_rate=learning_rate)
-        self.bias_optimizer = Adam(learning_rate=learning_rate * 0.5)  # Lower LR for bias training
-        
-        # Identify which layers to train for bias correction
-        # Focus on later layers that make final decisions
-        self.bias_layers = []
-        for i, layer in enumerate(self.model.layers):
-            if hasattr(layer, 'kernel') and i >= len(self.model.layers) // 2:
-                self.bias_layers.append(layer)
-        
-        print(f"Will update {len(self.bias_layers)} layers for bias correction")
-        
-    def get_trainable_vars(self, layers_only=False):
-        if layers_only:
-            return [var for layer in self.bias_layers for var in layer.trainable_variables]
-        else:
-            return self.model.trainable_variables
+# Prepare counterexample pairs for consistency training
+def prepare_counterexample_pairs(X_orig, X_synth, y_orig, y_synth):
+    """
+    Prepare data in pairs: [original, synthetic, original, synthetic, ...]
+    This allows the loss function to directly compare counterexample predictions
+    """
+    # Interleave original and synthetic data
+    X_pairs = []
+    y_pairs = []
     
-    def compute_fairness_loss(self, predictions, X_batch):
-        """Simple fairness loss based on sex column"""
-        sex_column = X_batch[:, 8]
-        
-        group_0_mask = tf.equal(sex_column, 0.0)
-        group_1_mask = tf.equal(sex_column, 1.0)
-        
-        group_0_count = tf.reduce_sum(tf.cast(group_0_mask, tf.float32))
-        group_1_count = tf.reduce_sum(tf.cast(group_1_mask, tf.float32))
-        
-        if group_0_count > 0 and group_1_count > 0:
-            group_0_preds = tf.boolean_mask(predictions, group_0_mask)
-            group_1_preds = tf.boolean_mask(predictions, group_1_mask)
-            
-            # Simple prediction difference
-            fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
-        else:
-            fairness_loss = tf.constant(0.0, dtype=tf.float32)
-            
-        return fairness_loss
+    min_len = min(len(X_orig), len(X_synth))
     
-    def train_step_mixed(self, X_batch, y_batch):
-        """Training step that mixes task and fairness objectives"""
-        with tf.GradientTape() as tape:
-            predictions = self.model(X_batch, training=True)
-            
-            # Task loss
-            task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
-            task_loss = tf.reduce_mean(task_loss)
-            
-            # Fairness loss
-            fairness_loss = self.compute_fairness_loss(predictions, X_batch)
-            
-            # Combined loss with small fairness weight
-            total_loss = task_loss + 0.1 * fairness_loss
-        
-        # Update only bias-relevant layers
-        trainable_vars = self.get_trainable_vars(layers_only=True)
-        gradients = tape.gradient(total_loss, trainable_vars)
-        gradients = [tf.clip_by_norm(grad, 0.5) if grad is not None else grad for grad in gradients]
-        
-        self.bias_optimizer.apply_gradients(zip(gradients, trainable_vars))
-        
-        return task_loss, fairness_loss
+    for i in range(min_len):
+        X_pairs.append(X_orig[i])
+        X_pairs.append(X_synth[i])
+        y_pairs.append(y_orig[i])
+        y_pairs.append(y_synth[i])
     
-    def train_step_task_only(self, X_batch, y_batch):
-        """Regular training step for task performance"""
-        with tf.GradientTape() as tape:
-            predictions = self.model(X_batch, training=True)
-            task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
-            task_loss = tf.reduce_mean(task_loss)
-        
-        trainable_vars = self.get_trainable_vars(layers_only=False)
-        gradients = tape.gradient(task_loss, trainable_vars)
-        gradients = [tf.clip_by_norm(grad, 1.0) if grad is not None else grad for grad in gradients]
-        
-        self.full_optimizer.apply_gradients(zip(gradients, trainable_vars))
-        
-        return task_loss
+    return np.array(X_pairs), np.array(y_pairs)
 
-# Initialize selective trainer
-trainer = SelectiveLayerTrainer(surgery_model, learning_rate=0.001)
+# Prepare paired data
+X_train_pairs, y_train_pairs = prepare_counterexample_pairs(
+    X_train_orig[:len(X_train_synth)], X_train_synth, 
+    y_train_orig[:len(X_train_synth)], y_train_synth
+)
 
-# Training loop with alternating strategy
-print("Starting selective layer training...")
-best_acc = 0
-patience = 0
+print(f"Prepared {len(X_train_pairs)} samples in counterexample pairs")
 
-for epoch in range(10):
-    print(f"\nEpoch {epoch+1}/10")
+# Compile with CNT-targeted loss function
+cnt_loss_fn = create_cnt_loss_function(lambda_cnt=2.0, use_pairs=True)  # High lambda for strong consistency focus
+optimizer = Adam(learning_rate=0.0001)
+two_stage_model.compile(optimizer=optimizer, loss=cnt_loss_fn, metrics=['accuracy'])
+
+# Custom training with CNT monitoring
+def calculate_consistency_score(model, X_orig, X_synth, threshold=0.1):
+    """
+    Calculate consistency score: % of counterexample pairs with similar predictions
+    """
+    pred_orig = model.predict(X_orig, verbose=0).flatten()
+    pred_synth = model.predict(X_synth, verbose=0).flatten()
     
-    # Prepare synthetic data
-    indices = np.random.permutation(len(X_train_synth))
-    X_synth_shuffled = X_train_synth[indices]
-    y_synth_shuffled = y_train_synth[indices]
+    # Calculate prediction differences
+    diff = np.abs(pred_orig - pred_synth)
     
-    # Prepare original data sample for mixing
-    orig_indices = np.random.choice(len(X_train_orig), len(X_train_synth) // 3, replace=True)
-    X_orig_sample = X_train_orig[orig_indices]
-    y_orig_sample = y_train_orig[orig_indices]
+    # Count pairs with differences below threshold
+    consistent_pairs = np.sum(diff < threshold)
+    consistency_score = consistent_pairs / len(diff)
     
-    epoch_task_loss = 0
-    epoch_fairness_loss = 0
-    num_bias_batches = 0
-    num_task_batches = 0
+    return consistency_score, np.mean(diff)
+
+# Enhanced training loop with CNT tracking
+print("Starting CNT-focused training...")
+for epoch in range(15):  # More epochs for consistency optimization
+    print(f"\nEpoch {epoch+1}/15")
     
-    batch_size = 32
+    # Calculate baseline consistency
+    baseline_cnt, baseline_diff = calculate_consistency_score(
+        two_stage_model, X_test_orig, X_test_synth if 'X_test_synth' in globals() else X_train_synth[:100]
+    )
     
-    # Phase A: Train on original data to maintain performance
-    for i in range(0, len(X_orig_sample), batch_size):
-        X_batch = X_orig_sample[i:i+batch_size]
-        y_batch = y_orig_sample[i:i+batch_size]
+    # Train on counterexample pairs with CNT-focused loss
+    batch_size = 32  # Larger batches for pair training
+    epoch_losses = []
+    
+    for i in range(0, len(X_train_pairs), batch_size):
+        X_batch = X_train_pairs[i:i+batch_size]
+        y_batch = y_train_pairs[i:i+batch_size]
         
-        if len(X_batch) < 8:
+        if len(X_batch) < 4:  # Need at least 2 pairs
             continue
-            
-        X_batch = tf.constant(X_batch, dtype=tf.float32)
-        y_batch = tf.reshape(y_batch, (-1, 1))
         
-        task_loss = trainer.train_step_task_only(X_batch, y_batch)
-        epoch_task_loss += task_loss
-        num_task_batches += 1
-    
-    # Phase B: Train on synthetic data for bias correction (smaller batches, fewer updates)
-    synth_batches_limit = min(len(X_synth_shuffled) // batch_size, num_task_batches // 2)
-    
-    for i in range(0, synth_batches_limit * batch_size, batch_size):
-        X_batch = X_synth_shuffled[i:i+batch_size]
-        y_batch = y_synth_shuffled[i:i+batch_size]
+        # Ensure even batch size for pairs
+        if len(X_batch) % 2 == 1:
+            X_batch = X_batch[:-1]
+            y_batch = y_batch[:-1]
         
-        if len(X_batch) < 8:
-            continue
-            
-        X_batch = tf.constant(X_batch, dtype=tf.float32)
-        y_batch = tf.reshape(y_batch, (-1, 1))
-        
-        task_loss, fairness_loss = trainer.train_step_mixed(X_batch, y_batch)
-        
-        epoch_fairness_loss += fairness_loss
-        num_bias_batches += 1
+        # Train with CNT-targeted loss
+        loss = two_stage_model.train_on_batch(X_batch, y_batch)
+        epoch_losses.append(loss)
     
-    # Print epoch stats
-    avg_task_loss = epoch_task_loss / max(num_task_batches, 1)
-    avg_fairness_loss = epoch_fairness_loss / max(num_bias_batches, 1)
-    print(f"Task Loss: {avg_task_loss:.4f}, Fairness Loss: {avg_fairness_loss:.4f}")
-    print(f"Task batches: {num_task_batches}, Bias batches: {num_bias_batches}")
+    # Evaluate progress
+    val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
     
-    # Evaluate
-    val_loss, val_acc = surgery_model.evaluate(X_test_orig, y_test_orig, verbose=0)
+    # Calculate new consistency
+    new_cnt, new_diff = calculate_consistency_score(
+        two_stage_model, X_test_orig, X_train_synth[:100]
+    )
+    
     print(f"Validation accuracy: {val_acc:.4f}")
+    print(f"Average loss: {np.mean(epoch_losses):.4f}")
+    print(f"Consistency Score: {baseline_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-baseline_cnt:+.4f})")
+    print(f"Avg Pred Difference: {baseline_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-baseline_diff:+.4f})")
     
-    # Early stopping with patience
-    if val_acc > best_acc:
-        best_acc = val_acc
-        patience = 0
-    else:
-        patience += 1
-        
-    if patience >= 3:
-        print(f"Early stopping - best accuracy: {best_acc:.4f}")
+    # Early stopping if accuracy drops too much
+    if val_acc < 0.80:
+        print("Stopping early - accuracy threshold reached")
         break
+    
+    # Continue if consistency is improving
+    if new_cnt > baseline_cnt + 0.01:  # Consistency improvement threshold
+        print("🎯 Consistency improving - continuing training")
+
 
 # === FINAL FAIRNESS EVALUATION WITH AIF360 ===
 print("\n=== FINAL MODEL FAIRNESS (AIF360) ===")
-final_metrics = measure_fairness_aif360(surgery_model, X_test_orig, y_test_orig, 
+final_metrics = measure_fairness_aif360(two_stage_model, X_test_orig, y_test_orig, 
                                       feature_names, protected_attribute='sex')
 
 # === COMPARISON SUMMARY ===
@@ -416,5 +421,5 @@ print(f"Accuracy: {original_metrics['accuracy']:.3f} → {final_metrics['accurac
 print(f"F1 Score: {original_metrics['f1_score']:.3f} → {final_metrics['f1_score']:.3f}")
 
 # Save retrained model
-surgery_model.save('Fairify/models/adult/AC-16.h5')
+two_stage_model.save('Fairify/models/adult/AC-16.h5')
 print("\nTwo-stage model saved as AC-16.h5")

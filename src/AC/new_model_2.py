@@ -234,7 +234,7 @@ history_acc = surgery_model.fit(
 print("\n--- Phase 2: Gradient Surgery Training ---")
 
 class GradientSurgeryTrainer:
-    def __init__(self, model, task_weight=1.0, fairness_weight=0.1):
+    def __init__(self, model, task_weight=1.0, fairness_weight=0.3):
         self.model = model
         self.task_weight = task_weight
         self.fairness_weight = fairness_weight
@@ -249,17 +249,43 @@ class GradientSurgeryTrainer:
             task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
             task_loss = tf.reduce_mean(task_loss)
             
-            # Fairness loss - encourage similar predictions across protected groups
-            # Split by protected attribute
-            group_0_mask = tf.equal(protected_batch, 0)
-            group_1_mask = tf.equal(protected_batch, 1)
+            # Extract sex column (index 8) from input features
+            sex_column = X_batch[:, 8]
             
-            if tf.reduce_sum(tf.cast(group_0_mask, tf.float32)) > 0 and tf.reduce_sum(tf.cast(group_1_mask, tf.float32)) > 0:
+            # Fairness loss - focus on sex attribute (column 8)
+            # Split by sex attribute (0 = female, 1 = male typically)
+            group_0_mask = tf.equal(sex_column, 0.0)
+            group_1_mask = tf.equal(sex_column, 1.0)
+            
+            # Check if we have both groups in the batch
+            group_0_count = tf.reduce_sum(tf.cast(group_0_mask, tf.float32))
+            group_1_count = tf.reduce_sum(tf.cast(group_1_mask, tf.float32))
+            
+            if group_0_count > 0 and group_1_count > 0:
                 group_0_preds = tf.boolean_mask(predictions, group_0_mask)
                 group_1_preds = tf.boolean_mask(predictions, group_1_mask)
+                group_0_labels = tf.boolean_mask(y_batch, group_0_mask)
+                group_1_labels = tf.boolean_mask(y_batch, group_1_mask)
                 
-                # Fairness loss: minimize difference in mean predictions
-                fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
+                # Multiple fairness components for stronger signal
+                # 1. Difference in mean predictions
+                pred_diff = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
+                
+                # 2. Difference in prediction variance (to encourage similar distributions)
+                var_0 = tf.math.reduce_variance(group_0_preds)
+                var_1 = tf.math.reduce_variance(group_1_preds)
+                var_diff = tf.abs(var_0 - var_1)
+                
+                # 3. Cross-entropy loss that encourages similar prediction patterns
+                # Create targets that would make predictions more similar
+                balanced_target = (tf.reduce_mean(group_0_labels) + tf.reduce_mean(group_1_labels)) / 2.0
+                
+                # Encourage both groups to predict closer to balanced target
+                group_0_balance_loss = tf.abs(tf.reduce_mean(group_0_preds) - balanced_target)
+                group_1_balance_loss = tf.abs(tf.reduce_mean(group_1_preds) - balanced_target)
+                
+                # Combine fairness components
+                fairness_loss = pred_diff + 0.1 * var_diff + 0.2 * (group_0_balance_loss + group_1_balance_loss)
             else:
                 fairness_loss = tf.constant(0.0, dtype=tf.float32)
         
@@ -271,7 +297,7 @@ class GradientSurgeryTrainer:
         return task_grads, fairness_grads, task_loss, fairness_loss
     
     def project_gradients(self, task_grads, fairness_grads):
-        """Perform gradient surgery - remove conflicting components"""
+        """Perform gradient surgery - improved projection"""
         surgery_grads = []
         
         for task_grad, fairness_grad in zip(task_grads, fairness_grads):
@@ -279,27 +305,45 @@ class GradientSurgeryTrainer:
                 surgery_grads.append(task_grad)
                 continue
                 
-            # Flatten gradients for dot product
+            # Flatten gradients for computation
             task_flat = tf.reshape(task_grad, [-1])
             fairness_flat = tf.reshape(fairness_grad, [-1])
             
-            # Compute dot product
-            dot_product = tf.reduce_sum(task_flat * fairness_flat)
+            # Compute norms
+            task_norm = tf.norm(task_flat)
+            fairness_norm = tf.norm(fairness_flat)
             
-            # If gradients are conflicting (negative dot product), project
-            if dot_product < 0:
-                # Project fairness gradient onto task gradient
-                fairness_norm_sq = tf.reduce_sum(fairness_flat * fairness_flat)
-                if fairness_norm_sq > 1e-8:
-                    projection = (dot_product / fairness_norm_sq) * fairness_flat
-                    # Remove conflicting component from task gradient
-                    task_corrected = task_flat - projection
-                    surgery_grad = tf.reshape(task_corrected, tf.shape(task_grad))
-                else:
-                    surgery_grad = task_grad
-            else:
-                # No conflict, combine gradients
-                surgery_grad = self.task_weight * task_grad + self.fairness_weight * fairness_grad
+            # Skip if either gradient is too small
+            if task_norm < 1e-8 or fairness_norm < 1e-8:
+                surgery_grads.append(task_grad)
+                continue
+            
+            # Compute cosine similarity
+            dot_product = tf.reduce_sum(task_flat * fairness_flat)
+            cos_sim = dot_product / (task_norm * fairness_norm)
+            
+            # Apply different strategies based on gradient alignment
+            if cos_sim < -0.1:  # Strong conflict
+                # Use PCGrad-style projection: remove conflicting component
+                task_norm_sq = tf.reduce_sum(task_flat * task_flat)
+                projection_coeff = dot_product / task_norm_sq
+                
+                # Project fairness gradient orthogonal to task gradient
+                fairness_projected = fairness_flat - projection_coeff * task_flat
+                
+                # Combine: keep task gradient, add orthogonal fairness component
+                combined = task_flat + self.fairness_weight * fairness_projected
+                surgery_grad = tf.reshape(combined, tf.shape(task_grad))
+                
+            elif cos_sim < 0.1:  # Weak conflict or orthogonal
+                # Reduce fairness weight but still include it
+                combined = task_flat + 0.5 * self.fairness_weight * fairness_flat
+                surgery_grad = tf.reshape(combined, tf.shape(task_grad))
+                
+            else:  # Aligned gradients
+                # Full combination when gradients agree
+                combined = self.task_weight * task_flat + self.fairness_weight * fairness_flat
+                surgery_grad = tf.reshape(combined, tf.shape(task_grad))
             
             surgery_grads.append(surgery_grad)
         
@@ -313,13 +357,17 @@ class GradientSurgeryTrainer:
         # Apply gradient surgery
         final_grads = self.project_gradients(task_grads, fairness_grads)
         
+        # Gradient clipping for stability
+        final_grads = [tf.clip_by_norm(grad, 1.0) if grad is not None else grad 
+                      for grad in final_grads]
+        
         # Apply gradients
         self.optimizer.apply_gradients(zip(final_grads, self.model.trainable_variables))
         
         return task_loss, fairness_loss
 
-# Initialize gradient surgery trainer
-trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.2)
+# Initialize gradient surgery trainer with better weights
+trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.4)
 
 # Training loop with gradient surgery
 print("Starting gradient surgery training...")

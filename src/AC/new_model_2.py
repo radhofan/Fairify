@@ -207,8 +207,8 @@ original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_o
                                          feature_names, protected_attribute='sex')
 
 
-# === GRADIENT SURGERY DEBIASING ===
-print("\n=== GRADIENT SURGERY DEBIASING ===")
+# === SELECTIVE LAYER TRAINING FOR DEBIASING ===
+print("\n=== SELECTIVE LAYER TRAINING FOR DEBIASING ===")
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
@@ -230,168 +230,156 @@ history_acc = surgery_model.fit(
     verbose=1
 )
 
-# Phase 2: Gradient Surgery Training
-print("\n--- Phase 2: Gradient Surgery Training ---")
+# Phase 2: Selective Layer Training
+print("\n--- Phase 2: Selective Layer Training ---")
 
-class GradientSurgeryTrainer:
-    def __init__(self, model, task_weight=1.0, fairness_weight=0.05):
+class SelectiveLayerTrainer:
+    def __init__(self, model, learning_rate=0.001):
         self.model = model
-        self.task_weight = task_weight
-        self.fairness_weight = fairness_weight
-        self.optimizer = Adam(learning_rate=0.0005)
+        self.full_optimizer = Adam(learning_rate=learning_rate)
+        self.bias_optimizer = Adam(learning_rate=learning_rate * 0.5)  # Lower LR for bias training
         
-    def compute_gradients(self, X_batch, y_batch, protected_batch):
-        """Compute both task and fairness gradients"""
-        with tf.GradientTape(persistent=True) as tape:
+        # Identify which layers to train for bias correction
+        # Focus on later layers that make final decisions
+        self.bias_layers = []
+        for i, layer in enumerate(self.model.layers):
+            if hasattr(layer, 'kernel') and i >= len(self.model.layers) // 2:
+                self.bias_layers.append(layer)
+        
+        print(f"Will update {len(self.bias_layers)} layers for bias correction")
+        
+    def get_trainable_vars(self, layers_only=False):
+        if layers_only:
+            return [var for layer in self.bias_layers for var in layer.trainable_variables]
+        else:
+            return self.model.trainable_variables
+    
+    def compute_fairness_loss(self, predictions, X_batch):
+        """Simple fairness loss based on sex column"""
+        sex_column = X_batch[:, 8]
+        
+        group_0_mask = tf.equal(sex_column, 0.0)
+        group_1_mask = tf.equal(sex_column, 1.0)
+        
+        group_0_count = tf.reduce_sum(tf.cast(group_0_mask, tf.float32))
+        group_1_count = tf.reduce_sum(tf.cast(group_1_mask, tf.float32))
+        
+        if group_0_count > 0 and group_1_count > 0:
+            group_0_preds = tf.boolean_mask(predictions, group_0_mask)
+            group_1_preds = tf.boolean_mask(predictions, group_1_mask)
+            
+            # Simple prediction difference
+            fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
+        else:
+            fairness_loss = tf.constant(0.0, dtype=tf.float32)
+            
+        return fairness_loss
+    
+    def train_step_mixed(self, X_batch, y_batch):
+        """Training step that mixes task and fairness objectives"""
+        with tf.GradientTape() as tape:
             predictions = self.model(X_batch, training=True)
             
-            # Task loss (main prediction)
+            # Task loss
             task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
             task_loss = tf.reduce_mean(task_loss)
             
-            # Extract sex column (index 8) from input features
-            sex_column = X_batch[:, 8]
+            # Fairness loss
+            fairness_loss = self.compute_fairness_loss(predictions, X_batch)
             
-            # Fairness loss - focus on sex attribute (column 8)
-            # Split by sex attribute (0 = female, 1 = male typically)
-            group_0_mask = tf.equal(sex_column, 0.0)
-            group_1_mask = tf.equal(sex_column, 1.0)
-            
-            # Check if we have both groups in the batch
-            group_0_count = tf.reduce_sum(tf.cast(group_0_mask, tf.float32))
-            group_1_count = tf.reduce_sum(tf.cast(group_1_mask, tf.float32))
-            
-            if group_0_count > 0 and group_1_count > 0:
-                group_0_preds = tf.boolean_mask(predictions, group_0_mask)
-                group_1_preds = tf.boolean_mask(predictions, group_1_mask)
-                
-                # Simple fairness loss - just prediction difference
-                fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
-            else:
-                fairness_loss = tf.constant(0.0, dtype=tf.float32)
+            # Combined loss with small fairness weight
+            total_loss = task_loss + 0.1 * fairness_loss
         
-        # Compute gradients
-        task_grads = tape.gradient(task_loss, self.model.trainable_variables)
-        fairness_grads = tape.gradient(fairness_loss, self.model.trainable_variables)
+        # Update only bias-relevant layers
+        trainable_vars = self.get_trainable_vars(layers_only=True)
+        gradients = tape.gradient(total_loss, trainable_vars)
+        gradients = [tf.clip_by_norm(grad, 0.5) if grad is not None else grad for grad in gradients]
         
-        del tape
-        return task_grads, fairness_grads, task_loss, fairness_loss
-    
-    def project_gradients(self, task_grads, fairness_grads):
-        """Perform gradient surgery - improved projection"""
-        surgery_grads = []
-        
-        for task_grad, fairness_grad in zip(task_grads, fairness_grads):
-            if task_grad is None or fairness_grad is None:
-                surgery_grads.append(task_grad)
-                continue
-                
-            # Flatten gradients for computation
-            task_flat = tf.reshape(task_grad, [-1])
-            fairness_flat = tf.reshape(fairness_grad, [-1])
-            
-            # Compute norms
-            task_norm = tf.norm(task_flat)
-            fairness_norm = tf.norm(fairness_flat)
-            
-            # Skip if either gradient is too small
-            if task_norm < 1e-8 or fairness_norm < 1e-8:
-                surgery_grads.append(task_grad)
-                continue
-            
-            # Compute cosine similarity
-            dot_product = tf.reduce_sum(task_flat * fairness_flat)
-            cos_sim = dot_product / (task_norm * fairness_norm)
-            
-            # Apply different strategies based on gradient alignment
-            if cos_sim < -0.3:  # Strong conflict - be more conservative
-                # Use PCGrad-style projection: remove conflicting component
-                task_norm_sq = tf.reduce_sum(task_flat * task_flat)
-                projection_coeff = dot_product / task_norm_sq
-                
-                # Project fairness gradient orthogonal to task gradient
-                fairness_projected = fairness_flat - projection_coeff * task_flat
-                
-                # Combine: keep task gradient, add small orthogonal fairness component
-                combined = task_flat + 0.1 * self.fairness_weight * fairness_projected
-                surgery_grad = tf.reshape(combined, tf.shape(task_grad))
-                
-            elif cos_sim < 0.0:  # Weak conflict
-                # Very small fairness weight to preserve accuracy
-                combined = task_flat + 0.2 * self.fairness_weight * fairness_flat
-                surgery_grad = tf.reshape(combined, tf.shape(task_grad))
-                
-            else:  # Aligned gradients
-                # Normal combination when gradients agree
-                combined = self.task_weight * task_flat + self.fairness_weight * fairness_flat
-                surgery_grad = tf.reshape(combined, tf.shape(task_grad))
-            
-            surgery_grads.append(surgery_grad)
-        
-        return surgery_grads
-    
-    def train_step(self, X_batch, y_batch, protected_batch):
-        """Single training step with gradient surgery"""
-        task_grads, fairness_grads, task_loss, fairness_loss = self.compute_gradients(
-            X_batch, y_batch, protected_batch)
-        
-        # Apply gradient surgery
-        final_grads = self.project_gradients(task_grads, fairness_grads)
-        
-        # Gradient clipping for stability
-        final_grads = [tf.clip_by_norm(grad, 1.0) if grad is not None else grad 
-                      for grad in final_grads]
-        
-        # Apply gradients
-        self.optimizer.apply_gradients(zip(final_grads, self.model.trainable_variables))
+        self.bias_optimizer.apply_gradients(zip(gradients, trainable_vars))
         
         return task_loss, fairness_loss
+    
+    def train_step_task_only(self, X_batch, y_batch):
+        """Regular training step for task performance"""
+        with tf.GradientTape() as tape:
+            predictions = self.model(X_batch, training=True)
+            task_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
+            task_loss = tf.reduce_mean(task_loss)
+        
+        trainable_vars = self.get_trainable_vars(layers_only=False)
+        gradients = tape.gradient(task_loss, trainable_vars)
+        gradients = [tf.clip_by_norm(grad, 1.0) if grad is not None else grad for grad in gradients]
+        
+        self.full_optimizer.apply_gradients(zip(gradients, trainable_vars))
+        
+        return task_loss
 
-# Initialize gradient surgery trainer with much lower fairness weight
-trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.1)
+# Initialize selective trainer
+trainer = SelectiveLayerTrainer(surgery_model, learning_rate=0.001)
 
-# Training loop with gradient surgery
-print("Starting gradient surgery training...")
+# Training loop with alternating strategy
+print("Starting selective layer training...")
 best_acc = 0
 patience = 0
 
 for epoch in range(10):
     print(f"\nEpoch {epoch+1}/10")
     
-    # Use ONLY synthetic counterexamples for training
-    # Shuffle synthetic data
+    # Prepare synthetic data
     indices = np.random.permutation(len(X_train_synth))
-    X_shuffled = X_train_synth[indices]
-    y_shuffled = y_train_synth[indices]
-    protected_shuffled = protected_train_synth[indices]
+    X_synth_shuffled = X_train_synth[indices]
+    y_synth_shuffled = y_train_synth[indices]
+    
+    # Prepare original data sample for mixing
+    orig_indices = np.random.choice(len(X_train_orig), len(X_train_synth) // 3, replace=True)
+    X_orig_sample = X_train_orig[orig_indices]
+    y_orig_sample = y_train_orig[orig_indices]
     
     epoch_task_loss = 0
     epoch_fairness_loss = 0
-    num_batches = 0
+    num_bias_batches = 0
+    num_task_batches = 0
     
-    # Training batches
     batch_size = 32
-    for i in range(0, len(X_shuffled), batch_size):
-        X_batch = X_shuffled[i:i+batch_size]
-        y_batch = y_shuffled[i:i+batch_size]
-        protected_batch = protected_shuffled[i:i+batch_size]
+    
+    # Phase A: Train on original data to maintain performance
+    for i in range(0, len(X_orig_sample), batch_size):
+        X_batch = X_orig_sample[i:i+batch_size]
+        y_batch = y_orig_sample[i:i+batch_size]
         
         if len(X_batch) < 8:
             continue
             
-        # Convert to tensors
         X_batch = tf.constant(X_batch, dtype=tf.float32)
         y_batch = tf.reshape(y_batch, (-1, 1))
-        protected_batch = tf.constant(protected_batch, dtype=tf.float32)
         
-        task_loss, fairness_loss = trainer.train_step(X_batch, y_batch, protected_batch)
-        
+        task_loss = trainer.train_step_task_only(X_batch, y_batch)
         epoch_task_loss += task_loss
+        num_task_batches += 1
+    
+    # Phase B: Train on synthetic data for bias correction (smaller batches, fewer updates)
+    synth_batches_limit = min(len(X_synth_shuffled) // batch_size, num_task_batches // 2)
+    
+    for i in range(0, synth_batches_limit * batch_size, batch_size):
+        X_batch = X_synth_shuffled[i:i+batch_size]
+        y_batch = y_synth_shuffled[i:i+batch_size]
+        
+        if len(X_batch) < 8:
+            continue
+            
+        X_batch = tf.constant(X_batch, dtype=tf.float32)
+        y_batch = tf.reshape(y_batch, (-1, 1))
+        
+        task_loss, fairness_loss = trainer.train_step_mixed(X_batch, y_batch)
+        
         epoch_fairness_loss += fairness_loss
-        num_batches += 1
+        num_bias_batches += 1
     
     # Print epoch stats
-    print(f"Task Loss: {epoch_task_loss/num_batches:.4f}, Fairness Loss: {epoch_fairness_loss/num_batches:.4f}")
+    avg_task_loss = epoch_task_loss / max(num_task_batches, 1)
+    avg_fairness_loss = epoch_fairness_loss / max(num_bias_batches, 1)
+    print(f"Task Loss: {avg_task_loss:.4f}, Fairness Loss: {avg_fairness_loss:.4f}")
+    print(f"Task batches: {num_task_batches}, Bias batches: {num_bias_batches}")
     
     # Evaluate
     val_loss, val_acc = surgery_model.evaluate(X_test_orig, y_test_orig, verbose=0)

@@ -278,7 +278,9 @@ class GradientSurgeryTrainer:
                 
                 # 3. Cross-entropy loss that encourages similar prediction patterns
                 # Create targets that would make predictions more similar
-                balanced_target = (tf.reduce_mean(group_0_labels) + tf.reduce_mean(group_1_labels)) / 2.0
+                group_0_labels_float = tf.cast(group_0_labels, tf.float32)
+                group_1_labels_float = tf.cast(group_1_labels, tf.float32)
+                balanced_target = (tf.reduce_mean(group_0_labels_float) + tf.reduce_mean(group_1_labels_float)) / 2.0
                 
                 # Encourage both groups to predict closer to balanced target
                 group_0_balance_loss = tf.abs(tf.reduce_mean(group_0_preds) - balanced_target)
@@ -366,6 +368,66 @@ class GradientSurgeryTrainer:
         
         return task_loss, fairness_loss
 
+# Initialize gradient surgery trainer with better weights
+trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.4)
+
+# Training loop with gradient surgery
+print("Starting gradient surgery training...")
+best_acc = 0
+patience = 0
+
+for epoch in range(10):
+    print(f"\nEpoch {epoch+1}/10")
+    
+    # Use ONLY synthetic counterexamples for training
+    # Shuffle synthetic data
+    indices = np.random.permutation(len(X_train_synth))
+    X_shuffled = X_train_synth[indices]
+    y_shuffled = y_train_synth[indices]
+    protected_shuffled = protected_train_synth[indices]
+    
+    epoch_task_loss = 0
+    epoch_fairness_loss = 0
+    num_batches = 0
+    
+    # Training batches
+    batch_size = 32
+    for i in range(0, len(X_shuffled), batch_size):
+        X_batch = X_shuffled[i:i+batch_size]
+        y_batch = y_shuffled[i:i+batch_size]
+        protected_batch = protected_shuffled[i:i+batch_size]
+        
+        if len(X_batch) < 8:
+            continue
+            
+        # Convert to tensors
+        X_batch = tf.constant(X_batch, dtype=tf.float32)
+        y_batch = tf.reshape(y_batch, (-1, 1))
+        protected_batch = tf.constant(protected_batch, dtype=tf.float32)
+        
+        task_loss, fairness_loss = trainer.train_step(X_batch, y_batch, protected_batch)
+        
+        epoch_task_loss += task_loss
+        epoch_fairness_loss += fairness_loss
+        num_batches += 1
+    
+    # Print epoch stats
+    print(f"Task Loss: {epoch_task_loss/num_batches:.4f}, Fairness Loss: {epoch_fairness_loss/num_batches:.4f}")
+    
+    # Evaluate
+    val_loss, val_acc = surgery_model.evaluate(X_test_orig, y_test_orig, verbose=0)
+    print(f"Validation accuracy: {val_acc:.4f}")
+    
+    # Early stopping with patience
+    if val_acc > best_acc:
+        best_acc = val_acc
+        patience = 0
+    else:
+        patience += 1
+        
+    if patience >= 3:
+        print(f"Early stopping - best accuracy: {best_acc:.4f}")
+        break
 # Initialize gradient surgery trainer with better weights
 trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.4)
 

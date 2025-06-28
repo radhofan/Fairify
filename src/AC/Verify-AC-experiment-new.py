@@ -20,6 +20,8 @@ from importlib import import_module
 import pandas as pd
 from sklearn.metrics import accuracy_score
 from sklearn.cluster import DBSCAN
+from tensorflow.keras.models import Model
+from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 
 from random import shuffle
@@ -606,31 +608,49 @@ def find_partition_result_for_point(point, partition_results):
    return None, None
 
 def hybrid_predict(data_point, original_model, fairer_model, partition_results, debug_counters, 
-                  original_name, fairer_name):
-    """Hybrid prediction function - directly searches partition_results"""
+                  original_name, fairer_name, uncertainty_threshold=0.05):
+    """Hybrid prediction function with uncertainty-based switching for disadvantaged groups"""
     
-    # Directly find if data point belongs to any evaluated partition
+    # Get original model prediction first
+    orig_pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
+    orig_pred = orig_pred.flatten()[0] if isinstance(orig_pred, np.ndarray) else orig_pred
+    
+    # Check if prediction is uncertain (near threshold)
+    uncertainty = abs(orig_pred - 0.5)
+    is_uncertain = uncertainty <= uncertainty_threshold
+    
+    # Check if this is disadvantaged group (sex=0, assuming 0 is the disadvantaged group)
+    sex_value = data_point[8]  # sex is at index 8
+    is_disadvantaged_sex = sex_value == 0  # Adjust this based on your encoding
+    
+    # Check if outcome is negative
+    is_negative_outcome = orig_pred < 0.5
+    
+    # Apply uncertainty-based switching rule
+    if is_uncertain and is_disadvantaged_sex and is_negative_outcome:
+        debug_counters[f'sat_unfair_{fairer_name.lower()}_used'] += 1
+        fair_pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
+        return fair_pred.flatten()[0] if isinstance(fair_pred, np.ndarray) else fair_pred
+    
+    # Otherwise, fall back to original SAT/UNSAT logic
     result_status, partition_key = find_partition_result_for_point(data_point, partition_results)
     
     if result_status is None:
-        # No matching partition found in partition_results - fallback to original model
+        # No matching partition found - use original model
         debug_counters['fallback_to_original'] += 1
-        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
-        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+        return orig_pred
     
     # Partition found with result
     if result_status == 'sat':  # Unfair partition - use fairer model
         debug_counters[f'sat_unfair_{fairer_name.lower()}_used'] += 1
-        pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
-        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+        fair_pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
+        return fair_pred.flatten()[0] if isinstance(fair_pred, np.ndarray) else fair_pred
     elif result_status == 'unsat':  # Fair partition - use original model
         debug_counters[f'unsat_fair_{original_name.lower()}_used'] += 1
-        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
-        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+        return orig_pred
     else:  # 'unknown' - fallback to original model
         debug_counters[f'unknown_{original_name.lower()}_used'] += 1
-        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
-        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+        return orig_pred
 
 # After processing all models and partitions - COMPLETE HYBRID EVALUATION
 

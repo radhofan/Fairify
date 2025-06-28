@@ -234,11 +234,11 @@ history_acc = surgery_model.fit(
 print("\n--- Phase 2: Gradient Surgery Training ---")
 
 class GradientSurgeryTrainer:
-    def __init__(self, model, task_weight=1.0, fairness_weight=0.3):
+    def __init__(self, model, task_weight=1.0, fairness_weight=0.05):
         self.model = model
         self.task_weight = task_weight
         self.fairness_weight = fairness_weight
-        self.optimizer = Adam(learning_rate=0.001)
+        self.optimizer = Adam(learning_rate=0.0005)
         
     def compute_gradients(self, X_batch, y_batch, protected_batch):
         """Compute both task and fairness gradients"""
@@ -264,30 +264,9 @@ class GradientSurgeryTrainer:
             if group_0_count > 0 and group_1_count > 0:
                 group_0_preds = tf.boolean_mask(predictions, group_0_mask)
                 group_1_preds = tf.boolean_mask(predictions, group_1_mask)
-                group_0_labels = tf.boolean_mask(y_batch, group_0_mask)
-                group_1_labels = tf.boolean_mask(y_batch, group_1_mask)
                 
-                # Multiple fairness components for stronger signal
-                # 1. Difference in mean predictions
-                pred_diff = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
-                
-                # 2. Difference in prediction variance (to encourage similar distributions)
-                var_0 = tf.math.reduce_variance(group_0_preds)
-                var_1 = tf.math.reduce_variance(group_1_preds)
-                var_diff = tf.abs(var_0 - var_1)
-                
-                # 3. Cross-entropy loss that encourages similar prediction patterns
-                # Create targets that would make predictions more similar
-                group_0_labels_float = tf.cast(group_0_labels, tf.float32)
-                group_1_labels_float = tf.cast(group_1_labels, tf.float32)
-                balanced_target = (tf.reduce_mean(group_0_labels_float) + tf.reduce_mean(group_1_labels_float)) / 2.0
-                
-                # Encourage both groups to predict closer to balanced target
-                group_0_balance_loss = tf.abs(tf.reduce_mean(group_0_preds) - balanced_target)
-                group_1_balance_loss = tf.abs(tf.reduce_mean(group_1_preds) - balanced_target)
-                
-                # Combine fairness components
-                fairness_loss = pred_diff + 0.1 * var_diff + 0.2 * (group_0_balance_loss + group_1_balance_loss)
+                # Simple fairness loss - just prediction difference
+                fairness_loss = tf.abs(tf.reduce_mean(group_0_preds) - tf.reduce_mean(group_1_preds))
             else:
                 fairness_loss = tf.constant(0.0, dtype=tf.float32)
         
@@ -325,7 +304,7 @@ class GradientSurgeryTrainer:
             cos_sim = dot_product / (task_norm * fairness_norm)
             
             # Apply different strategies based on gradient alignment
-            if cos_sim < -0.1:  # Strong conflict
+            if cos_sim < -0.3:  # Strong conflict - be more conservative
                 # Use PCGrad-style projection: remove conflicting component
                 task_norm_sq = tf.reduce_sum(task_flat * task_flat)
                 projection_coeff = dot_product / task_norm_sq
@@ -333,17 +312,17 @@ class GradientSurgeryTrainer:
                 # Project fairness gradient orthogonal to task gradient
                 fairness_projected = fairness_flat - projection_coeff * task_flat
                 
-                # Combine: keep task gradient, add orthogonal fairness component
-                combined = task_flat + self.fairness_weight * fairness_projected
+                # Combine: keep task gradient, add small orthogonal fairness component
+                combined = task_flat + 0.1 * self.fairness_weight * fairness_projected
                 surgery_grad = tf.reshape(combined, tf.shape(task_grad))
                 
-            elif cos_sim < 0.1:  # Weak conflict or orthogonal
-                # Reduce fairness weight but still include it
-                combined = task_flat + 0.5 * self.fairness_weight * fairness_flat
+            elif cos_sim < 0.0:  # Weak conflict
+                # Very small fairness weight to preserve accuracy
+                combined = task_flat + 0.2 * self.fairness_weight * fairness_flat
                 surgery_grad = tf.reshape(combined, tf.shape(task_grad))
                 
             else:  # Aligned gradients
-                # Full combination when gradients agree
+                # Normal combination when gradients agree
                 combined = self.task_weight * task_flat + self.fairness_weight * fairness_flat
                 surgery_grad = tf.reshape(combined, tf.shape(task_grad))
             
@@ -368,68 +347,8 @@ class GradientSurgeryTrainer:
         
         return task_loss, fairness_loss
 
-# Initialize gradient surgery trainer with better weights
-trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.4)
-
-# Training loop with gradient surgery
-print("Starting gradient surgery training...")
-best_acc = 0
-patience = 0
-
-for epoch in range(10):
-    print(f"\nEpoch {epoch+1}/10")
-    
-    # Use ONLY synthetic counterexamples for training
-    # Shuffle synthetic data
-    indices = np.random.permutation(len(X_train_synth))
-    X_shuffled = X_train_synth[indices]
-    y_shuffled = y_train_synth[indices]
-    protected_shuffled = protected_train_synth[indices]
-    
-    epoch_task_loss = 0
-    epoch_fairness_loss = 0
-    num_batches = 0
-    
-    # Training batches
-    batch_size = 32
-    for i in range(0, len(X_shuffled), batch_size):
-        X_batch = X_shuffled[i:i+batch_size]
-        y_batch = y_shuffled[i:i+batch_size]
-        protected_batch = protected_shuffled[i:i+batch_size]
-        
-        if len(X_batch) < 8:
-            continue
-            
-        # Convert to tensors
-        X_batch = tf.constant(X_batch, dtype=tf.float32)
-        y_batch = tf.reshape(y_batch, (-1, 1))
-        protected_batch = tf.constant(protected_batch, dtype=tf.float32)
-        
-        task_loss, fairness_loss = trainer.train_step(X_batch, y_batch, protected_batch)
-        
-        epoch_task_loss += task_loss
-        epoch_fairness_loss += fairness_loss
-        num_batches += 1
-    
-    # Print epoch stats
-    print(f"Task Loss: {epoch_task_loss/num_batches:.4f}, Fairness Loss: {epoch_fairness_loss/num_batches:.4f}")
-    
-    # Evaluate
-    val_loss, val_acc = surgery_model.evaluate(X_test_orig, y_test_orig, verbose=0)
-    print(f"Validation accuracy: {val_acc:.4f}")
-    
-    # Early stopping with patience
-    if val_acc > best_acc:
-        best_acc = val_acc
-        patience = 0
-    else:
-        patience += 1
-        
-    if patience >= 3:
-        print(f"Early stopping - best accuracy: {best_acc:.4f}")
-        break
-# Initialize gradient surgery trainer with better weights
-trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.4)
+# Initialize gradient surgery trainer with much lower fairness weight
+trainer = GradientSurgeryTrainer(surgery_model, task_weight=1.0, fairness_weight=0.1)
 
 # Training loop with gradient surgery
 print("Starting gradient surgery training...")

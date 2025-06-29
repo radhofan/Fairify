@@ -186,7 +186,7 @@ print("\n=== TWO-STAGE RETRAINING ===")
 two_stage_model = load_model('Fairify/models/adult/AC-1.h5')
 
 # Compile
-optimizer = Adam(learning_rate=0.05)
+optimizer = Adam(learning_rate=0.01)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # -----------------------------
@@ -215,7 +215,7 @@ for layer in two_stage_model.layers:
 print("\n--- PHASE 2: Constrained Fairness Training ---")
 
 # Custom training loop with weight regularization
-optimizer = Adam(learning_rate=0.001)
+optimizer = Adam(learning_rate=0.0001)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Very short, conservative training on counterexamples

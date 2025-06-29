@@ -331,84 +331,105 @@ cnt_loss_fn = create_cnt_loss_function(lambda_cnt=2.0, use_pairs=True)  # High l
 optimizer = Adam(learning_rate=0.0001)
 two_stage_model.compile(optimizer=optimizer, loss=cnt_loss_fn, metrics=['accuracy'])
 
-# Custom training with CNT monitoring
-def calculate_consistency_score(model, X_orig, X_synth, threshold=0.1):
+# Simple CNT improvement function
+def calculate_cnt_score(model, X_data, sensitive_attr_idx):
     """
-    Calculate consistency score: % of counterexample pairs with similar predictions
+    Calculate CNT score: consistency across sensitive attribute changes
     """
-    pred_orig = model.predict(X_orig, verbose=0).flatten()
-    pred_synth = model.predict(X_synth, verbose=0).flatten()
+    predictions = model.predict(X_data, verbose=0).flatten()
     
-    # Calculate prediction differences
-    diff = np.abs(pred_orig - pred_synth)
+    # Create copies with flipped sensitive attribute
+    X_flipped = X_data.copy()
+    X_flipped[:, sensitive_attr_idx] = 1 - X_flipped[:, sensitive_attr_idx]  # Flip 0->1, 1->0
     
-    # Count pairs with differences below threshold
-    consistent_pairs = np.sum(diff < threshold)
-    consistency_score = consistent_pairs / len(diff)
+    predictions_flipped = model.predict(X_flipped, verbose=0).flatten()
     
-    return consistency_score, np.mean(diff)
+    # Calculate consistency: how similar predictions are when sensitive attr changes
+    differences = np.abs(predictions - predictions_flipped)
+    cnt_score = 1.0 - np.mean(differences)  # Higher = more consistent
+    
+    return cnt_score, np.mean(differences)
 
-# Enhanced training loop with CNT tracking
+def cnt_focused_loss(y_true, y_pred, sensitive_attr_batch, lambda_cnt=1.0):
+    """
+    Loss that directly optimizes for CNT by penalizing sensitivity to protected attributes
+    """
+    # Standard loss
+    base_loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
+    
+    # CNT penalty: predictions should be similar when sensitive attribute changes
+    y_pred_prob = tf.nn.sigmoid(y_pred) if len(y_pred.shape) == 1 else y_pred
+    
+    # Create flipped version (this is simplified - you'd need actual sensitive attr data)
+    # For now, just minimize prediction variance to encourage consistency
+    pred_mean = tf.reduce_mean(y_pred_prob)
+    consistency_penalty = tf.reduce_mean(tf.square(y_pred_prob - pred_mean))
+    
+    return base_loss + lambda_cnt * consistency_penalty
+
+# Enhanced training loop focused purely on CNT improvement
 print("Starting CNT-focused training...")
 
-# Initialize previous metrics for comparison
-prev_cnt_score = 0.0
-prev_avg_diff = 1.0
+# Identify sensitive attribute column (adjust index as needed)
+SENSITIVE_ATTR_IDX = 8  # Adjust this to your actual sensitive attribute column
 
-for epoch in range(15):  # More epochs for consistency optimization
+for epoch in range(15):
     print(f"\nEpoch {epoch+1}/15")
     
-    # Calculate baseline consistency at start of epoch
-    current_cnt, current_diff = calculate_consistency_score(
-        two_stage_model, X_test_orig, X_test_synth if 'X_test_synth' in globals() else X_train_synth[:100]
-    )
+    # Calculate current CNT score
+    current_cnt, current_diff = calculate_cnt_score(two_stage_model, X_test_orig, SENSITIVE_ATTR_IDX)
     
-    # Train on counterexample pairs with CNT-focused loss
-    batch_size = 32  # Larger batches for pair training
+    # Train with CNT-focused approach
     epoch_losses = []
     
-    for i in range(0, len(X_train_pairs), batch_size):
-        X_batch = X_train_pairs[i:i+batch_size]
-        y_batch = y_train_pairs[i:i+batch_size]
+    for i in range(0, len(X_train_orig), 32):
+        X_batch = X_train_orig[i:i+32]
+        y_batch = y_train_orig[i:i+32]
         
-        if len(X_batch) < 4:  # Need at least 2 pairs
+        if len(X_batch) < 4:
             continue
+            
+        # Calculate loss and update weights
+        with tf.GradientTape() as tape:
+            predictions = two_stage_model(X_batch, training=True)
+            
+            # Base loss
+            base_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
+            
+            # CNT penalty: minimize sensitivity to protected attribute
+            X_flipped = tf.identity(X_batch)
+            X_flipped = tf.tensor_scatter_nd_update(
+                X_flipped, 
+                [[j, SENSITIVE_ATTR_IDX] for j in range(len(X_batch))],
+                1.0 - X_batch[:, SENSITIVE_ATTR_IDX]
+            )
+            
+            pred_flipped = two_stage_model(X_flipped, training=True)
+            cnt_penalty = tf.reduce_mean(tf.abs(predictions - pred_flipped))
+            
+            total_loss = tf.reduce_mean(base_loss) + 2.0 * cnt_penalty
         
-        # Ensure even batch size for pairs
-        if len(X_batch) % 2 == 1:
-            X_batch = X_batch[:-1]
-            y_batch = y_batch[:-1]
+        # Apply gradients
+        gradients = tape.gradient(total_loss, two_stage_model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, two_stage_model.trainable_variables))
         
-        # Train with CNT-targeted loss
-        loss = two_stage_model.train_on_batch(X_batch, y_batch)
-        epoch_losses.append(loss)
+        epoch_losses.append(total_loss.numpy())
     
     # Evaluate progress
-    val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
-    
-    # Calculate new consistency after training
-    new_cnt, new_diff = calculate_consistency_score(
-        two_stage_model, X_test_orig, X_train_synth[:100]
-    )
+    val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)[1]
+    new_cnt, new_diff = calculate_cnt_score(two_stage_model, X_test_orig, SENSITIVE_ATTR_IDX)
     
     print(f"Validation accuracy: {val_acc:.4f}")
     print(f"Average loss: {np.mean(epoch_losses):.4f}")
-    print(f"Consistency Score: {current_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-current_cnt:+.4f})")
-    print(f"Avg Pred Difference: {current_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-current_diff:+.4f})")
+    print(f"CNT Score: {current_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-current_cnt:+.4f})")
+    print(f"Avg Sensitivity: {current_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-current_diff:+.4f})")
     
-    # Early stopping if accuracy drops too much
-    if val_acc < 0.80:
-        print("Stopping early - accuracy threshold reached")
+    if val_acc < 0.75:
+        print("Stopping - accuracy too low")
         break
-    
-    # Continue if consistency is improving
-    if new_cnt > prev_cnt_score + 0.01:  # Consistency improvement threshold
-        print("🎯 Consistency improving - continuing training")
-    
-    # Update previous metrics for next iteration
-    prev_cnt_score = new_cnt
-    prev_avg_diff = new_diff
-
+        
+    if new_cnt > current_cnt:
+        print("🎯 CNT improving!")
 
 # === FINAL FAIRNESS EVALUATION WITH AIF360 ===
 print("\n=== FINAL MODEL FAIRNESS (AIF360) ===")

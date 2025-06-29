@@ -49,52 +49,57 @@ def safe_metric_value(metric_value):
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
                            protected_attribute='sex', sex_col_idx=8):
     """
-    Measure fairness using proper AIF360 metrics only.
-    Returns: dict with all fairness metrics (group + individual fairness)
+    Measure fairness using proper AIF360 metrics.
+    Returns: dict with all fairness metrics
     """
     # Get predictions
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
     
-    # Accuracy and F1
+    # Calculate accuracy and F1
     acc = accuracy_score(y_test, pred_binary)
     f1 = f1_score(y_test, pred_binary)
     
     print(f"Accuracy: {acc:.3f}")
     print(f"F1 Score: {f1:.3f}")
     
-    # Create datasets for AIF360
+    # Create AIF360 datasets
     dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
     dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
     
-    # AIF360 metric setup
-    privileged = [{protected_attribute: 1}]
-    unprivileged = [{protected_attribute: 0}]
+    # Metrics
+    unprivileged_groups = [{protected_attribute: 0}]
+    privileged_groups = [{protected_attribute: 1}]
     
-    metric_pred = ClassificationMetric(
-        dataset_orig,
-        dataset_pred,
-        privileged_groups=privileged,
-        unprivileged_groups=unprivileged
+    classified_metric = ClassificationMetric(
+        dataset_orig, dataset_pred,
+        unprivileged_groups=unprivileged_groups,
+        privileged_groups=privileged_groups
     )
-
-    # AIF360 built-in metrics only (no fallback/defaults)
-    di  = metric_pred.disparate_impact()
-    spd = metric_pred.mean_difference()
-    eod = metric_pred.equal_opportunity_difference()
-    aod = metric_pred.average_odds_difference()
-    erd = metric_pred.error_rate_difference()
-    cnt = float(metric_pred.consistency())
-    ti  = metric_pred.theil_index()
+    
+    metric_pred = BinaryLabelDatasetMetric(
+        dataset_pred,
+        unprivileged_groups=unprivileged_groups,
+        privileged_groups=privileged_groups
+    )
+    
+    # Compute metrics
+    di = classified_metric.disparate_impact()
+    spd = classified_metric.mean_difference()
+    eod = classified_metric.equal_opportunity_difference()
+    aod = classified_metric.average_odds_difference()
+    erd = classified_metric.error_rate_difference()
+    cnt = metric_pred.consistency()  # ✅ Fixed line
+    ti = classified_metric.theil_index()
     
     print(f"\n=== FAIRNESS METRICS (AIF360) ===")
-    print(f"Disparate Impact (DI):             {di:.3f}")
-    print(f"Statistical Parity Difference:     {spd:.3f}")
-    print(f"Equal Opportunity Difference:      {eod:.3f}")
-    print(f"Average Odds Difference:           {aod:.3f}")
-    print(f"Error Rate Difference:             {erd:.3f}")
-    print(f"Consistency (CNT):                 {cnt:.3f}")
-    print(f"Theil Index:                       {ti:.3f}")
+    print(f"Disparate Impact (DI):            {di:.3f}")
+    print(f"Statistical Parity Difference:    {spd:.3f}")
+    print(f"Equal Opportunity Difference:     {eod:.3f}")
+    print(f"Average Odds Difference:          {aod:.3f}")
+    print(f"Error Rate Difference:            {erd:.3f}")
+    print(f"Consistency (CNT):                {cnt:.3f}")
+    print(f"Theil Index:                      {ti:.3f}")
     
     return {
         'accuracy': acc,

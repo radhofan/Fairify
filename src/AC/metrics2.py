@@ -1,68 +1,38 @@
 import numpy as np
-from tensorflow.keras.models import Model
 from scipy.stats import entropy
 from sklearn.metrics.pairwise import pairwise_distances
+from sklearn.preprocessing import StandardScaler
 
 def predict_distribution(model, x):
-    """
-    Get probability distributions from a Keras model.
-    Assumes model outputs probabilities (e.g., softmax/sigmoid).
-    """
     return model.predict(x, verbose=0)
 
 def total_variation_distance(p, q):
-    """
-    Compute Total Variation Distance between two probability distributions.
-    TVD(P, Q) = 0.5 * sum(|p_i - q_i|)
-    """
     return 0.5 * np.abs(p - q).sum(axis=-1)
 
-def kl_divergence(p, q):
-    """
-    Compute KL divergence between two probability distributions.
-    Note: This is not symmetric!
-    """
-    return entropy(p.T, q.T)
-
 def compute_similarity_metric(X, metric='euclidean'):
-    """
-    Compute pairwise similarity (distance) matrix using input features.
-    """
-    if metric == 'euclidean':
-        return pairwise_distances(X, metric='euclidean')
-    elif metric == 'manhattan':
-        return pairwise_distances(X, metric='manhattan')
-    else:
-        raise ValueError(f"Unsupported metric: {metric}")
+    X_scaled = StandardScaler().fit_transform(X)
+    return pairwise_distances(X_scaled, metric=metric)
 
-def evaluate_individual_fairness(model, X, similarity_metric='euclidean', 
-                                 distribution_measure='tvd', threshold=1.0):
+def evaluate_individual_fairness(model, X, threshold=1.0):
     """
-    Evaluate fairness of a model using the "Lipschitz condition":
-    Similar individuals should receive similar predictions.
+    Evaluate individual fairness based on Lipschitz condition:
+        TVD(M(x), M(y)) <= d(x, y)
+    """
+    print(f"Evaluating fairness with threshold={threshold}...")
 
-    Returns:
-        violations: Number of pairs where |output_diff| > input_diff
-        violation_rate: Fraction of such violating pairs
-    """
-    # Get prediction distributions
+    # Predict distributions
     P = predict_distribution(model, X)
 
-    # Compute input-based similarity
-    input_similarities = compute_similarity_metric(X, metric=similarity_metric)
+    # Compute input-based similarities
+    input_similarities = compute_similarity_metric(X)
 
     # Compute output-based distances
-    if distribution_measure == 'tvd':
-        output_distances = pairwise_distances(P, metric=lambda p, q: total_variation_distance(p, q))
-    elif distribution_measure == 'kl':
-        output_distances = pairwise_distances(P, metric=lambda p, q: kl_divergence(p, q).mean())
-    else:
-        raise ValueError(f"Unsupported distribution measure: {distribution_measure}")
+    output_distances = pairwise_distances(P, metric=lambda p, q: total_variation_distance(p, q))
 
-    # Compare: Are output differences bounded by input similarities?
+    # Count violations
     violations = np.sum(output_distances > input_similarities * threshold)
     total_pairs = X.shape[0] * (X.shape[0] - 1)
-    violation_rate = violations / total_pairs
+    violation_rate = violations / total_pairs if total_pairs > 0 else 0
 
     return {
         'violations': violations,
@@ -76,11 +46,12 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
     sys.path.append(src_dir)
-    from utils.verif_utils import *
+
+    from utils.verif_utils import load_adult_ac1
     from tensorflow.keras.models import load_model
     import numpy as np
 
-    # Load data
+    # Load data using your own function
     print("Loading data...")
     df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
 

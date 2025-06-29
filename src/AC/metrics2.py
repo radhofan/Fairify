@@ -76,13 +76,13 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
     sys.path.append(src_dir)
-    from utils.verif_utils import load_adult_data 
+    from utils.verif_utils import *
     from tensorflow.keras.models import load_model
     import numpy as np
 
     # Load data
     print("Loading data...")
-    X_train, y_train, X_test, y_test = load_adult_data()
+    df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
 
     # Model paths
     ORIGINAL_MODEL_NAME = "AC-1"

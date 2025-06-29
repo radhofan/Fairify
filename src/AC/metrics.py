@@ -289,7 +289,7 @@ class CausalDiscriminationDetector:
 
 
 if __name__ == "__main__":
-    from helper import load_adult_ac1
+    from utils.verif_utils import *
     from causal_detector import CausalDiscriminationDetector
     from tensorflow.keras.models import load_model
     import numpy as np

@@ -299,8 +299,8 @@ if __name__ == "__main__":
     import numpy as np
 
     # Model paths
-    ORIGINAL_MODEL_NAME = "AC-2"
-    FAIRER_MODEL_NAME = "AC-15"
+    ORIGINAL_MODEL_NAME = "AC-1"
+    FAIRER_MODEL_NAME = "AC-14"
     ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 

@@ -234,7 +234,7 @@ for epoch in range(5):  # Only 5 epochs
     print(f"Validation accuracy: {val_acc:.4f}")
     
     # Stop if accuracy drops too much
-    if val_acc < 0.80:  # Threshold to prevent collapse
+    if val_acc < 0.75:  # Threshold to prevent collapse
         print("Stopping early - accuracy threshold reached")
         break
 

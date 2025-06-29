@@ -49,91 +49,64 @@ def safe_metric_value(metric_value):
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
                            protected_attribute='sex', sex_col_idx=8):
     """
-    Measure fairness using proper AIF360 metrics.
-    Returns: dict with all fairness metrics
+    Measure fairness using proper AIF360 metrics only.
+    Returns: dict with all fairness metrics (group + individual fairness)
     """
     # Get predictions
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
     
-    # Calculate accuracy and F1
+    # Accuracy and F1
     acc = accuracy_score(y_test, pred_binary)
     f1 = f1_score(y_test, pred_binary)
     
     print(f"Accuracy: {acc:.3f}")
     print(f"F1 Score: {f1:.3f}")
     
-    # Create AIF360 datasets
+    # Create datasets for AIF360
     dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
-    
-    # Predicted dataset
     dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
     
-    # Dataset metrics (for original data)
-    dataset_metric = BinaryLabelDatasetMetric(
-        dataset_orig, 
-        unprivileged_groups=[{protected_attribute: 0}],  # Assuming 0 is unprivileged
-        privileged_groups=[{protected_attribute: 1}]     # Assuming 1 is privileged
-    )
+    # AIF360 metric setup
+    privileged = [{protected_attribute: 1}]
+    unprivileged = [{protected_attribute: 0}]
     
-    # Classification metrics (comparing predictions to ground truth)
-    classified_metric = ClassificationMetric(
-        dataset_orig, dataset_pred,
-        unprivileged_groups=[{protected_attribute: 0}],
-        privileged_groups=[{protected_attribute: 1}]
+    metric_pred = ClassificationMetric(
+        dataset_orig,
+        dataset_pred,
+        privileged_groups=privileged,
+        unprivileged_groups=unprivileged
     )
+
+    # AIF360 built-in metrics only (no fallback/defaults)
+    di  = metric_pred.disparate_impact()
+    spd = metric_pred.mean_difference()
+    eod = metric_pred.equal_opportunity_difference()
+    aod = metric_pred.average_odds_difference()
+    erd = metric_pred.error_rate_difference()
+    cnt = metric_pred.consistency()
+    ti  = metric_pred.theil_index()
     
-    # Calculate all fairness metrics with safe extraction
-    try:
-        di = safe_metric_value(classified_metric.disparate_impact())
-        spd = safe_metric_value(classified_metric.mean_difference())
-        eod = safe_metric_value(classified_metric.equal_opportunity_difference())
-        aod = safe_metric_value(classified_metric.average_odds_difference())
-        erd = safe_metric_value(classified_metric.error_rate_difference())
-        ti = safe_metric_value(classified_metric.theil_index())
-        
-        # Consistency can be problematic, handle separately
-        try:
-            cnt_raw = classified_metric.consistency()
-            cnt = safe_metric_value(cnt_raw)
-        except Exception as e:
-            print(f"Warning: Could not calculate consistency metric: {e}")
-            cnt = 0.0
-        
-        print(f"\n=== FAIRNESS METRICS (AIF360) ===")
-        print(f"Disparate Impact (DI): {di:.3f}")
-        print(f"Statistical Parity Difference (SPD): {spd:.3f}")
-        print(f"Equal Opportunity Difference (EOD): {eod:.3f}")
-        print(f"Average Odds Difference (AOD): {aod:.3f}")
-        print(f"Error Rate Difference (ERD): {erd:.3f}")
-        print(f"Consistency (CNT): {cnt:.3f}")
-        print(f"Theil Index (TI): {ti:.3f}")
-        
-        return {
-            'accuracy': acc,
-            'f1_score': f1,
-            'disparate_impact': di,
-            'statistical_parity_diff': spd,
-            'equal_opportunity_diff': eod,
-            'average_odds_diff': aod,
-            'error_rate_diff': erd,
-            'consistency': cnt,
-            'theil_index': ti
-        }
-        
-    except Exception as e:
-        print(f"Error calculating fairness metrics: {e}")
-        return {
-            'accuracy': acc,
-            'f1_score': f1,
-            'disparate_impact': 0.0,
-            'statistical_parity_diff': 0.0,
-            'equal_opportunity_diff': 0.0,
-            'average_odds_diff': 0.0,
-            'error_rate_diff': 0.0,
-            'consistency': 0.0,
-            'theil_index': 0.0
-        }
+    print(f"\n=== FAIRNESS METRICS (AIF360) ===")
+    print(f"Disparate Impact (DI):             {di:.3f}")
+    print(f"Statistical Parity Difference:     {spd:.3f}")
+    print(f"Equal Opportunity Difference:      {eod:.3f}")
+    print(f"Average Odds Difference:           {aod:.3f}")
+    print(f"Error Rate Difference:             {erd:.3f}")
+    print(f"Consistency (CNT):                 {cnt:.3f}")
+    print(f"Theil Index:                       {ti:.3f}")
+    
+    return {
+        'accuracy': acc,
+        'f1_score': f1,
+        'disparate_impact': di,
+        'statistical_parity_diff': spd,
+        'equal_opportunity_diff': eod,
+        'average_odds_diff': aod,
+        'error_rate_diff': erd,
+        'consistency': cnt,
+        'theil_index': ti
+    }
 
 # Load pre-trained adult model
 print("Loading original model...")

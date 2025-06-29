@@ -288,39 +288,58 @@ class CausalDiscriminationDetector:
                     print(f"    ... and {len(data['pairs']) - 3} more")
 
 
-# Example usage and testing
 if __name__ == "__main__":
-    # Example: Simple model that discriminates based on gender
-    def example_model(features):
-        """Example discriminatory model - discriminates based on gender."""
-        # This model gives different outcomes based on gender
-        if features.get('gender') == 'female':
-            return 0 if float(features.get('credit_score', 600)) < 650 else 1
-        else:  # male
-            return 0 if float(features.get('credit_score', 600)) < 600 else 1
-    
-    # Create detector
-    detector = CausalDiscriminationDetector(example_model, max_samples=500, min_samples=50)
-    
-    # Add features
-    detector.add_feature('gender', ['male', 'female'])
-    detector.add_feature('age_group', ['young', 'middle', 'senior'])
-    detector.add_continuous_feature('credit_score', 300, 850, 10)
-    
-    # Test for discrimination on gender
-    print("Testing causal discrimination on gender...")
-    test_cases, rate, pairs = detector.causal_discrimination(['gender'])
-    print(f"Discrimination rate: {rate:.1%}")
-    print(f"Number of test cases: {len(test_cases)}")
-    print(f"Number of discriminatory pairs: {len(pairs)}")
-    
-    if pairs:
-        print("\nFirst discriminatory pair:")
-        print(f"Original: {pairs[0][0]}")
-        print(f"Modified: {pairs[0][1]}")
-    
-    # Search for all discriminatory features
-    print("\n" + "="*50)
-    print("Searching for all discriminatory feature combinations...")
-    results = detector.discrimination_search(threshold=0.1)
-    detector.print_results(results)
+    from helper import load_adult_ac1
+    from causal_detector import CausalDiscriminationDetector
+    from tensorflow.keras.models import load_model
+    import numpy as np
+
+    # Model paths
+    ORIGINAL_MODEL_NAME = "AC-3"
+    FAIRER_MODEL_NAME = "AC-16"
+    ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
+    FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
+
+    # Load models
+    print("Loading models...")
+    original_model = load_model(ORIGINAL_MODEL_PATH)
+    fairer_model = load_model(FAIRER_MODEL_PATH)
+
+    # Load data (X_test already preprocessed, no re-encoding)
+    df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
+    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                     'capital-loss', 'hours-per-week', 'native-country']
+
+    # Helper to map index array to feature dictionary (assumes same order as feature_names)
+    def array_to_feature_dict(arr):
+        return {feature_names[i]: arr[i] for i in range(len(feature_names))}
+
+    # Wrapper prediction functions
+    def model_predict_fn_original(feature_dict):
+        x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+        return int(original_model.predict(x, verbose=0)[0][0] > 0.5)
+
+    def model_predict_fn_fairer(feature_dict):
+        x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+        return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
+
+    # Initialize causal detector
+    print("Setting up detector...")
+    detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
+    detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
+
+    for fname in feature_names:
+        unique_vals = sorted(set(df[fname]))
+        detector_orig.add_feature(fname, unique_vals)
+        detector_fair.add_feature(fname, unique_vals)
+
+    # Run on 'sex' only
+    print("Running Causal Discrimination Check on 'sex'...\n")
+    _, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
+    _, rate_fair, _ = detector_fair.causal_discrimination(['sex'])
+
+    print("="*40)
+    print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
+    print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
+    print("="*40)

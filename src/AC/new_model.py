@@ -84,7 +84,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
     eod = metric_pred.equal_opportunity_difference()
     aod = metric_pred.average_odds_difference()
     erd = metric_pred.error_rate_difference()
-    cnt = metric_pred.consistency()
+    cnt = float(metric_pred.consistency())
     ti  = metric_pred.theil_index()
     
     print(f"\n=== FAIRNESS METRICS (AIF360) ===")

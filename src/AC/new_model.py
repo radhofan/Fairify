@@ -98,7 +98,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
     print(f"Equal Opportunity Difference:     {eod:.3f}")
     print(f"Average Odds Difference:          {aod:.3f}")
     print(f"Error Rate Difference:            {erd:.3f}")
-    print(f"Consistency (CNT):                {cnt:.3f}")
+    print(f"Consistency (CNT):                {float(cnt):.3f}")
     print(f"Theil Index:                      {ti:.3f}")
     
     return {
@@ -109,7 +109,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
         'equal_opportunity_diff': eod,
         'average_odds_diff': aod,
         'error_rate_diff': erd,
-        'consistency': cnt,
+        'consistency': float(cnt),
         'theil_index': ti
     }
 

@@ -166,13 +166,9 @@ X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
 X_train_synth = X_train_synth.values
 y_train_synth = y_train_synth.values
 
-# === COUNTEREXAMPLE ANALYSIS ===
 print("\n=== COUNTEREXAMPLE ANALYSIS ===")
 print(f"Original training size: {len(X_train_orig)}")
 print(f"Synthetic training size: {len(X_train_synth)}")
-print(f"Synthetic ratio: {len(X_train_synth)/len(X_train_orig)*100:.1f}%")
-print(f"Original positive class ratio: {np.mean(y_train_orig):.3f}")
-print(f"Synthetic positive class ratio: {np.mean(y_train_synth):.3f}")
 
 # === MEASURE ORIGINAL MODEL FAIRNESS WITH AIF360 ===
 print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
@@ -186,7 +182,7 @@ print("\n=== TWO-STAGE RETRAINING ===")
 two_stage_model = load_model('Fairify/models/adult/AC-1.h5')
 
 # Compile
-optimizer = Adam(learning_rate=0.001)
+optimizer = Adam(learning_rate=0.01)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # -----------------------------
@@ -215,7 +211,7 @@ for layer in two_stage_model.layers:
 print("\n--- PHASE 2: Constrained Fairness Training ---")
 
 # Custom training loop with weight regularization
-optimizer = Adam(learning_rate=0.0001)
+optimizer = Adam(learning_rate=0.01)
 two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Very short, conservative training on counterexamples

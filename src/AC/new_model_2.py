@@ -350,11 +350,16 @@ def calculate_consistency_score(model, X_orig, X_synth, threshold=0.1):
 
 # Enhanced training loop with CNT tracking
 print("Starting CNT-focused training...")
+
+# Initialize previous metrics for comparison
+prev_cnt_score = 0.0
+prev_avg_diff = 1.0
+
 for epoch in range(15):  # More epochs for consistency optimization
     print(f"\nEpoch {epoch+1}/15")
     
-    # Calculate baseline consistency
-    baseline_cnt, baseline_diff = calculate_consistency_score(
+    # Calculate baseline consistency at start of epoch
+    current_cnt, current_diff = calculate_consistency_score(
         two_stage_model, X_test_orig, X_test_synth if 'X_test_synth' in globals() else X_train_synth[:100]
     )
     
@@ -381,15 +386,15 @@ for epoch in range(15):  # More epochs for consistency optimization
     # Evaluate progress
     val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
     
-    # Calculate new consistency
+    # Calculate new consistency after training
     new_cnt, new_diff = calculate_consistency_score(
         two_stage_model, X_test_orig, X_train_synth[:100]
     )
     
     print(f"Validation accuracy: {val_acc:.4f}")
     print(f"Average loss: {np.mean(epoch_losses):.4f}")
-    print(f"Consistency Score: {baseline_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-baseline_cnt:+.4f})")
-    print(f"Avg Pred Difference: {baseline_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-baseline_diff:+.4f})")
+    print(f"Consistency Score: {current_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-current_cnt:+.4f})")
+    print(f"Avg Pred Difference: {current_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-current_diff:+.4f})")
     
     # Early stopping if accuracy drops too much
     if val_acc < 0.80:
@@ -397,8 +402,12 @@ for epoch in range(15):  # More epochs for consistency optimization
         break
     
     # Continue if consistency is improving
-    if new_cnt > baseline_cnt + 0.01:  # Consistency improvement threshold
+    if new_cnt > prev_cnt_score + 0.01:  # Consistency improvement threshold
         print("🎯 Consistency improving - continuing training")
+    
+    # Update previous metrics for next iteration
+    prev_cnt_score = new_cnt
+    prev_avg_diff = new_diff
 
 
 # === FINAL FAIRNESS EVALUATION WITH AIF360 ===

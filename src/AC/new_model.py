@@ -183,7 +183,7 @@ original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_o
 print("\n=== TWO-STAGE RETRAINING ===")
 
 # Load original model fresh - this preserves the original architecture
-two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
+two_stage_model = load_model('Fairify/models/adult/AC-1.h5')
 
 # Compile
 optimizer = Adam(learning_rate=0.05)

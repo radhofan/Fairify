@@ -289,6 +289,11 @@ class CausalDiscriminationDetector:
 
 
 if __name__ == "__main__":
+    import sys
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+    sys.path.append(src_dir)
     from utils.verif_utils import *
     from causal_detector import CausalDiscriminationDetector
     from tensorflow.keras.models import load_model

@@ -424,7 +424,7 @@ for epoch in range(15):
     print(f"CNT Score: {current_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-current_cnt:+.4f})")
     print(f"Avg Sensitivity: {current_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-current_diff:+.4f})")
     
-    if val_acc < 0.75:
+    if val_acc < 0.80:
         print("Stopping - accuracy too low")
         break
         

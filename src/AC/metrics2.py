@@ -76,7 +76,7 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
     sys.path.append(src_dir)
-    from utils.verif_utils import load_adult_data  # Example utility to load Adult dataset
+    from utils.verif_utils import load_adult_data 
     from tensorflow.keras.models import load_model
     import numpy as np
 

@@ -393,8 +393,9 @@ for epoch in range(15):
         with tf.GradientTape() as tape:
             predictions = two_stage_model(X_batch, training=True)
             
-            # Base loss
-            base_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions)
+            # Base loss - flatten predictions to match y_batch shape
+            predictions_flat = tf.squeeze(predictions)
+            base_loss = tf.keras.losses.binary_crossentropy(y_batch, predictions_flat)
             
             # CNT penalty: minimize sensitivity to protected attribute
             X_flipped = tf.identity(X_batch)
@@ -405,7 +406,9 @@ for epoch in range(15):
             )
             
             pred_flipped = two_stage_model(X_flipped, training=True)
-            cnt_penalty = tf.reduce_mean(tf.abs(predictions - pred_flipped))
+            pred_flipped_flat = tf.squeeze(pred_flipped)
+            predictions_flat = tf.squeeze(predictions)
+            cnt_penalty = tf.reduce_mean(tf.abs(predictions_flat - pred_flipped_flat))
             
             total_loss = tf.reduce_mean(base_loss) + 2.0 * cnt_penalty
         
@@ -424,7 +427,7 @@ for epoch in range(15):
     print(f"CNT Score: {current_cnt:.4f} → {new_cnt:.4f} (Δ: {new_cnt-current_cnt:+.4f})")
     print(f"Avg Sensitivity: {current_diff:.4f} → {new_diff:.4f} (Δ: {new_diff-current_diff:+.4f})")
     
-    if val_acc < 0.80:
+    if val_acc < 0.75:
         print("Stopping - accuracy too low")
         break
         

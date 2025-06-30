@@ -679,33 +679,6 @@ debug_counters = {
     f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used': 0
 }
 
-# NOTE: You need to define partition_results here
-# partition_results = your_partition_results_dict
-
-# Initialize causal detectors
-print("Setting up detectors...")
-detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
-detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
-detector_hybrid = CausalDiscriminationDetector(model_predict_fn_hybrid, max_samples=1000, min_samples=100)
-
-for fname in feature_names:
-    unique_vals = sorted(set(df[fname]))
-    detector_orig.add_feature(fname, unique_vals)
-    detector_fair.add_feature(fname, unique_vals)
-    detector_hybrid.add_feature(fname, unique_vals)
-
-# Run discrimination tests
-print("Running Causal Discrimination Check on 'sex'...\n")
-_, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
-_, rate_fair, _ = detector_fair.causal_discrimination(['sex'])
-_, rate_hybrid, _ = detector_hybrid.causal_discrimination(['sex'])
-
-print("="*60)
-print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
-print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
-print(f"Discrimination rate on hybrid model: {rate_hybrid:.4f}")
-print("="*60)
-
 # Print debug counters
 print("\nDebug Counters:")
 for key, value in debug_counters.items():
@@ -757,6 +730,55 @@ print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
 print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
 
-print("\nFinal Debug Counters:")
-for key, value in debug_counters.items():
-    print(f"{key}: {value}")
+hybrid_predictions_binary_int = hybrid_predictions_binary.astype(int)
+original_predictions_binary_int = original_predictions_binary.astype(int)
+fairer_predictions_binary_int = fairer_predictions_binary.astype(int)
+
+hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
+hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+original_dataset = pd.concat([X_test_df, pd.Series(original_predictions_binary_int, name='income-per-year')], axis=1)
+original_dataset = BinaryLabelDataset(df=original_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+fairer_dataset = pd.concat([X_test_df, pd.Series(fairer_predictions_binary_int, name='income-per-year')], axis=1)
+fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
+
+unprivileged_groups = [{'sex': 0}]
+privileged_groups = [{'sex': 1}]
+
+hybrid_metric = BinaryLabelDatasetMetric(hybrid_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+original_metric = BinaryLabelDatasetMetric(original_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+fairer_metric = BinaryLabelDatasetMetric(fairer_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+
+hybrid_cnt = float(hybrid_metric.consistency())
+original_cnt = float(original_metric.consistency())
+fairer_cnt = float(fairer_metric.consistency())
+
+print("=== CNT RESULTS ===")
+print(f"Original CNT:  {original_cnt:.4f}")
+print(f"Fairer CNT:    {fairer_cnt:.4f}")
+print(f"Hybrid CNT:    {hybrid_cnt:.4f}")
+
+# Initialize causal detectors
+# print("Setting up detectors...")
+detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
+detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
+detector_hybrid = CausalDiscriminationDetector(model_predict_fn_hybrid, max_samples=1000, min_samples=100)
+
+for fname in feature_names:
+    unique_vals = sorted(set(df[fname]))
+    detector_orig.add_feature(fname, unique_vals)
+    detector_fair.add_feature(fname, unique_vals)
+    detector_hybrid.add_feature(fname, unique_vals)
+
+# Run discrimination tests
+# print("Running Causal Discrimination Check on 'sex'...\n")
+_, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
+_, rate_fair, _ = detector_fair.causal_discrimination(['sex'])
+_, rate_hybrid, _ = detector_hybrid.causal_discrimination(['sex'])
+
+print("="*60)
+print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
+print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
+print(f"Discrimination rate on hybrid model: {rate_hybrid:.4f}")
+print("="*60)

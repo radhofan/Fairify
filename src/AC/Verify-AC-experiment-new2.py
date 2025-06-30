@@ -726,9 +726,9 @@ hybrid_accuracy = accuracy_score(y_test, hybrid_predictions_binary)
 original_accuracy = accuracy_score(y_test, original_predictions_binary)
 fairer_accuracy = accuracy_score(y_test, fairer_predictions_binary)
 
-print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
 print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
+print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 
 hybrid_predictions_binary_int = hybrid_predictions_binary.astype(int)
 original_predictions_binary_int = original_predictions_binary.astype(int)

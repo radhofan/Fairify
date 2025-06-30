@@ -734,7 +734,7 @@ hybrid_predictions_binary_int = hybrid_predictions_binary.astype(int)
 original_predictions_binary_int = original_predictions_binary.astype(int)
 fairer_predictions_binary_int = fairer_predictions_binary.astype(int)
 
-X_test_df = pd.DataFrame(X_test)
+X_test_df = pd.DataFrame(X_test, columns=feature_names)
 
 hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
 hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])

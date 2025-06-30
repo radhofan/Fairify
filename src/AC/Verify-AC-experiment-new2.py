@@ -145,7 +145,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.endswith('.h5'):
     #     continue
 
-    if not model_file.startswith("AC-3."):
+    if not model_file.startswith("AC-2."):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -562,8 +562,8 @@ for status, count in status_counts.items():
 from metrics import CausalDiscriminationDetector, Input
 
 # Model paths
-ORIGINAL_MODEL_NAME = "AC-1"
-FAIRER_MODEL_NAME = "AC-14"
+ORIGINAL_MODEL_NAME = "AC-2"
+FAIRER_MODEL_NAME = "AC-15"
 ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
 FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 

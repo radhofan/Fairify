@@ -29,7 +29,7 @@ sudo apt install -y python3-swiftclient
 
 # Retrain existing model with counterexamples + synthethic data
 python Fairify/src/AC/new_model.py
-python Fairify/src/AC/metrics.py
+# python Fairify/src/AC/metrics.py
 # python Fairify/src/AC/metrics2.py
 
 # Run fairify experiment

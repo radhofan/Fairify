@@ -734,13 +734,13 @@ hybrid_predictions_binary_int = hybrid_predictions_binary.astype(int)
 original_predictions_binary_int = original_predictions_binary.astype(int)
 fairer_predictions_binary_int = fairer_predictions_binary.astype(int)
 
-hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
+hybrid_dataset = pd.concat([X_test, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
 hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
-original_dataset = pd.concat([X_test_df, pd.Series(original_predictions_binary_int, name='income-per-year')], axis=1)
+original_dataset = pd.concat([X_test, pd.Series(original_predictions_binary_int, name='income-per-year')], axis=1)
 original_dataset = BinaryLabelDataset(df=original_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
-fairer_dataset = pd.concat([X_test_df, pd.Series(fairer_predictions_binary_int, name='income-per-year')], axis=1)
+fairer_dataset = pd.concat([X_test, pd.Series(fairer_predictions_binary_int, name='income-per-year')], axis=1)
 fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
 
 unprivileged_groups = [{'sex': 0}]

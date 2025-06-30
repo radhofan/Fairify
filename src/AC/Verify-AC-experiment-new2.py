@@ -558,9 +558,12 @@ print("Status counts:")
 for status, count in status_counts.items():
    print(f"  {status}: {count}")
 
-ORIGINAL_MODEL_NAME = "AC-3"  
-FAIRER_MODEL_NAME = "AC-16"   
 
+from metrics import CausalDiscriminationDetector, Input
+
+# Model paths
+ORIGINAL_MODEL_NAME = "AC-3"
+FAIRER_MODEL_NAME = "AC-16"
 ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
 FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 
@@ -634,26 +637,82 @@ def hybrid_predict(data_point, original_model, fairer_model, partition_results, 
         pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
         return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
 
-# After processing all models and partitions - COMPLETE HYBRID EVALUATION
-
-# Load the two models for hybrid prediction using dynamic paths
-print(f"Loading models:")
-print(f"  Original model: {ORIGINAL_MODEL_PATH}")
-print(f"  Fairer model: {FAIRER_MODEL_PATH}")
-
+# Load models
+print("Loading models...")
 original_model = load_model(ORIGINAL_MODEL_PATH)
 fairer_model = load_model(FAIRER_MODEL_PATH)
 
-# Initialize debug counters with dynamic keys - FIXED
+# Load data (X_test already preprocessed, no re-encoding)
+df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
+feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                 'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                 'capital-loss', 'hours-per-week', 'native-country']
+
+# Helper to map index array to feature dictionary (assumes same order as feature_names)
+def array_to_feature_dict(arr):
+    return {feature_names[i]: arr[i] for i in range(len(feature_names))}
+
+# Wrapper prediction functions
+def model_predict_fn_original(feature_dict):
+    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+    return int(original_model.predict(x, verbose=0)[0][0] > 0.5)
+
+def model_predict_fn_fairer(feature_dict):
+    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+    return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
+
+# Hybrid prediction function for detector
+def model_predict_fn_hybrid(feature_dict):
+    # Convert feature dict to array format
+    x = np.array([feature_dict[f] for f in feature_names], dtype=np.float32)
+    
+    # Use hybrid prediction (assuming partition_results is available)
+    hybrid_pred = hybrid_predict(x, original_model, fairer_model, partition_results, 
+                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
+    return int(hybrid_pred > 0.5)
+
+# Initialize debug counters
 debug_counters = {
-    'fallback_to_original': 0,           # Case 1: No partition found
-    f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used': 0,         # Case 3: SAT (unfair) - use fairer model
-    f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used': 0,       # Case 4: UNSAT (fair) - use original model
-    f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used': 0           # Case 5: Unknown - use original model
+    'fallback_to_original': 0,
+    f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used': 0,
+    f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used': 0,
+    f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used': 0
 }
 
-# Evaluate hybrid approach on test set
-print("Evaluating Hybrid Prediction Approach...")
+# NOTE: You need to define partition_results here
+# partition_results = your_partition_results_dict
+
+# Initialize causal detectors
+print("Setting up detectors...")
+detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
+detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
+detector_hybrid = CausalDiscriminationDetector(model_predict_fn_hybrid, max_samples=1000, min_samples=100)
+
+for fname in feature_names:
+    unique_vals = sorted(set(df[fname]))
+    detector_orig.add_feature(fname, unique_vals)
+    detector_fair.add_feature(fname, unique_vals)
+    detector_hybrid.add_feature(fname, unique_vals)
+
+# Run discrimination tests
+print("Running Causal Discrimination Check on 'sex'...\n")
+_, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
+_, rate_fair, _ = detector_fair.causal_discrimination(['sex'])
+_, rate_hybrid, _ = detector_hybrid.causal_discrimination(['sex'])
+
+print("="*60)
+print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
+print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
+print(f"Discrimination rate on hybrid model: {rate_hybrid:.4f}")
+print("="*60)
+
+# Print debug counters
+print("\nDebug Counters:")
+for key, value in debug_counters.items():
+    print(f"{key}: {value}")
+
+# Hybrid evaluation on test set
+print("\nEvaluating Hybrid Prediction Approach...")
 hybrid_predictions = []
 original_predictions = []
 fairer_predictions = []
@@ -663,9 +722,9 @@ for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
     
     # Hybrid prediction - flatten to ensure 1D
     hybrid_pred = hybrid_predict(data_point, original_model, fairer_model, partition_results, 
-                                    debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
+                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
     if isinstance(hybrid_pred, np.ndarray):
-        hybrid_pred = hybrid_pred.flatten()[0]  # Take first element if array
+        hybrid_pred = hybrid_pred.flatten()[0]
     hybrid_predictions.append(hybrid_pred)
     
     # Individual model predictions for comparison - flatten to ensure 1D
@@ -698,127 +757,6 @@ print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
 print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
 
-# Calculate fairness metrics for all approaches
-sex_index = 8
-prot_attr = X_test[:, sex_index]
-
-# Create base dataframe for fairness evaluation
-X_test_df = pd.DataFrame(X_test)
-X_test_df.rename(columns={X_test_df.columns[8]: 'sex'}, inplace=True)
-
-# Convert all predictions to binary integers - THIS IS THE KEY FIX
-hybrid_predictions_binary_int = (hybrid_predictions > 0.5).astype(int)
-original_predictions_binary_int = (original_predictions > 0.5).astype(int)
-fairer_predictions_binary_int = (fairer_predictions > 0.5).astype(int)
-y_test_int = y_test.astype(int)
-
-# Create datasets for fairness evaluation
-hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
-hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
-
-original_dataset = pd.concat([X_test_df, pd.Series(original_predictions_binary_int, name='income-per-year')], axis=1)
-original_dataset = BinaryLabelDataset(df=original_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
-
-fairer_dataset = pd.concat([X_test_df, pd.Series(fairer_predictions_binary_int, name='income-per-year')], axis=1)
-fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
-
-true_dataset = pd.concat([X_test_df, pd.Series(y_test_int, name='income-per-year')], axis=1)
-true_dataset = BinaryLabelDataset(df=true_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
-
-# Define groups
-unprivileged_groups = [{'sex': 0}]
-privileged_groups = [{'sex': 1}]
-
-# Calculate fairness metrics for each approach
-def calculate_fairness_metrics(true_ds, pred_ds):
-    metric = ClassificationMetric(true_ds, pred_ds,
-                                unprivileged_groups=unprivileged_groups,
-                                privileged_groups=privileged_groups)
-    # Convert numpy arrays to scalars using .item() or float()
-    return {
-        'di': float(metric.disparate_impact()),
-        'spd': float(metric.mean_difference()),
-        'eod': float(metric.equal_opportunity_difference()),
-        'aod': float(metric.average_odds_difference()),
-        'error_rate_diff': float(metric.error_rate_difference()),
-        'consistency': float(metric.consistency()),
-        'theil_index': float(metric.theil_index())
-    }
-
-hybrid_metrics = calculate_fairness_metrics(true_dataset, hybrid_dataset)
-original_metrics = calculate_fairness_metrics(true_dataset, original_dataset)
-fairer_metrics = calculate_fairness_metrics(true_dataset, fairer_dataset)
-
-print(f"\nFairness Metrics Comparison:")
-print(f"{'Approach':<12} {'Accuracy':<10} {'DI':<8} {'SPD':<8} {'EOD':<8} {'AOD':<8} {'ERD':<8} {'CNT':<8} {'TI':<8}")
-print("-" * 100)
-print(f"{'Hybrid':<12} {hybrid_accuracy:<10.4f} {hybrid_metrics['di']:<8.4f} {hybrid_metrics['spd']:<8.4f} {hybrid_metrics['eod']:<8.4f} {hybrid_metrics['aod']:<8.4f} {hybrid_metrics['error_rate_diff']:<8.4f} {hybrid_metrics['consistency']:<8.4f} {hybrid_metrics['theil_index']:<8.4f}")
-print(f"{ORIGINAL_MODEL_NAME:<12} {original_accuracy:<10.4f} {original_metrics['di']:<8.4f} {original_metrics['spd']:<8.4f} {original_metrics['eod']:<8.4f} {original_metrics['aod']:<8.4f} {original_metrics['error_rate_diff']:<8.4f} {original_metrics['consistency']:<8.4f} {original_metrics['theil_index']:<8.4f}")
-print(f"{FAIRER_MODEL_NAME:<12} {fairer_accuracy:<10.4f} {fairer_metrics['di']:<8.4f} {fairer_metrics['spd']:<8.4f} {fairer_metrics['eod']:<8.4f} {fairer_metrics['aod']:<8.4f} {fairer_metrics['error_rate_diff']:<8.4f} {fairer_metrics['consistency']:<8.4f} {fairer_metrics['theil_index']:<8.4f}")
-
-# Save results with complete fairness metrics
-hybrid_results_file = result_dir + 'hybrid_approach_results.csv'
-hybrid_cols = ['Approach', 'Accuracy', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
-hybrid_data = [
-    ['Hybrid', hybrid_accuracy, hybrid_metrics['di'], hybrid_metrics['spd'], hybrid_metrics['eod'], hybrid_metrics['aod'], hybrid_metrics['error_rate_diff'], hybrid_metrics['consistency'], hybrid_metrics['theil_index']],
-    [f'{ORIGINAL_MODEL_NAME} Original', original_accuracy, original_metrics['di'], original_metrics['spd'], original_metrics['eod'], original_metrics['aod'], original_metrics['error_rate_diff'], original_metrics['consistency'], original_metrics['theil_index']],
-    [f'{FAIRER_MODEL_NAME} Fairer', fairer_accuracy, fairer_metrics['di'], fairer_metrics['spd'], fairer_metrics['eod'], fairer_metrics['aod'], fairer_metrics['error_rate_diff'], fairer_metrics['consistency'], fairer_metrics['theil_index']]
-]
-
-with open(hybrid_results_file, 'w', newline='') as fp:
-    wr = csv.writer(fp, dialect='excel')
-    wr.writerow(hybrid_cols)
-    for row in hybrid_data:
-        wr.writerow(row)
-
-print(f"\nResults saved to: {hybrid_results_file}")
-
-# Print and save debug case breakdown
-print(f"\n" + "="*80)
-print(f"DEBUG: PREDICTION CASE BREAKDOWN")
-print(f"="*80)
-
-# Calculate totals using fixed keys
-total_original_used = (debug_counters['fallback_to_original'] + 
-                      debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used'] + 
-                      debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used'])
-total_fairer_used = debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used']
-total_predictions = sum(debug_counters.values())
-
-# Prepare data for both print and CSV
-debug_data = [
-   ['Case', 'Description', 'Model Used', 'Count', 'Percentage'],
-   ['Case 1', 'No partition found', ORIGINAL_MODEL_NAME, debug_counters['fallback_to_original'], f"{debug_counters['fallback_to_original']/len(X_test)*100:.2f}%"],
-   ['Case 3', 'SAT/Unfair partition', FAIRER_MODEL_NAME, debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used'], f"{debug_counters[f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
-   ['Case 4', 'UNSAT/Fair partition', ORIGINAL_MODEL_NAME, debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used'], f"{debug_counters[f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
-   ['Case 5', 'Unknown partition', ORIGINAL_MODEL_NAME, debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used'], f"{debug_counters[f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used']/len(X_test)*100:.2f}%"],
-   ['', '', '', '', ''],
-   ['SUMMARY', f'Total {ORIGINAL_MODEL_NAME} used', ORIGINAL_MODEL_NAME, total_original_used, f"{total_original_used/len(X_test)*100:.2f}%"],
-   ['SUMMARY', f'Total {FAIRER_MODEL_NAME} used', FAIRER_MODEL_NAME, total_fairer_used, f"{total_fairer_used/len(X_test)*100:.2f}%"],
-]
-
-# Print to console (skip header)
-for row in debug_data[1:]:
-   if row[0] == '':
-       print("-" * 80)
-   else:
-       print(f"{row[0]:<12} {row[1]:<45} {row[2]:<8} {row[3]:<8} {row[4]}")
-
-print("="*80)
-
-# Save to CSV
-debug_stats_file = result_dir + 'debug_case_breakdown.csv'
-with open(debug_stats_file, 'w', newline='') as fp:
-   wr = csv.writer(fp, dialect='excel')
-   for row in debug_data:
-       wr.writerow(row)
-
-print(f"Debug case breakdown saved to: {debug_stats_file}")
-
-print(f"\n" + "="*80)
-print(f"CONFIGURATION SUMMARY")
-print(f"="*80)
-print(f"Original Model: {ORIGINAL_MODEL_NAME} ({ORIGINAL_MODEL_PATH})")
-print(f"Fairer Model: {FAIRER_MODEL_NAME} ({FAIRER_MODEL_PATH})")
-print(f"Hybrid Logic: Use {FAIRER_MODEL_NAME} for unfair partitions, {ORIGINAL_MODEL_NAME} elsewhere")
-print("="*80)
+print("\nFinal Debug Counters:")
+for key, value in debug_counters.items():
+    print(f"{key}: {value}")

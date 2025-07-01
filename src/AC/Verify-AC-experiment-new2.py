@@ -730,11 +730,19 @@ print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
 print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
 print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 
-hybrid_predictions_binary_int = hybrid_predictions_binary.astype(int)
-original_predictions_binary_int = original_predictions_binary.astype(int)
-fairer_predictions_binary_int = fairer_predictions_binary.astype(int)
+# Calculate fairness metrics for all approaches
+sex_index = 8
+prot_attr = X_test[:, sex_index]
 
-X_test_df = pd.DataFrame(X_test, columns=feature_names)
+# Create base dataframe for fairness evaluation
+X_test_df = pd.DataFrame(X_test)
+X_test_df.rename(columns={X_test_df.columns[8]: 'sex'}, inplace=True)
+
+# Convert all predictions to binary integers - THIS IS THE KEY FIX
+hybrid_predictions_binary_int = (hybrid_predictions > 0.5).astype(int)
+original_predictions_binary_int = (original_predictions > 0.5).astype(int)
+fairer_predictions_binary_int = (fairer_predictions > 0.5).astype(int)
+y_test_int = y_test.astype(int)
 
 hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
 hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])

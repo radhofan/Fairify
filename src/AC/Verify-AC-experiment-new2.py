@@ -44,7 +44,7 @@ result_dir = 'Fairify/src/AC/res/'
 PARTITION_THRESHOLD = 30
 
 SOFT_TIMEOUT = 100 
-HARD_TIMEOUT = 60 * 60
+HARD_TIMEOUT = 30 * 60
 HEURISTIC_PRUNE_THRESHOLD = 100
 
 
@@ -706,10 +706,7 @@ for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
         fair_pred = fair_pred.flatten()[0]
     fairer_predictions.append(fair_pred)
 
-# Print debug counters
-print("\nDebug Counters:")
-for key, value in debug_counters.items():
-    print(f"{key}: {value}")
+###########################################
 
 # Convert to numpy arrays and ensure 1D
 hybrid_predictions = np.array(hybrid_predictions).flatten()
@@ -730,19 +727,17 @@ print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
 print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
 print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 
-# Calculate fairness metrics for all approaches
+###########################################
+
 sex_index = 8
 prot_attr = X_test[:, sex_index]
 
-# Create base dataframe for fairness evaluation
 X_test_df = pd.DataFrame(X_test)
 X_test_df.rename(columns={X_test_df.columns[8]: 'sex'}, inplace=True)
 
-# Convert all predictions to binary integers - THIS IS THE KEY FIX
 hybrid_predictions_binary_int = (hybrid_predictions > 0.5).astype(int)
 original_predictions_binary_int = (original_predictions > 0.5).astype(int)
 fairer_predictions_binary_int = (fairer_predictions > 0.5).astype(int)
-y_test_int = y_test.astype(int)
 
 hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='income-per-year')], axis=1)
 hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['income-per-year'], protected_attribute_names=['sex'])
@@ -756,6 +751,8 @@ fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['income-per-
 unprivileged_groups = [{'sex': 0}]
 privileged_groups = [{'sex': 1}]
 
+###########################################
+
 hybrid_metric = BinaryLabelDatasetMetric(hybrid_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
 original_metric = BinaryLabelDatasetMetric(original_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
 fairer_metric = BinaryLabelDatasetMetric(fairer_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
@@ -768,6 +765,8 @@ print("=== CNT RESULTS ===")
 print(f"Original CNT:  {original_cnt:.4f}")
 print(f"Fairer CNT:    {fairer_cnt:.4f}")
 print(f"Hybrid CNT:    {hybrid_cnt:.4f}")
+
+###########################################
 
 # Initialize causal detectors
 # print("Setting up detectors...")
@@ -792,3 +791,10 @@ print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_ori
 print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
 print(f"Discrimination rate on hybrid model: {rate_hybrid:.4f}")
 print("="*60)
+
+###########################################
+
+# Print debug counters
+print("\nDebug Counters:")
+for key, value in debug_counters.items():
+    print(f"{key}: {value}")

@@ -642,35 +642,6 @@ print("Loading models...")
 original_model = load_model(ORIGINAL_MODEL_PATH)
 fairer_model = load_model(FAIRER_MODEL_PATH)
 
-# Load data (X_test already preprocessed, no re-encoding)
-df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
-feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                 'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                 'capital-loss', 'hours-per-week', 'native-country']
-
-# Helper to map index array to feature dictionary (assumes same order as feature_names)
-def array_to_feature_dict(arr):
-    return {feature_names[i]: arr[i] for i in range(len(feature_names))}
-
-# Wrapper prediction functions
-def model_predict_fn_original(feature_dict):
-    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
-    return int(original_model.predict(x, verbose=0)[0][0] > 0.5)
-
-def model_predict_fn_fairer(feature_dict):
-    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
-    return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
-
-# Hybrid prediction function for detector
-def model_predict_fn_hybrid(feature_dict):
-    # Convert feature dict to array format
-    x = np.array([feature_dict[f] for f in feature_names], dtype=np.float32)
-    
-    # Use hybrid prediction (assuming partition_results is available)
-    hybrid_pred = hybrid_predict(x, original_model, fairer_model, partition_results, 
-                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
-    return int(hybrid_pred > 0.5)
-
 # Initialize debug counters
 debug_counters = {
     'fallback_to_original': 0,
@@ -706,7 +677,7 @@ for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
         fair_pred = fair_pred.flatten()[0]
     fairer_predictions.append(fair_pred)
 
-###########################################
+########################################### ACCURACY
 
 # Convert to numpy arrays and ensure 1D
 hybrid_predictions = np.array(hybrid_predictions).flatten()
@@ -727,7 +698,7 @@ print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
 print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
 print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
 
-###########################################
+########################################### CNT
 
 sex_index = 8
 prot_attr = X_test[:, sex_index]
@@ -751,8 +722,6 @@ fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['income-per-
 unprivileged_groups = [{'sex': 0}]
 privileged_groups = [{'sex': 1}]
 
-###########################################
-
 hybrid_metric = BinaryLabelDatasetMetric(hybrid_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
 original_metric = BinaryLabelDatasetMetric(original_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
 fairer_metric = BinaryLabelDatasetMetric(fairer_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
@@ -766,10 +735,35 @@ print(f"Original CNT:  {original_cnt:.4f}")
 print(f"Fairer CNT:    {fairer_cnt:.4f}")
 print(f"Hybrid CNT:    {hybrid_cnt:.4f}")
 
-###########################################
+########################################### CAUSALITY
 
-# Initialize causal detectors
-# print("Setting up detectors...")
+feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
+                 'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                 'capital-loss', 'hours-per-week', 'native-country']
+
+# Helper to map index array to feature dictionary (assumes same order as feature_names)
+def array_to_feature_dict(arr):
+    return {feature_names[i]: arr[i] for i in range(len(feature_names))}
+
+# Wrapper prediction functions
+def model_predict_fn_original(feature_dict):
+    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+    return int(original_model.predict(x, verbose=0)[0][0] > 0.5)
+
+def model_predict_fn_fairer(feature_dict):
+    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+    return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
+
+# Hybrid prediction function for detector
+def model_predict_fn_hybrid(feature_dict):
+    # Convert feature dict to array format
+    x = np.array([feature_dict[f] for f in feature_names], dtype=np.float32)
+    
+    # Use hybrid prediction (assuming partition_results is available)
+    hybrid_pred = hybrid_predict(x, original_model, fairer_model, partition_results, 
+                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
+    return int(hybrid_pred > 0.5)
+
 detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
 detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
 detector_hybrid = CausalDiscriminationDetector(model_predict_fn_hybrid, max_samples=1000, min_samples=100)

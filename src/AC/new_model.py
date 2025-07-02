@@ -135,7 +135,7 @@ if len(feature_names) != X_test_orig.shape[1]:
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-3-Lipschitz.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)

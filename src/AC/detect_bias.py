@@ -163,11 +163,14 @@ label_name = 'income-per-year'
 X_synthetic = df_synthetic.drop(columns=[label_name])
 y_synthetic = df_synthetic[label_name]
 
-X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
-    X_synthetic, y_synthetic, test_size=0.15, random_state=42)
+X_synthetic = df_synthetic.drop(columns=['income-per-year']).values
+y_synthetic = df_synthetic['income-per-year'].values
 
-X_train_synth = X_train_synth.values
-y_train_synth = y_train_synth.values
+split_idx = int(0.85 * len(X_synthetic))
+X_train_synth = X_synthetic[:split_idx]
+y_train_synth = y_synthetic[:split_idx]
+X_test_synth = X_synthetic[split_idx:]
+y_test_synth = y_synthetic[split_idx:]
 
 
 print("\n=== COUNTEREXAMPLE ANALYSIS ===")

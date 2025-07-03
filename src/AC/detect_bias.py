@@ -125,41 +125,41 @@ df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = lo
 
 # Define feature names (you might need to adjust these based on your actual dataset)
 feature_names = ['age', 'workclass', 'education', 'education-num',
-                'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+            'marital-status', 'occupation', 'relationship', 'race', 'sex',
+            'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
 
-# Ensure we have the right number of feature names
-if len(feature_names) != X_test_orig.shape[1]:
-    print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
-    # Generate generic names if needed
-    feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
-    feature_names[8] = 'sex'  # Ensure sex column is properly named
+# # Ensure we have the right number of feature names
+# if len(feature_names) != X_test_orig.shape[1]:
+#     print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
+#     # Generate generic names if needed
+#     feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
+#     feature_names[8] = 'sex'  # Ensure sex column is properly named
 
-# Load synthetic data (counterexamples)
+# Load raw CE data (strings like "Male", "State-gov", etc.)
 print("Loading synthetic counterexamples...")
 df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
-# df_synthetic = df_synthetic[df_synthetic['age'] <= 70]
 
-# === Preprocess synthetic data to match original preprocessing ===
+# Rename label column to match
+df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
+
+# Drop NA
 df_synthetic.dropna(inplace=True)
-cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
-            'relationship', 'native-country', 'sex']
+
+# Label encode categorical features
+cat_feat = ['sex', 'workclass', 'education', 'marital-status',
+            'occupation', 'relationship', 'native-country', 'race']
 
 for feature in cat_feat:
-    if feature in encoders:
-        df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
+    le = LabelEncoder()
+    df_synthetic[feature] = le.fit_transform(df_synthetic[feature])
 
-if 'race' in encoders:
-    df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
-
+# Discretize numerical features
 binning_cols = ['capital-gain', 'capital-loss']
 for feature in binning_cols:
-    if feature in encoders:
-        df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
+    bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
+    df_synthetic[feature] = bins.fit_transform(df_synthetic[[feature]])
 
-df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 label_name = 'income-per-year'
-
 X_synthetic = df_synthetic.drop(columns=[label_name])
 y_synthetic = df_synthetic[label_name]
 

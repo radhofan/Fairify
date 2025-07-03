@@ -216,8 +216,7 @@ def get_activation_model(model):
 activation_model = get_activation_model(original_model)
 
 # Get column index of 'sex'
-sex_idx = feature_names.index('sex')
-
+sex_idx = df_synthetic.drop(columns=['income-per-year']).columns.get_loc('sex')
 
 biased_neuron_scores = None
 num_pairs = 0

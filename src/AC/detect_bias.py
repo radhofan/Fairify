@@ -200,6 +200,14 @@ num_pairs = 0
 for i in range(0, len(X_train_synth)-1, 2):
     x = X_train_synth[i].reshape(1, -1)
     x_prime = X_train_synth[i+1].reshape(1, -1)
+
+    non_sex_idx = [j for j in range(x.shape[1]) if j != sex_idx]
+    diff = x[0, non_sex_idx] - x_prime[0, non_sex_idx]
+
+    if not np.allclose(diff, 0, atol=1e-5):
+        print(f"[WARN] Pair {i} and {i+1} has differences outside 'sex':")
+        print("Diff:", diff)
+        continue
     
     # Get layer activations
     acts_x = activation_model.predict(x)

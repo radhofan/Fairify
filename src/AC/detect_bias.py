@@ -201,10 +201,6 @@ for i in range(0, len(X_train_synth)-1, 2):
     x = X_train_synth[i].reshape(1, -1)
     x_prime = X_train_synth[i+1].reshape(1, -1)
     
-    # Make sure these two only differ in 'sex'
-    if not np.allclose(np.delete(x, sex_idx), np.delete(x_prime, sex_idx)):
-        continue  # Skip if not a valid counterexample pair
-
     # Get layer activations
     acts_x = activation_model.predict(x)
     acts_xp = activation_model.predict(x_prime)

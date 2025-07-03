@@ -28,9 +28,10 @@ sudo apt install csvtool
 sudo apt install -y python3-swiftclient
 
 # Retrain existing model with counterexamples + synthethic data
-python Fairify/src/AC/new_model_2.py
+# python Fairify/src/AC/new_model_2.py
 # python Fairify/src/AC/metrics.py
 # python Fairify/src/AC/metrics2.py
+python Fairify/src/AC/detect_bias.py
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py

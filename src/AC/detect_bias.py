@@ -200,8 +200,6 @@ row1 = df_synthetic.iloc[0].drop('income-per-year').values
 row2 = df_synthetic.iloc[1].drop('income-per-year').values
 print("Row 1:", row1)
 print("Row 2:", row2)
-print("Sex index:", 8)
-print("Are they identical except sex?", np.array_equal(np.delete(row1, 8), np.delete(row2, 8)))
 
 ################################################
 # Dictionary to store activations
@@ -227,6 +225,7 @@ for i in range(0, len(X_train_synth)-1, 2):
     x_prime = X_train_synth[i+1].reshape(1, -1)
     non_sex_idx = [j for j in range(x.shape[1]) if j != sex_idx]
     diff = x[0, non_sex_idx] - x_prime[0, non_sex_idx]
+    
     if not np.allclose(diff, 0, atol=1e-5):
         print(f"[WARN] Pair {i} and {i+1} has differences outside 'sex':")
         print("x     :", x[0, non_sex_idx])
@@ -258,7 +257,13 @@ for i in range(0, len(X_train_synth)-1, 2):
 # Average delta per neuron across all valid counterexample pairs
 biased_neuron_scores /= num_pairs
 
-# Rank neurons by bias score
+# Rank neurons by descending bias score
 top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  # top 10
-print("Top 10 biased neuron indices (across all layers):", top_biased_indices)
-print("Top 10 bias scores:", biased_neuron_scores[top_biased_indices])
+
+# Print in table format
+print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'sex'):")
+print("=" * 45)
+print(f"{'Rank':<5} {'Neuron Index':<15} {'Bias Score':>12}")
+print("=" * 45)
+for rank, idx in enumerate(top_biased_indices, start=1):
+    print(f"{rank:<5} {idx:<15} {biased_neuron_scores[idx]:>12.6f}")

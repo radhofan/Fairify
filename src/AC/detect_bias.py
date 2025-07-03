@@ -169,6 +169,7 @@ X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
 X_train_synth = X_train_synth.values
 y_train_synth = y_train_synth.values
 
+
 print("\n=== COUNTEREXAMPLE ANALYSIS ===")
 print(f"Original training size: {len(X_train_orig)}")
 print(f"Synthetic training size: {len(X_train_synth)}")
@@ -177,6 +178,27 @@ print(f"Synthetic training size: {len(X_train_synth)}")
 print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
 original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_orig, 
                                          feature_names, protected_attribute='sex')
+
+# Debug the preprocessing
+print("CSV column order:", df_synthetic.columns.tolist())
+print("Expected feature order:", feature_names)
+
+# Check first few rows before and after preprocessing
+print("\nFirst 4 rows of synthetic data BEFORE preprocessing:")
+df_raw = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
+print(df_raw.head(4))
+
+print("\nFirst 4 rows AFTER preprocessing:")
+print(df_synthetic.head(4))
+
+# Check if pairs are still identical except for sex
+print("\nChecking first pair after preprocessing:")
+row1 = df_synthetic.iloc[0].drop('income-per-year').values
+row2 = df_synthetic.iloc[1].drop('income-per-year').values
+print("Row 1:", row1)
+print("Row 2:", row2)
+print("Sex index:", 8)
+print("Are they identical except sex?", np.array_equal(np.delete(row1, 8), np.delete(row2, 8)))
 
 ################################################
 # Dictionary to store activations
@@ -192,6 +214,7 @@ activation_model = get_activation_model(original_model)
 
 # Get column index of 'sex'
 sex_idx = feature_names.index('sex')
+
 
 biased_neuron_scores = None
 num_pairs = 0

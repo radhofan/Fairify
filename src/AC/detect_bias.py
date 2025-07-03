@@ -269,40 +269,144 @@ for rank, idx in enumerate(top_biased_indices, start=1):
     print(f"{rank:<5} {idx:<15} {biased_neuron_scores[idx]:>12.6f}")
 
 
-# Step 1: Use your original model
+# Use your original model
 original_model = load_model('Fairify/models/adult/AC-3.h5')
+X_train_ce = X_train_synth
+y_train_ce = y_train_synth
 
-# Step 2: Freeze all layers
-for layer in original_model.layers:
-    layer.trainable = False
+# First, create a mapping from global indices to layer/neuron pairs
+def map_global_to_layer_neuron(model, global_indices):
+    """Map global neuron indices to (layer_index, neuron_index) pairs"""
+    layer_neuron_map = {}
+    current_global_idx = 0
+    
+    for layer_idx, layer in enumerate(model.layers):
+        if hasattr(layer, 'units'):  # Dense layer
+            layer_neurons = layer.units
+            for neuron_idx in range(layer_neurons):
+                if current_global_idx in global_indices:
+                    layer_neuron_map[current_global_idx] = (layer_idx, neuron_idx, layer.name)
+                current_global_idx += 1
+    
+    return layer_neuron_map
 
-# Step 3: Identify layer and neuron indices
+# Map the top biased indices to specific layers
 top_k = 1
 top_indices = top_biased_indices[:top_k]
+neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
 
-# You’ll need to find out which layers those neurons belong to.
-# For simplicity, assume they belong to the last Dense layer (you can modify this if needed):
-trainable_layer_name = None
-for layer in reversed(original_model.layers):
-    if isinstance(layer, tf.keras.layers.Dense):
-        trainable_layer_name = layer.name
-        break
+print("Biased neurons mapping:")
+for global_idx in top_indices:
+    if global_idx in neuron_mapping:
+        layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
+        print(f"Global index {global_idx} -> Layer {layer_idx} ({layer_name}), Neuron {neuron_idx}")
 
-# Step 4: Unfreeze only the target Dense layer
+# Option 1: If you want to train only the specific layers containing biased neurons
+target_layers = set()
+for global_idx in top_indices:
+    if global_idx in neuron_mapping:
+        layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
+        target_layers.add(layer_name)
+
+# Freeze all layers except those containing biased neurons
 for layer in original_model.layers:
-    if layer.name == trainable_layer_name:
+    if layer.name in target_layers:
         layer.trainable = True
-        print(f"Unfreezing layer: {layer.name}")
+        print(f"Unfreezing layer: {layer.name} (contains biased neuron)")
+    else:
+        layer.trainable = False
 
-# Step 5: Compile the model
-optimizer = Adam(learning_rate=0.001)
+# Option 2: Custom training with neuron-specific masking (more precise)
+def create_neuron_masks(model, neuron_mapping):
+    """Create masks to update only specific neurons"""
+    masks = {}
+    
+    for layer_idx, layer in enumerate(model.layers):
+        if hasattr(layer, 'kernel'):  # Dense layer with weights
+            # Create mask for kernel (weights)
+            kernel_mask = np.zeros_like(layer.kernel.numpy())
+            bias_mask = np.zeros_like(layer.bias.numpy())
+            
+            # Check if any biased neurons are in this layer
+            for global_idx in top_indices:
+                if global_idx in neuron_mapping:
+                    mapped_layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
+                    if mapped_layer_idx == layer_idx:
+                        # Unmask this neuron's weights and bias
+                        kernel_mask[:, neuron_idx] = 1.0
+                        bias_mask[neuron_idx] = 1.0
+            
+            masks[layer.name] = {
+                'kernel_mask': tf.constant(kernel_mask, dtype=tf.float32),
+                'bias_mask': tf.constant(bias_mask, dtype=tf.float32)
+            }
+    
+    return masks
+
+# Create masks for targeted neuron training
+neuron_masks = create_neuron_masks(original_model, neuron_mapping)
+
+# Custom training step that only updates specific neurons
+@tf.function
+def masked_train_step(x, y, model, optimizer, neuron_masks):
+    with tf.GradientTape() as tape:
+        predictions = model(x, training=True)
+        loss = tf.keras.losses.binary_crossentropy(y, predictions)
+        loss = tf.reduce_mean(loss)
+    
+    gradients = tape.gradient(loss, model.trainable_variables)
+    
+    # Apply masks to gradients
+    masked_gradients = []
+    for grad, var in zip(gradients, model.trainable_variables):
+        layer_name = var.name.split('/')[0]  # Extract layer name
+        
+        if layer_name in neuron_masks:
+            if 'kernel' in var.name:
+                masked_grad = grad * neuron_masks[layer_name]['kernel_mask']
+            elif 'bias' in var.name:
+                masked_grad = grad * neuron_masks[layer_name]['bias_mask']
+            else:
+                masked_grad = grad * 0  # Zero out other variables
+        else:
+            masked_grad = grad * 0  # Zero out gradients for non-target layers
+        
+        masked_gradients.append(masked_grad)
+    
+    optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
+    return loss
+
+# Compile model
+optimizer = Adam(learning_rate=0.0001)
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-# Step 6: Prepare CE data for training
-# We use all CE pairs, flattening them into a full dataset with same labels
-# Both x and x′ will get the same relabeled target
-X_train_ce = []
-y_train_ce = []
+# Convert data to tensors
+X_train_ce_tensor = tf.constant(X_train_ce, dtype=tf.float32)
+y_train_ce_tensor = tf.constant(y_train_ce, dtype=tf.float32)
+
+# Custom training loop with neuron masking
+batch_size = 32
+epochs = 5
+dataset = tf.data.Dataset.from_tensor_slices((X_train_ce_tensor, y_train_ce_tensor))
+dataset = dataset.batch(batch_size)
+
+print(f"Training only specific biased neurons...")
+for epoch in range(epochs):
+    epoch_loss = 0
+    num_batches = 0
+    
+    for batch_x, batch_y in dataset:
+        loss = masked_train_step(batch_x, batch_y, original_model, optimizer, neuron_masks)
+        epoch_loss += loss
+        num_batches += 1
+    
+    avg_loss = epoch_loss / num_batches
+    print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
+
+# Save the model
+original_model.save('Fairify/models/adult/AC-16.h5')
+print("\n✅ Bias-repaired model saved as AC-16.h5")
+print("✅ Only the identified biased neurons were updated!")
 
 for i in range(0, len(X_train_synth)-1, 2):
     x = X_train_synth[i]

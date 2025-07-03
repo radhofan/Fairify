@@ -117,7 +117,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
 
 # Load pre-trained adult model
 print("Loading original model...")
-original_model = load_model('Fairify/models/adult/AC-2.h5')
+original_model = load_model('Fairify/models/adult/AC-3.h5')
 print(original_model.summary())
 
 # Load original dataset using your function

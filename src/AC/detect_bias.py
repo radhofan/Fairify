@@ -409,6 +409,9 @@ original_model.save('Fairify/models/adult/AC-16.h5')
 print("\n✅ Bias-repaired model saved as AC-16.h5")
 print("✅ Only the identified biased neurons were updated!")
 
+X_train_ce = []
+y_train_ce = []
+
 for i in range(0, len(X_train_synth)-1, 2):
     x = X_train_synth[i]
     x_prime = X_train_synth[i+1]

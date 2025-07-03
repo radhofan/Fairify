@@ -14,6 +14,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 from sklearn.metrics import accuracy_score, f1_score
 from utils.verif_utils import *
+import tensorflow as tf
+from collections import defaultdict
 
 # AIF360 imports
 from aif360.datasets import BinaryLabelDataset
@@ -176,89 +178,58 @@ print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
 original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_orig, 
                                          feature_names, protected_attribute='sex')
 
-# === TWO-STAGE RETRAINING ===
-print("\n=== TWO-STAGE RETRAINING ===")
+################################################
+# Dictionary to store activations
+activations = {}
 
-# Load original model fresh - this preserves the original architecture
-two_stage_model = load_model('Fairify/models/adult/AC-3.h5')
+# Hook to grab activations for each layer
+def get_activation_model(model):
+    layer_outputs = [layer.output for layer in model.layers if 'input' not in layer.name]
+    activation_model = tf.keras.models.Model(inputs=model.input, outputs=layer_outputs)
+    return activation_model
 
-# Compile
-optimizer = Adam(learning_rate=0.01)
-two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+activation_model = get_activation_model(original_model)
 
-# -----------------------------
-# 🎯 Stage 1: Fine-tune on Original Data First
-# -----------------------------
-print("\n--- PHASE 1: Fine-tuning on Original Data ---")
-history_acc = two_stage_model.fit(
-    X_train_orig, y_train_orig,
-    epochs=8,
-    batch_size=32,
-    validation_data=(X_test_orig, y_test_orig),
-    verbose=1
-)
+# Get column index of 'sex'
+sex_idx = feature_names.index('sex')
 
-# Store original weights for regularization
-original_weights = []
-for layer in two_stage_model.layers:
-    if layer.get_weights():
-        original_weights.append([w.copy() for w in layer.get_weights()])
+biased_neuron_scores = None
+num_pairs = 0
+
+# Assumes rows are paired: (x0, x0′), (x1, x1′), ...
+for i in range(0, len(X_train_synth)-1, 2):
+    x = X_train_synth[i].reshape(1, -1)
+    x_prime = X_train_synth[i+1].reshape(1, -1)
+    
+    # Make sure these two only differ in 'sex'
+    if not np.allclose(np.delete(x, sex_idx), np.delete(x_prime, sex_idx)):
+        continue  # Skip if not a valid counterexample pair
+
+    # Get layer activations
+    acts_x = activation_model.predict(x)
+    acts_xp = activation_model.predict(x_prime)
+
+    # For each layer, compute absolute activation delta
+    deltas = [np.abs(a - ap) for a, ap in zip(acts_x, acts_xp)]
+
+    # Flatten each layer's activations to a single vector
+    flattened_deltas = [d.flatten() for d in deltas]
+
+    # Stack all neurons into one big vector
+    full_delta = np.concatenate(flattened_deltas)
+
+    # Accumulate
+    if biased_neuron_scores is None:
+        biased_neuron_scores = full_delta
     else:
-        original_weights.append([])
+        biased_neuron_scores += full_delta
 
-# -----------------------------
-# 🧪 Stage 2: Constrained Fairness Training
-# -----------------------------
-print("\n--- PHASE 2: Constrained Fairness Training ---")
+    num_pairs += 1
 
-# Custom training loop with weight regularization
-optimizer = Adam(learning_rate=0.001)
-two_stage_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+# Average delta per neuron across all valid counterexample pairs
+biased_neuron_scores /= num_pairs
 
-# Very short, conservative training on counterexamples
-for epoch in range(5):  # Only 5 epochs
-    print(f"\nEpoch {epoch+1}/5")
-    
-    # Train on small batches of counterexamples
-    batch_size = 16
-    for i in range(0, len(X_train_synth), batch_size):
-        X_batch = X_train_synth[i:i+batch_size]
-        y_batch = y_train_synth[i:i+batch_size]
-        
-        if len(X_batch) < batch_size // 2:  
-            continue
-            
-        # Single gradient step
-        two_stage_model.train_on_batch(X_batch, y_batch)
-    
-    # Evaluate after each epoch
-    val_loss, val_acc = two_stage_model.evaluate(X_test_orig, y_test_orig, verbose=0)
-    print(f"Validation accuracy: {val_acc:.4f}")
-    
-    # Stop if accuracy drops too much
-    if val_acc < 0.80:  # Threshold to prevent collapse
-        print("Stopping early - accuracy threshold reached")
-        break
-
-# === FINAL FAIRNESS EVALUATION WITH AIF360 ===
-print("\n=== FINAL MODEL FAIRNESS (AIF360) ===")
-final_metrics = measure_fairness_aif360(two_stage_model, X_test_orig, y_test_orig, 
-                                      feature_names, protected_attribute='sex')
-
-# === COMPARISON SUMMARY ===
-print("\n=== FAIRNESS IMPROVEMENT SUMMARY ===")
-if 'disparate_impact' in original_metrics and 'disparate_impact' in final_metrics:
-    print(f"Disparate Impact: {original_metrics['disparate_impact']:.3f} → {final_metrics['disparate_impact']:.3f}")
-    print(f"Statistical Parity Diff: {original_metrics['statistical_parity_diff']:.3f} → {final_metrics['statistical_parity_diff']:.3f}")
-    print(f"Equal Opportunity Diff: {original_metrics['equal_opportunity_diff']:.3f} → {final_metrics['equal_opportunity_diff']:.3f}")
-    print(f"Average Odds Diff: {original_metrics['average_odds_diff']:.3f} → {final_metrics['average_odds_diff']:.3f}")
-    print(f"Error Rate Diff: {original_metrics['error_rate_diff']:.3f} → {final_metrics['error_rate_diff']:.3f}")
-    print(f"Consistency (CNT): {original_metrics['consistency']:.3f} → {final_metrics['consistency']:.3f}")
-    print(f"Theil Index: {original_metrics['theil_index']:.3f} → {final_metrics['theil_index']:.3f}")
-
-print(f"Accuracy: {original_metrics['accuracy']:.3f} → {final_metrics['accuracy']:.3f}")
-print(f"F1 Score: {original_metrics['f1_score']:.3f} → {final_metrics['f1_score']:.3f}")
-
-# Save retrained model
-two_stage_model.save('Fairify/models/adult/AC-16.h5')
-print("\nTwo-stage model saved as AC-16.h5")
+# Rank neurons by bias score
+top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  # top 10
+print("Top 10 biased neuron indices (across all layers):", top_biased_indices)
+print("Top 10 bias scores:", biased_neuron_scores[top_biased_indices])

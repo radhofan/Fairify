@@ -267,3 +267,63 @@ print(f"{'Rank':<5} {'Neuron Index':<15} {'Bias Score':>12}")
 print("=" * 45)
 for rank, idx in enumerate(top_biased_indices, start=1):
     print(f"{rank:<5} {idx:<15} {biased_neuron_scores[idx]:>12.6f}")
+
+
+# Step 1: Use your original model
+original_model = load_model('Fairify/models/adult/AC-3.h5')
+
+# Step 2: Freeze all layers
+for layer in original_model.layers:
+    layer.trainable = False
+
+# Step 3: Identify layer and neuron indices
+top_k = 1
+top_indices = top_biased_indices[:top_k]
+
+# You’ll need to find out which layers those neurons belong to.
+# For simplicity, assume they belong to the last Dense layer (you can modify this if needed):
+trainable_layer_name = None
+for layer in reversed(original_model.layers):
+    if isinstance(layer, tf.keras.layers.Dense):
+        trainable_layer_name = layer.name
+        break
+
+# Step 4: Unfreeze only the target Dense layer
+for layer in original_model.layers:
+    if layer.name == trainable_layer_name:
+        layer.trainable = True
+        print(f"Unfreezing layer: {layer.name}")
+
+# Step 5: Compile the model
+optimizer = Adam(learning_rate=0.001)
+original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+# Step 6: Prepare CE data for training
+# We use all CE pairs, flattening them into a full dataset with same labels
+# Both x and x′ will get the same relabeled target
+X_train_ce = []
+y_train_ce = []
+
+for i in range(0, len(X_train_synth)-1, 2):
+    x = X_train_synth[i]
+    x_prime = X_train_synth[i+1]
+    
+    # Relabel both with the *same* label — max of the two (more conservative)
+    label = max(y_train_synth[i], y_train_synth[i+1])
+    
+    X_train_ce.append(x)
+    X_train_ce.append(x_prime)
+    y_train_ce.append(label)
+    y_train_ce.append(label)
+
+X_train_ce = np.array(X_train_ce)
+y_train_ce = np.array(y_train_ce)
+
+print(f"Training on {len(X_train_ce)} relabeled CE samples...")
+
+# Step 7: Retrain the model (only top layer will update)
+original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
+
+# Step 8: Save the retrained model
+original_model.save('Fairify/models/adult/AC-16.h5')
+print("\n✅ Bias-repaired model saved as AC-16.h5")

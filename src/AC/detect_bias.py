@@ -128,12 +128,12 @@ feature_names = ['age', 'workclass', 'education', 'education-num',
             'marital-status', 'occupation', 'relationship', 'race', 'sex',
             'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
 
-# # Ensure we have the right number of feature names
-# if len(feature_names) != X_test_orig.shape[1]:
-#     print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
-#     # Generate generic names if needed
-#     feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
-#     feature_names[8] = 'sex'  # Ensure sex column is properly named
+# Ensure we have the right number of feature names
+if len(feature_names) != X_test_orig.shape[1]:
+    print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
+    # Generate generic names if needed
+    feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
+    feature_names[8] = 'sex'  # Ensure sex column is properly named
 
 # Load raw CE data (strings like "Male", "State-gov", etc.)
 print("Loading synthetic counterexamples...")
@@ -145,37 +145,68 @@ df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
 # Drop NA
 df_synthetic.dropna(inplace=True)
 
-# Label encode categorical features
+print("Available encoders from original dataset:")
+for key, encoder in encoders.items():
+    print(f"  {key}: {type(encoder)}")
+
+# ===== CRITICAL FIX: Use the SAME encoders from original data =====
+# DO NOT create new encoders! Use the existing ones from load_adult_ac1()
+
 cat_feat = ['sex', 'workclass', 'education', 'marital-status',
             'occupation', 'relationship', 'native-country', 'race']
 
-label_order_map = {
-    'sex': ['Female', 'Male'],
-    'workclass': ['Federal-gov', 'Local-gov', 'Never-worked', 'Private', 'Self-emp-inc', 'Self-emp-not-inc', 'State-gov', 'Without-pay'],
-    'education': ['10th', '11th', '12th', '1st-4th', '5th-6th', '7th-8th', '9th', 'Assoc-acdm', 'Assoc-voc', 'Bachelors', 'Doctorate', 'HS-grad', 'Masters', 'Preschool', 'Prof-school', 'Some-college'],
-    'marital-status': ['Divorced', 'Married-AF-spouse', 'Married-civ-spouse', 'Married-spouse-absent', 'Never-married', 'Separated', 'Widowed'],
-    'occupation': ['Adm-clerical', 'Armed-Forces', 'Craft-repair', 'Exec-managerial', 'Farming-fishing', 'Handlers-cleaners', 'Machine-op-inspct', 'Other-service', 'Priv-house-serv', 'Prof-specialty', 'Protective-serv', 'Sales', 'Tech-support', 'Transport-moving'],
-    'relationship': ['Husband', 'Not-in-family', 'Other-relative', 'Own-child', 'Unmarried', 'Wife'],
-    'native-country': ['Cambodia', 'Canada', 'China', 'Columbia', 'Cuba', 'Dominican-Republic', 'Ecuador', 'El-Salvador', 'England', 'France', 'Germany', 'Greece', 'Guatemala', 'Haiti', 'Holand-Netherlands', 'Honduras', 'Hong', 'Hungary', 'India', 'Iran', 'Ireland', 'Italy', 'Jamaica', 'Japan', 'Laos', 'Mexico', 'Nicaragua', 'Outlying-US(Guam-USVI-etc)', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Puerto-Rico', 'Scotland', 'South', 'Taiwan', 'Thailand', 'Trinadad&Tobago', 'United-States', 'Vietnam', 'Yugoslavia'],
-    'race': ['Amer-Indian-Eskimo', 'Asian-Pac-Islander', 'Black', 'Other', 'White']
-}
-
-cat_feat = list(label_order_map.keys())
-
+# Apply the same encoders that were used for the original data
 for feature in cat_feat:
-    le = LabelEncoder()
-    le.classes_ = np.array(label_order_map[feature])
-    df_synthetic[feature] = le.transform(df_synthetic[feature])
+    if feature in encoders:
+        print(f"Using existing encoder for {feature}")
+        try:
+            df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
+        except ValueError as e:
+            print(f"Error with {feature}: {e}")
+            # Print unique values to debug
+            print(f"Unique values in synthetic data for {feature}: {df_synthetic[feature].unique()}")
+            if hasattr(encoders[feature], 'classes_'):
+                print(f"Classes in original encoder: {encoders[feature].classes_}")
+    else:
+        print(f"Warning: No encoder found for {feature}")
 
-# Discretize numerical features consistently
+# Apply the same numerical preprocessing
+# Check if binning encoders exist
 binning_cols = ['capital-gain', 'capital-loss']
 for feature in binning_cols:
-    bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
-    df_synthetic[feature] = bins.fit_transform(df_synthetic[[feature]])
+    encoder_key = f"{feature.replace('-', '_')}_binning"  # Common naming pattern
+    if encoder_key in encoders:
+        print(f"Using existing binning encoder for {feature}")
+        df_synthetic[feature] = encoders[encoder_key].transform(df_synthetic[[feature]])
+    else:
+        # Try alternative naming patterns
+        alt_keys = [f"{feature}_bins", f"{feature}_discretizer", feature]
+        found_encoder = False
+        for alt_key in alt_keys:
+            if alt_key in encoders:
+                print(f"Using existing binning encoder for {feature} (key: {alt_key})")
+                df_synthetic[feature] = encoders[alt_key].transform(df_synthetic[[feature]])
+                found_encoder = True
+                break
+        
+        if not found_encoder:
+            print(f"Warning: No binning encoder found for {feature}. Creating new one.")
+            # This is NOT ideal but fallback
+            bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
+            df_synthetic[feature] = bins.fit_transform(df_synthetic[[feature]])
 
+# Extract features and labels
 label_name = 'income-per-year'
 X_synthetic = df_synthetic.drop(columns=[label_name])
 y_synthetic = df_synthetic[label_name]
+
+# Ensure column order matches the original data
+X_synthetic = X_synthetic.reindex(columns=feature_names)
+
+print("Column order check:")
+print("Original columns:", list(range(len(feature_names))))
+print("Synthetic columns:", list(X_synthetic.columns))
+print("Columns match:", list(X_synthetic.columns) == feature_names)
 
 X_train_synth, X_test_synth, y_train_synth, y_test_synth = train_test_split(
     X_synthetic, y_synthetic, test_size=0.15, random_state=42)

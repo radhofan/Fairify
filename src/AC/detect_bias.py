@@ -351,6 +351,7 @@ neuron_masks = create_neuron_masks(original_model, neuron_mapping)
 def masked_train_step(x, y, model, optimizer, neuron_masks):
     with tf.GradientTape() as tape:
         predictions = model(x, training=True)
+        y = tf.reshape(y, [-1, 1])
         loss = tf.keras.losses.binary_crossentropy(y, predictions)
         loss = tf.reduce_mean(loss)
     

@@ -117,7 +117,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
 
 # Load pre-trained adult model
 print("Loading original model...")
-original_model = load_model('Fairify/models/adult/AC-3.h5')
+original_model = load_model('Fairify/models/adult/AC-2.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
@@ -137,7 +137,7 @@ if len(feature_names) != X_test_orig.shape[1]:
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-2.csv')
 # df_synthetic = df_synthetic[df_synthetic['age'] <= 70]
 
 # === Preprocess synthetic data to match original preprocessing ===
@@ -188,7 +188,7 @@ print("Expected feature order:", feature_names)
 
 # Check first few rows before and after preprocessing
 print("\nFirst 4 rows of synthetic data BEFORE preprocessing:")
-df_raw = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
+df_raw = pd.read_csv('Fairify/experimentData/counterexamples-AC-2.csv')
 print(df_raw.head(4))
 
 print("\nFirst 4 rows AFTER preprocessing:")
@@ -270,7 +270,7 @@ for rank, idx in enumerate(top_biased_indices, start=1):
 
 
 # Use your original model
-original_model = load_model('Fairify/models/adult/AC-3.h5')
+original_model = load_model('Fairify/models/adult/AC-2.h5')
 X_train_ce = X_train_synth
 y_train_ce = y_train_synth
 
@@ -405,8 +405,8 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
 # Save the model
-original_model.save('Fairify/models/adult/AC-16.h5')
-print("\n✅ Bias-repaired model saved as AC-16.h5")
+original_model.save('Fairify/models/adult/AC-15.h5')
+print("\n✅ Bias-repaired model saved as AC-15.h5")
 print("✅ Only the identified biased neurons were updated!")
 
 X_train_ce = []
@@ -433,5 +433,5 @@ print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
 # Step 8: Save the retrained model
-original_model.save('Fairify/models/adult/AC-16.h5')
-print("\n✅ Bias-repaired model saved as AC-16.h5")
+original_model.save('Fairify/models/adult/AC-15.h5')
+print("\n✅ Bias-repaired model saved as AC-15.h5")

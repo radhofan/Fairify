@@ -339,12 +339,12 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                     "foreign_worker",
                     "sex",
                 ]
-            
+                
                 decoded_row = []
-            
+                
                 for i, col_name in enumerate(cols):
                     value = encoded_row[i]
-                
+                    
                     if col_name in encoders:
                         try:
                             if isinstance(encoders[col_name], LabelEncoder):
@@ -357,10 +357,66 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                     else:
                         # For non-encoded features (age, credit_amount, etc.)
                         decoded_value = int(value) if isinstance(value, (int, float)) else value
-                
+                    
                     decoded_row.append(decoded_value)
-            
-                return decoded_row
+                
+                # Apply reverse preprocessing steps
+                row_dict = dict(zip(cols, decoded_row))
+                
+                # Reverse the sex mapping
+                if 'sex' in row_dict:
+                    sex_value = row_dict['sex']
+                    if sex_value == 1:
+                        row_dict['personal_status'] = 'A91'  # Default to A91 for male
+                    elif sex_value == 0:
+                        row_dict['personal_status'] = 'A92'  # Default to A92 for female
+                
+                # Reverse group transformations
+                if 'credit_history' in row_dict:
+                    credit_hist = row_dict['credit_history']
+                    if credit_hist == 'None/Paid':
+                        row_dict['credit_history'] = 'A30'
+                    elif credit_hist == 'Delay':
+                        row_dict['credit_history'] = 'A33'
+                    elif credit_hist == 'Other':
+                        row_dict['credit_history'] = 'A34'
+                
+                if 'savings' in row_dict:
+                    savings = row_dict['savings']
+                    if savings == '<500':
+                        row_dict['savings'] = 'A61'
+                    elif savings == '500+':
+                        row_dict['savings'] = 'A63'
+                    elif savings == 'Unknown/None':
+                        row_dict['savings'] = 'A65'
+                
+                if 'employment' in row_dict:
+                    employment = row_dict['employment']
+                    if employment == 'Unemployed':
+                        row_dict['employment'] = 'A71'
+                    elif employment == '1-4 years':
+                        row_dict['employment'] = 'A72'
+                    elif employment == '4+ years':
+                        row_dict['employment'] = 'A74'
+                
+                if 'status' in row_dict:
+                    status = row_dict['status']
+                    if status == '<200':
+                        row_dict['status'] = 'A11'
+                    elif status == '200+':
+                        row_dict['status'] = 'A13'
+                    elif status == 'None':
+                        row_dict['status'] = 'A14'
+                
+                if 'credit' in row_dict:
+                    credit = row_dict['credit']
+                    if credit == 1:
+                        row_dict['credit'] = 1
+                    elif credit == 0:
+                        row_dict['credit'] = 2
+                
+                # Convert back to list format
+                return [row_dict.get(col, decoded_row[i]) for i, col in enumerate(cols)]
 
             cols = [
                 "status",

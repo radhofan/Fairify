@@ -200,35 +200,36 @@ def load_german():
                 'skill_level', 'people_liable_for', 'telephone',
                 'foreign_worker', 'credit']
     na_values=[]
-    df = pd.read_csv(filepath, sep=' ', header=None, names=column_names,na_values=na_values)
+    df = pd.read_csv(filepath, sep=' ', header=None, names=column_names, na_values=na_values)
     df['age'] = df['age'].apply(lambda x: np.float(x >= 26))
     df = german_custom_preprocessing(df)
     feat_to_drop = ['personal_status']
     df = df.drop(feat_to_drop, axis=1)
-    
-    cat_feat = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans', 
+   
+    encoders = {}
+    cat_feat = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans',
                 'housing', 'skill_level', 'telephone', 'foreign_worker']
-    
+   
     for f in cat_feat:
         label = LabelEncoder()
-        df[f] = label.fit_transform(df[f])      
-    
+        df[f] = label.fit_transform(df[f])
+        encoders[f] = label
+      
 #    bin_cols = ['capital-gain', 'capital-loss']
 #    for feature in bin_cols:
 #        bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
 #        df[feature] = bins.fit_transform(df[[feature]])
-    
+   
 #    df = df[columns]
     label_name = 'credit'
 #    
     favorable_label = 1
     unfavorable_label = 0
     #favorable_classes=['>50K', '>50K.']
-    
+   
     #pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
     #df.loc[pos, label_name] = favorable_label
     #df.loc[~pos, label_name] = unfavorable_label
-
 #    
     X = df.drop(labels = [label_name], axis = 1, inplace = False)
     y = df[label_name]
@@ -237,7 +238,7 @@ def load_german():
     seed = 42 # randrange(100)
 #    train, test  = train_test_split(df, test_size = 0.15, random_state = seed)
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
-    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
+    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'), encoders)
 
 def load_compass():
     file_path = 'Fairify/data/compass/compas_preprocessed_full.csv'

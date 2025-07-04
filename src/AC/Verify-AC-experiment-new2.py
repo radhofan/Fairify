@@ -340,7 +340,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print("class_1_orig: ", class_1_orig)
             print("class_2_orig: ", class_2_orig)
 
-
+            #####################################################################################################
             def decode_counterexample(encoded_row, encoders):
                 """Decode numerical values back to original format using the actual encoders"""
                 cols = ['age', 'workclass', 'education', 'education-num', 'marital-status',
@@ -405,7 +405,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
                 wr.writerow(decoded_row1)
                 wr.writerow(decoded_row2)
-
+            #####################################################################################################
 
 
             if class_1_orig != class_2_orig:

@@ -117,27 +117,46 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
 
 # Load pre-trained adult model
 print("Loading original model...")
-original_model = load_model('Fairify/models/adult/AC-3.h5')
+original_model = load_model('Fairify/models/adult/GC-1.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
-df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_adult_ac1()
+df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig = load_german()
 
 # Define feature names (you might need to adjust these based on your actual dataset)
-feature_names = ['age', 'workclass', 'education', 'education-num',
-                'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+feature_names = [
+        "status",
+        "month",
+        "credit_history",
+        "purpose",
+        "credit_amount",
+        "savings",
+        "employment",
+        "investment_as_income_percentage",
+        "other_debtors",
+        "residence_since",
+        "property",
+        "age",
+        "installment_plans",
+        "housing",
+        "number_of_credits",
+        "skill_level",
+        "people_liable_for",
+        "telephone",
+        "foreign_worker",
+        "sex"
+]
 
 # Ensure we have the right number of feature names
 if len(feature_names) != X_test_orig.shape[1]:
     print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
     # Generate generic names if needed
     feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
-    feature_names[8] = 'sex'  # Ensure sex column is properly named
+    feature_names[11] = 'age'  # Ensure sex column is properly named
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-GC-1.csv')
 # df_synthetic = df_synthetic[df_synthetic['age'] <= 70]
 
 # === Preprocess synthetic data to match original preprocessing ===

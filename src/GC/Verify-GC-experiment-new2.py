@@ -367,9 +367,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 if 'sex' in row_dict:
                     sex_value = row_dict['sex']
                     if sex_value == 1:
-                        row_dict['personal_status'] = 'A91'  # Default to A91 for male
+                        row_dict['sex'] = 'A91'  # Default to A91 for male
                     elif sex_value == 0:
-                        row_dict['personal_status'] = 'A92'  # Default to A92 for female
+                        row_dict['sex'] = 'A92'  # Default to A92 for female
                 
                 # Reverse group transformations
                 if 'credit_history' in row_dict:

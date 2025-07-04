@@ -336,7 +336,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                     "skill_level",
                     "people_liable_for",
                     "telephone",
-                    "foreign_worker"
+                    "foreign_worker",
+                    "sex",
                 ]
             
                 decoded_row = []

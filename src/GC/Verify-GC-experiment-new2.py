@@ -365,7 +365,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 
                 # Reverse the sex mapping
                 if 'sex' in row_dict:
-                    sex_value = row_dict['sex']
+                    sex_value = int(row_dict['sex'])
                     if sex_value == 1:
                         row_dict['sex'] = 'A91'  # Default to A91 for male
                     elif sex_value == 0:

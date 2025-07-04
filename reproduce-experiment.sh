@@ -45,7 +45,7 @@ bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
 source ~/openrc
 
 bucket_name="bare_metal_experiment_pattern_data" 
-file_to_upload="Fairify/src/AC/res/counterexample.csv"
+file_to_upload="Fairify/src/GC/res-age/counterexample.csv"
 
 echo
 echo "Uploading results to the object store container $bucket_name"

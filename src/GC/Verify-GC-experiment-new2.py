@@ -382,7 +382,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 "people_liable_for",
                 "telephone",
                 "foreign_worker",
-                "sex"
+                "sex",
+                'output', 
+                'prediction'
             ]
 
             file_name = result_dir + 'counterexample.csv'

@@ -343,88 +343,64 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             def decode_counterexample(encoded_row, encoders):
                 """Decode numerical values back to original format using the actual encoders"""
                 cols = [
-                    "age",
-                    "job",
-                    "marital",
-                    "education",
-                    "default",
-                    "housing",
-                    "loan",
-                    "contact",
-                    "month",
-                    "day_of_week",
-                    "duration",
-                    "emp.var.rate",
-                    "campaign",
-                    "pdays",
-                    "previous",
-                    "poutcome"
+                    "age", "job", "marital", "education", "default", "housing", "loan",
+                    "contact", "month", "day_of_week", "duration", "emp.var.rate",
+                    "campaign", "pdays", "previous", "poutcome"
                 ]
                 
                 decoded_row = []
                 
                 for i, col_name in enumerate(cols):
-                        value = encoded_row[i]
-                        
-                        if col_name in encoders:
-                            try:
-                                if isinstance(encoders[col_name], LabelEncoder):
-                                    # For categorical features
-                                    decoded_value = encoders[col_name].inverse_transform([int(value)])[0]
-                                else:
-                                    decoded_value = value
-                            except:
-                                decoded_value = f"{col_name}_{value}"
-                        else:
-                            # For non-encoded features (age, credit_amount, etc.)
-                            decoded_value = int(value) if isinstance(value, (int, float)) else value
-                        
-                        decoded_row.append(decoded_value)
+                    value = encoded_row[i]
+                    
+                    if col_name in encoders:
+                        try:
+                            encoder = encoders[col_name]
+                            if isinstance(encoder, LabelEncoder):
+                                int_val = int(value)
+                                # Drop if value is out of range for encoder
+                                if int_val >= len(encoder.classes_):
+                                    return None
+                                decoded_value = encoder.inverse_transform([int_val])[0]
+                            else:
+                                decoded_value = value
+                        except Exception:
+                            return None
+                    else:
+                        decoded_value = int(value) if isinstance(value, (int, float)) else value
+                    
+                    decoded_row.append(decoded_value)
                 
                 return decoded_row
 
+            # -------------------------------
             cols = [
-                "age",
-                "job",
-                "marital",
-                "education",
-                "default",
-                "housing",
-                "loan",
-                "contact",
-                "month",
-                "day_of_week",
-                "duration",
-                "emp.var.rate",
-                "campaign",
-                "pdays",
-                "previous",
-                "poutcome",
-                "output",
-                "decision"
+                "age", "job", "marital", "education", "default", "housing", "loan",
+                "contact", "month", "day_of_week", "duration", "emp.var.rate",
+                "campaign", "pdays", "previous", "poutcome", "output", "decision"
             ]
 
             file_name = result_dir + 'counterexample.csv'
             file_exists = os.path.isfile(file_name)
 
             with open(file_name, "a", newline='') as fp:
+                wr = csv.writer(fp, dialect='excel')
                 if not file_exists:
-                    wr = csv.writer(fp, dialect='excel')
                     wr.writerow(cols)
-                
-                wr = csv.writer(fp)
-                
+
                 decoded_row1 = decode_counterexample(inp1, encoders)
                 decoded_row2 = decode_counterexample(inp2, encoders)
 
-                decoded_row1.append(float(pred1))
-                decoded_row1.append(int(class_1))
+                # Skip if any row failed decoding
+                if decoded_row1 is not None and decoded_row2 is not None:
+                    decoded_row1.append(float(pred1))
+                    decoded_row1.append(int(class_1))
 
-                decoded_row2.append(float(pred2))
-                decoded_row2.append(int(class_2))
+                    decoded_row2.append(float(pred2))
+                    decoded_row2.append(int(class_2))
 
-                wr.writerow(decoded_row1)
-                wr.writerow(decoded_row2)
+                    wr.writerow(decoded_row1)
+                    wr.writerow(decoded_row2)
             #####################################################################################################
             
             if class_1_orig != class_2_orig:

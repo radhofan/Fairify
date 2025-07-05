@@ -370,7 +370,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                         try:
                             if isinstance(encoders[col_name], LabelEncoder):
                                 # For categorical features
-                                decoded_value = encoders[col_name].inverse_transform([int(value)])[0]
+                                decoded_value = encoders[col_name].inverse_transform([int(round(value))])[0]
                             else:
                                 decoded_value = value
                         except:

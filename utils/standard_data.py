@@ -57,7 +57,8 @@ def german_custom_preprocessing(df):
     # df['age'] = df['age'].apply(lambda x: np.float(x >= 26))
     df['status'] = df['status'].apply(lambda x: group_status(x))
 
-    df.credit.replace([1, 2], [1, 0], inplace=True)
+    if 'credit' in df.columns:
+        df.credit.replace([1, 2], [1, 0], inplace=True)
 
     return df
 

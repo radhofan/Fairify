@@ -166,6 +166,9 @@ df_synthetic = german_custom_preprocessing(df_synthetic)
 
 cat_feat = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans',
             'housing', 'skill_level', 'telephone', 'foreign_worker']
+
+df_synthetic = df_synthetic[df_synthetic['purpose'] != 'A47']
+
 for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])

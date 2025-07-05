@@ -370,14 +370,32 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                         try:
                             if isinstance(encoders[col_name], LabelEncoder):
                                 # For categorical features
-                                decoded_value = encoders[col_name].inverse_transform([int(round(value))])[0]
+                                # Clamp the value to valid range
+                                n_classes = len(encoders[col_name].classes_)
+                                rounded_value = int(round(value))
+                                
+                                # Ensure the value is within valid range
+                                if 0 <= rounded_value < n_classes:
+                                    decoded_value = encoders[col_name].inverse_transform([rounded_value])[0]
+                                else:
+                                    print(f"Warning: Value {value} for {col_name} is out of range [0, {n_classes-1}]")
+                                    # Use the closest valid value
+                                    clamped_value = max(0, min(rounded_value, n_classes - 1))
+                                    decoded_value = encoders[col_name].inverse_transform([clamped_value])[0]
+                                    print(f"Using clamped value {clamped_value} -> {decoded_value}")
                             else:
                                 decoded_value = value
-                        except:
-                            decoded_value = f"{col_name}_{value}"
+                        except Exception as e:
+                            print(f"Error decoding {col_name} with value {value}: {e}")
+                            print(f"Available classes: {encoders[col_name].classes_}")
+                            decoded_value = f"ERROR_{col_name}_{value}"
                     else:
-                        # For non-encoded features (age, credit_amount, etc.)
-                        decoded_value = int(value) if isinstance(value, (int, float)) else value
+                        # For non-encoded features (age, duration, etc.)
+                        if col_name == 'age':
+                            # Age was transformed to binary (>= 25), so 0 = <25, 1 = >=25
+                            decoded_value = ">=25" if int(round(value)) == 1 else "<25"
+                        else:
+                            decoded_value = int(value) if isinstance(value, (int, float)) else value
                     
                     decoded_row.append(decoded_value)
                 

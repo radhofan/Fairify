@@ -353,7 +353,7 @@ def load_bank():
     pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
     df.loc[pos, label_name] = favorable_label
     df.loc[~pos, label_name] = unfavorable_label
-    df = df.round(0).astype(int)
+    # df = df.round(0).astype(int)
    
 #    
     X = df.drop(labels = [label_name], axis = 1, inplace = False)

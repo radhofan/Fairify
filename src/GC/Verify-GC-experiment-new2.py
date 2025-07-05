@@ -131,7 +131,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
     #     continue
 
-    if not model_file.startswith("GC-1."):
+    if not model_file.startswith("GC-2."):
         continue
 
     ###############################################################################################

@@ -23,6 +23,7 @@ from sklearn.cluster import DBSCAN
 from tensorflow.keras.models import Model
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
+import tensorflow as tf
 
 from random import shuffle
 

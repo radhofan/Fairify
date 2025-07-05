@@ -308,53 +308,53 @@ def load_default():
 
 def load_bank():
     file_path = 'Fairify/data/bank/bank-additional-full.csv'
-
-    column_names = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 
+    column_names = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan', 'contact',
                     'month', 'day_of_week', 'duration', 'emp.var.rate',  
                     'campaign', 'pdays', 'previous', 'poutcome', 'y']
     na_values=['unknown']
-    
+   
     df = pd.read_csv(file_path, sep=';', na_values=na_values)
-    
+   
     ### Drop na values
     dropped = df.dropna()
     count = df.shape[0] - dropped.shape[0]
     print("Missing Data: {} rows removed.".format(count))
     df = dropped
     columns = ['education=Assoc-acdm', 'education=Assoc-voc', 'education=Bachelors',]
-    
+   
     df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
-    
+   
     ## Feature selection
     # features_to_keep = []
     # df = df[features_to_keep]
-    
+   
     # Create a one-hot encoding of the categorical variables.
     cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
     #df = pd.get_dummies(df, columns=cat_feat, prefix_sep='=')
-    
-    
+   
+    encoders = {}
     for f in cat_feat:
         label = LabelEncoder()
-        df[f] = label.fit_transform(df[f])      
-    
+        df[f] = label.fit_transform(df[f])
+        encoders[f] = label
+   
 #    bin_cols = ['capital-gain', 'capital-loss']
 #    for feature in bin_cols:
 #        bins = KBinsDiscretizer(n_bins=20, encode='ordinal', strategy='uniform')
 #        df[feature] = bins.fit_transform(df[[feature]])
     #print(df.columns)
-    
+   
     df = df[column_names]
     label_name='y'
     favorable_label = 1
     unfavorable_label = 0
     favorable_classes=['yes']
-    
+   
     pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
     df.loc[pos, label_name] = favorable_label
     df.loc[~pos, label_name] = unfavorable_label
     df = df.round(0).astype(int)
-    
+   
 #    
     X = df.drop(labels = [label_name], axis = 1, inplace = False)
     y = df[label_name]
@@ -363,7 +363,7 @@ def load_bank():
     seed = 42 # randrange(100)
 #    train, test  = train_test_split(df, test_size = 0.15, random_state = seed)
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
-    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'))
+    return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'), encoders)
 
 
 def load_adult():

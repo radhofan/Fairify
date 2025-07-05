@@ -131,7 +131,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
     #     continue
 
-    if not model_file.startswith("GC-3."):
+    if not model_file.startswith("GC-1."):
         continue
 
     ###############################################################################################
@@ -601,3 +601,288 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         if cumulative_time > HARD_TIMEOUT:
             print('==================  COMPLETED MODEL ' + model_file)
             break
+
+print(f"Partition_results has {len(partition_results)} entries")
+status_counts = {}
+for partition_key, result_status in partition_results.items():
+   if result_status in status_counts:
+       status_counts[result_status] += 1
+   else:
+       status_counts[result_status] = 1
+
+print("Status counts:")
+for status, count in status_counts.items():
+   print(f"  {status}: {count}")
+
+
+from metrics import CausalDiscriminationDetector, Input
+
+# Model paths
+ORIGINAL_MODEL_NAME = "GC-1"
+FAIRER_MODEL_NAME = "GC-6"
+ORIGINAL_MODEL_PATH = f'Fairify/models/german/{ORIGINAL_MODEL_NAME}.h5'
+FAIRER_MODEL_PATH = f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5'
+
+def key_to_partition(partition_key):
+   partition = {}
+   if not partition_key:
+       return partition
+  
+   if isinstance(partition_key, tuple):
+       for key_part in partition_key:
+           if isinstance(key_part, tuple) and len(key_part) >= 2:
+               attr = key_part[0]
+               if len(key_part) == 3:
+                   # Range: (attr, lower, upper) - convert to list
+                   partition[attr] = [key_part[1], key_part[2]]  
+               elif len(key_part) == 2:
+                   partition[attr] = key_part[1]
+  
+   return partition
+
+def find_partition_result_for_point(point, partition_results):
+   """Find partition result directly from partition_results for a given data point"""
+   feature_names = [
+        "status",
+        "month",
+        "credit_history",
+        "purpose",
+        "credit_amount",
+        "savings",
+        "employment",
+        "investment_as_income_percentage",
+        "other_debtors",
+        "residence_since",
+        "property",
+        "age",
+        "installment_plans",
+        "housing",
+        "number_of_credits",
+        "skill_level",
+        "people_liable_for",
+        "telephone",
+        "foreign_worker",
+        "sex"
+    ]
+   
+   for partition_key, result_status in partition_results.items():
+       # Convert key back to partition format
+       partition = key_to_partition(partition_key)
+      
+       # Check if point matches this partition
+       for i, feature_name in enumerate(feature_names):
+           if feature_name in partition:
+               bounds = partition[feature_name]
+               if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                   lower, upper = bounds
+                   if not (lower <= point[i] <= upper):
+                       break
+               elif isinstance(bounds, (int, float)):
+                   if point[i] != bounds:
+                       break
+       else:
+           return result_status, partition_key
+   
+   return None, None
+
+def hybrid_predict(data_point, original_model, fairer_model, partition_results, debug_counters,
+                  original_name, fairer_name):
+    """Hybrid prediction function - directly searches partition_results"""
+    
+    # Directly find if data point belongs to any evaluated partition
+    result_status, partition_key = find_partition_result_for_point(data_point, partition_results)
+    
+    if result_status is None:
+        # No matching partition found in partition_results - fallback to original model
+        debug_counters['fallback_to_original'] += 1
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+    
+    # Partition found with result
+    if result_status == 'sat':  # Unfair partition - use fairer model
+        debug_counters[f'sat_unfair_{fairer_name.lower()}_used'] += 1
+        pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+    elif result_status == 'unsat':  # Fair partition - use original model
+        debug_counters[f'unsat_fair_{original_name.lower()}_used'] += 1
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+    else:  # 'unknown' - fallback to original model
+        debug_counters[f'unknown_{original_name.lower()}_used'] += 1
+        pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
+        return pred.flatten()[0] if isinstance(pred, np.ndarray) else pred
+
+# Load models
+print("Loading models...")
+original_model = load_model(ORIGINAL_MODEL_PATH)
+fairer_model = load_model(FAIRER_MODEL_PATH)
+
+# Initialize debug counters
+debug_counters = {
+    'fallback_to_original': 0,
+    f'sat_unfair_{FAIRER_MODEL_NAME.lower()}_used': 0,
+    f'unsat_fair_{ORIGINAL_MODEL_NAME.lower()}_used': 0,
+    f'unknown_{ORIGINAL_MODEL_NAME.lower()}_used': 0
+}
+
+# Hybrid evaluation on test set
+print("\nEvaluating Hybrid Prediction Approach...")
+hybrid_predictions = []
+original_predictions = []
+fairer_predictions = []
+
+for i in tqdm(range(len(X_test)), desc="Hybrid Prediction"):
+    data_point = X_test[i]
+    
+    # Hybrid prediction - flatten to ensure 1D
+    hybrid_pred = hybrid_predict(data_point, original_model, fairer_model, partition_results, 
+                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
+    if isinstance(hybrid_pred, np.ndarray):
+        hybrid_pred = hybrid_pred.flatten()[0]
+    hybrid_predictions.append(hybrid_pred)
+    
+    # Individual model predictions for comparison - flatten to ensure 1D
+    orig_pred = original_model.predict(data_point.reshape(1, -1), verbose=0)
+    if isinstance(orig_pred, np.ndarray):
+        orig_pred = orig_pred.flatten()[0]
+    original_predictions.append(orig_pred)
+    
+    fair_pred = fairer_model.predict(data_point.reshape(1, -1), verbose=0)
+    if isinstance(fair_pred, np.ndarray):
+        fair_pred = fair_pred.flatten()[0]
+    fairer_predictions.append(fair_pred)
+
+########################################### ACCURACY
+
+# Convert to numpy arrays and ensure 1D
+hybrid_predictions = np.array(hybrid_predictions).flatten()
+original_predictions = np.array(original_predictions).flatten()
+fairer_predictions = np.array(fairer_predictions).flatten()
+
+# Convert to binary predictions
+hybrid_predictions_binary = hybrid_predictions > 0.5
+original_predictions_binary = original_predictions > 0.5
+fairer_predictions_binary = fairer_predictions > 0.5
+
+# Calculate accuracy metrics
+hybrid_accuracy = accuracy_score(y_test, hybrid_predictions_binary)
+original_accuracy = accuracy_score(y_test, original_predictions_binary)
+fairer_accuracy = accuracy_score(y_test, fairer_predictions_binary)
+
+print(f"{ORIGINAL_MODEL_NAME} (Original) Accuracy: {original_accuracy:.4f}")
+print(f"{FAIRER_MODEL_NAME} (Fairer) Accuracy: {fairer_accuracy:.4f}")
+print(f"Hybrid Approach Accuracy: {hybrid_accuracy:.4f}")
+
+########################################### CNT
+
+sex_index = 11
+prot_attr = X_test[:, sex_index]
+
+X_test_df = pd.DataFrame(X_test)
+X_test_df.rename(columns={X_test_df.columns[11]: 'age'}, inplace=True)
+
+hybrid_predictions_binary_int = (hybrid_predictions > 0.5).astype(int)
+original_predictions_binary_int = (original_predictions > 0.5).astype(int)
+fairer_predictions_binary_int = (fairer_predictions > 0.5).astype(int)
+
+hybrid_dataset = pd.concat([X_test_df, pd.Series(hybrid_predictions_binary_int, name='credit')], axis=1)
+hybrid_dataset = BinaryLabelDataset(df=hybrid_dataset, label_names=['credit'], protected_attribute_names=['age'])
+
+original_dataset = pd.concat([X_test_df, pd.Series(original_predictions_binary_int, name='credit')], axis=1)
+original_dataset = BinaryLabelDataset(df=original_dataset, label_names=['credit'], protected_attribute_names=['age'])
+
+fairer_dataset = pd.concat([X_test_df, pd.Series(fairer_predictions_binary_int, name='credit')], axis=1)
+fairer_dataset = BinaryLabelDataset(df=fairer_dataset, label_names=['credit'], protected_attribute_names=['age'])
+
+unprivileged_groups = [{'age': 0}]
+privileged_groups = [{'age': 1}]
+
+hybrid_metric = BinaryLabelDatasetMetric(hybrid_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+original_metric = BinaryLabelDatasetMetric(original_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+fairer_metric = BinaryLabelDatasetMetric(fairer_dataset, unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+
+hybrid_cnt = float(hybrid_metric.consistency())
+original_cnt = float(original_metric.consistency())
+fairer_cnt = float(fairer_metric.consistency())
+
+print("=== CNT RESULTS ===")
+print(f"Original CNT:  {original_cnt:.4f}")
+print(f"Fairer CNT:    {fairer_cnt:.4f}")
+print(f"Hybrid CNT:    {hybrid_cnt:.4f}")
+
+########################################### CAUSALITY
+
+feature_names = [
+    "status",
+    "month",
+    "credit_history",
+    "purpose",
+    "credit_amount",
+    "savings",
+    "employment",
+    "investment_as_income_percentage",
+    "other_debtors",
+    "residence_since",
+    "property",
+    "age",
+    "installment_plans",
+    "housing",
+    "number_of_credits",
+    "skill_level",
+    "people_liable_for",
+    "telephone",
+    "foreign_worker",
+    "sex"
+]
+
+# Helper to map index array to feature dictionary (assumes same order as feature_names)
+def array_to_feature_dict(arr):
+    return {feature_names[i]: arr[i] for i in range(len(feature_names))}
+
+# Wrapper prediction functions
+def model_predict_fn_original(feature_dict):
+    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+    return int(original_model.predict(x, verbose=0)[0][0] > 0.5)
+
+def model_predict_fn_fairer(feature_dict):
+    x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+    return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
+
+# Hybrid prediction function for detector
+def model_predict_fn_hybrid(feature_dict):
+    # Convert feature dict to array format
+    x = np.array([feature_dict[f] for f in feature_names], dtype=np.float32)
+    
+    # Use hybrid prediction (assuming partition_results is available)
+    hybrid_pred = hybrid_predict(x, original_model, fairer_model, partition_results, 
+                                debug_counters, ORIGINAL_MODEL_NAME, FAIRER_MODEL_NAME)
+    return int(hybrid_pred > 0.5)
+
+detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
+detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
+detector_hybrid = CausalDiscriminationDetector(model_predict_fn_hybrid, max_samples=1000, min_samples=100)
+
+for fname in feature_names:
+    unique_vals = sorted(set(df[fname]))
+    detector_orig.add_feature(fname, unique_vals)
+    detector_fair.add_feature(fname, unique_vals)
+    detector_hybrid.add_feature(fname, unique_vals)
+
+# Run discrimination tests
+# print("Running Causal Discrimination Check on 'sex'...\n")
+_, rate_orig, _ = detector_orig.causal_discrimination(['age'])
+_, rate_fair, _ = detector_fair.causal_discrimination(['age'])
+_, rate_hybrid, _ = detector_hybrid.causal_discrimination(['age'])
+
+print("="*60)
+print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
+print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
+print(f"Discrimination rate on hybrid model: {rate_hybrid:.4f}")
+print("="*60)
+
+###########################################
+
+# Print debug counters
+print("\nDebug Counters:")
+for key, value in debug_counters.items():
+    print(f"{key}: {value}")

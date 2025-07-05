@@ -21,7 +21,7 @@ from collections import defaultdict
 from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 
-def create_aif360_dataset(X, y, feature_names, protected_attribute='sex', 
+def create_aif360_dataset(X, y, feature_names, protected_attribute='age', 
                          favorable_label=1, unfavorable_label=0):
     """Create AIF360 BinaryLabelDataset from numpy arrays."""
     # Convert to DataFrame
@@ -49,7 +49,7 @@ def safe_metric_value(metric_value):
     return metric_value
 
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
-                           protected_attribute='sex', sex_col_idx=8):
+                           protected_attribute='age', sex_col_idx=11):
     """
     Measure fairness using proper AIF360 metrics.
     Returns: dict with all fairness metrics
@@ -121,7 +121,7 @@ original_model = load_model('Fairify/models/adult/GC-1.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
-df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig = load_german()
+df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_german()
 
 # Define feature names (you might need to adjust these based on your actual dataset)
 feature_names = [
@@ -161,29 +161,24 @@ df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-GC-1.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
-cat_feat = ['workclass', 'education', 'marital-status', 'occupation',
-            'relationship', 'native-country', 'sex']
 
+df_synthetic['age'] = df_synthetic['age'].apply(lambda x: np.float(x >= 26))
+df_synthetic = german_custom_preprocessing(df_synthetic)
+
+cat_feat = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans',
+            'housing', 'skill_level', 'telephone', 'foreign_worker']
 for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
 
-if 'race' in encoders:
-    df_synthetic['race'] = encoders['race'].transform(df_synthetic['race'])
-
-binning_cols = ['capital-gain', 'capital-loss']
-for feature in binning_cols:
-    if feature in encoders:
-        df_synthetic[feature] = encoders[feature].transform(df_synthetic[[feature]])
-
-df_synthetic.rename(columns={'decision': 'income-per-year'}, inplace=True)
-label_name = 'income-per-year'
+df_synthetic.rename(columns={'decision': 'credit'}, inplace=True)
+label_name = 'credit'
 
 X_synthetic = df_synthetic.drop(columns=[label_name])
 y_synthetic = df_synthetic[label_name]
 
-X_synthetic = df_synthetic.drop(columns=['income-per-year']).values
-y_synthetic = df_synthetic['income-per-year'].values
+X_synthetic = df_synthetic.drop(columns=['credit']).values
+y_synthetic = df_synthetic['credit'].values
 
 split_idx = int(0.85 * len(X_synthetic))
 X_train_synth = X_synthetic[:split_idx]
@@ -199,7 +194,7 @@ print(f"Synthetic training size: {len(X_train_synth)}")
 # === MEASURE ORIGINAL MODEL FAIRNESS WITH AIF360 ===
 print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
 original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_orig, 
-                                         feature_names, protected_attribute='sex')
+                                         feature_names, protected_attribute='age')
 
 # Debug the preprocessing
 print("CSV column order:", df_synthetic.columns.tolist())
@@ -207,7 +202,7 @@ print("Expected feature order:", feature_names)
 
 # Check first few rows before and after preprocessing
 print("\nFirst 4 rows of synthetic data BEFORE preprocessing:")
-df_raw = pd.read_csv('Fairify/experimentData/counterexamples-AC-3.csv')
+df_raw = pd.read_csv('Fairify/experimentData/counterexamples-GC-1.csv')
 print(df_raw.head(4))
 
 print("\nFirst 4 rows AFTER preprocessing:")
@@ -215,8 +210,8 @@ print(df_synthetic.head(4))
 
 # Check if pairs are still identical except for sex
 print("\nChecking first pair after preprocessing:")
-row1 = df_synthetic.iloc[0].drop('income-per-year').values
-row2 = df_synthetic.iloc[1].drop('income-per-year').values
+row1 = df_synthetic.iloc[0].drop('credit').values
+row2 = df_synthetic.iloc[1].drop('credit').values
 print("Row 1:", row1)
 print("Row 2:", row2)
 
@@ -233,7 +228,7 @@ def get_activation_model(model):
 activation_model = get_activation_model(original_model)
 
 # Get column index of 'sex'
-sex_idx = df_synthetic.drop(columns=['income-per-year']).columns.get_loc('sex')
+sex_idx = df_synthetic.drop(columns=['credit']).columns.get_loc('age')
 
 biased_neuron_scores = None
 num_pairs = 0
@@ -246,7 +241,7 @@ for i in range(0, len(X_train_synth)-1, 2):
     diff = x[0, non_sex_idx] - x_prime[0, non_sex_idx]
     
     if not np.allclose(diff, 0, atol=1e-5):
-        print(f"[WARN] Pair {i} and {i+1} has differences outside 'sex':")
+        print(f"[WARN] Pair {i} and {i+1} has differences outside 'age':")
         print("x     :", x[0, non_sex_idx])
         print("x_prime:", x_prime[0, non_sex_idx])
         print("Diff  :", diff)
@@ -280,7 +275,7 @@ biased_neuron_scores /= num_pairs
 top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  # top 10
 
 # Print in table format
-print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'sex'):")
+print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'age'):")
 print("=" * 45)
 print(f"{'Rank':<5} {'Neuron Index':<15} {'Bias Score':>12}")
 print("=" * 45)
@@ -289,7 +284,7 @@ for rank, idx in enumerate(top_biased_indices, start=1):
 
 
 # Use your original model
-original_model = load_model('Fairify/models/adult/AC-3.h5')
+original_model = load_model('Fairify/models/adult/GC-1.h5')
 X_train_ce = X_train_synth
 y_train_ce = y_train_synth
 
@@ -397,7 +392,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.0005)
+optimizer = Adam(learning_rate=0.0001)
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Convert data to tensors
@@ -424,8 +419,8 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
 # Save the model
-original_model.save('Fairify/models/adult/AC-16.h5')
-print("\n✅ Bias-repaired model saved as AC-16.h5")
+original_model.save('Fairify/models/adult/GC-6.h5')
+print("\n✅ Bias-repaired model saved as GC-6.h5")
 print("✅ Only the identified biased neurons were updated!")
 
 X_train_ce = []
@@ -452,5 +447,5 @@ print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
 # Step 8: Save the retrained model
-original_model.save('Fairify/models/adult/AC-16.h5')
-print("\n✅ Bias-repaired model saved as AC-16.h5")
+original_model.save('Fairify/models/adult/GC-6.h5')
+print("\n✅ Bias-repaired model saved as GC-6.h5")

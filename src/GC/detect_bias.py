@@ -161,7 +161,8 @@ df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-GC-1.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
-
+feat_to_drop = ['personal_status']
+df_synthetic = df_synthetic.drop(feat_to_drop, axis=1)
 df_synthetic['age'] = df_synthetic['age'].apply(lambda x: np.float(x >= 26))
 df_synthetic = german_custom_preprocessing(df_synthetic)
 

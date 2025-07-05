@@ -440,7 +440,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 "foreign_worker",
                 "sex",
                 'output', 
-                'prediction'
+                'decision'
             ]
 
             file_name = result_dir + 'counterexample.csv'

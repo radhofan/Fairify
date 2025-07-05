@@ -46,7 +46,9 @@ def german_custom_preprocessing(df):
     #               'A92': 0.0, 'A95': 0.0}  # A91: male
     # df['sex'] = df['personal_status'].replace(status_map)
     status_map = {'A91': 1, 'A93': 1, 'A94': 1, 'A92': 0, 'A95': 0}  # 1: 'male'
-    df['sex'] = df['personal_status'].replace(status_map)
+    # df['sex'] = df['personal_status'].replace(status_map)
+    if 'personal_status' in df.columns:
+        df['sex'] = df['personal_status'].replace(status_map)
 
     # group credit history, savings, and employment
     df['credit_history'] = df['credit_history'].apply(lambda x: group_credit_hist(x))

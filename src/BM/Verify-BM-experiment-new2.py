@@ -173,7 +173,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     unk_count = 0
     cumulative_time = 0
     
-    for p in p_list:
+    for p in tqdm(p_list, desc="Processing Partitions", total=len(p_list)):  # tqdm for partitions loop
         heuristic_attempted = 0
         result = []
         start_time = time.time()

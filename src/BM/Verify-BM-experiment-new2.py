@@ -52,6 +52,24 @@ HEURISTIC_PRUNE_THRESHOLD = 100
 ## Domain
 default_range = [0, 1]
 range_dict = {}
+# range_dict['job'] = [0, 10]
+# range_dict['marital'] = [0, 2]
+# range_dict['education'] = [0, 6]
+# range_dict['default'] = [0, 1]
+# range_dict['housing'] = [0, 1]
+# range_dict['loan'] = [0, 1]
+# range_dict['contact'] = [0, 1]
+# range_dict['month'] = [0, 11]
+# range_dict['day_of_week'] = [0, 6]
+# range_dict['emp.var.rate'] = [-3, 1]
+# range_dict['duration'] = [0, 5000] #10000
+# range_dict['campaign'] = [1, 50]
+# range_dict['pdays'] = [0, 999]
+# range_dict['previous'] = [0, 7]
+# range_dict['poutcome'] = [0, 2]
+# range_dict['age'] = [0, 1]
+
+range_dict['age'] = [0, 1]
 range_dict['job'] = [0, 10]
 range_dict['marital'] = [0, 2]
 range_dict['education'] = [0, 6]
@@ -61,13 +79,12 @@ range_dict['loan'] = [0, 1]
 range_dict['contact'] = [0, 1]
 range_dict['month'] = [0, 11]
 range_dict['day_of_week'] = [0, 6]
+range_dict['duration'] = [0, 5000] 
 range_dict['emp.var.rate'] = [-3, 1]
-range_dict['duration'] = [0, 5000] #10000
 range_dict['campaign'] = [1, 50]
 range_dict['pdays'] = [0, 999]
 range_dict['previous'] = [0, 7]
 range_dict['poutcome'] = [0, 2]
-range_dict['age'] = [0, 1]
 
 A = range_dict.keys()
 PA = ['age']
@@ -326,6 +343,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             def decode_counterexample(encoded_row, encoders):
                 """Decode numerical values back to original format using the actual encoders"""
                 cols = [
+                    "age",
                     "job",
                     "marital",
                     "education",
@@ -335,13 +353,12 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                     "contact",
                     "month",
                     "day_of_week",
-                    "emp.var.rate",
                     "duration",
+                    "emp.var.rate",
                     "campaign",
                     "pdays",
                     "previous",
-                    "poutcome",
-                    "age"
+                    "poutcome"
                 ]
                 
                 decoded_row = []
@@ -367,6 +384,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 return decoded_row
 
             cols = [
+                "age",
                 "job",
                 "marital",
                 "education",
@@ -376,15 +394,14 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
                 "contact",
                 "month",
                 "day_of_week",
-                "emp.var.rate",
                 "duration",
+                "emp.var.rate",
                 "campaign",
                 "pdays",
                 "previous",
                 "poutcome",
-                "age",
                 "output",
-                "decision",
+                "decision"
             ]
 
             file_name = result_dir + 'counterexample.csv'
@@ -493,7 +510,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         prot_attr = pd.Series(np.array(prot_attr).ravel())
 
         X_test_copy = pd.DataFrame(X_test)
-        print('14 column')
         print(X_test_copy.iloc[:, 14])
         X_test_copy.rename(columns={X_test_copy.columns[14]: 'age'}, inplace=True)
         dataset = pd.concat([X_test_copy, y_true.rename('y')], axis=1)

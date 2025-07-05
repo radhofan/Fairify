@@ -105,7 +105,7 @@ def partition_to_key(partition):
     return tuple(key_parts)
 
 model_files = os.listdir(model_dir)
-for model_file in model_files:
+for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
     # if not model_file.endswith('.h5'):
     #     continue
     

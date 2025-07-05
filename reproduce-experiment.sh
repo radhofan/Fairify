@@ -32,22 +32,23 @@ sudo apt install -y python3-swiftclient
 # python Fairify/src/AC/metrics.py
 # python Fairify/src/AC/metrics2.py
 # python Fairify/src/AC/detect_bias.py
-python Fairify/src/GC/detect_bias.py
+# python Fairify/src/GC/detect_bias.py
 
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py
-bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
+# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
 # bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new.py
 # bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new2.py
 # bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment.py
+bash Fairify/src/fairify.sh Fairify/src/GC/Verify-BM-experiment-new2.py
 # bash Fairify/src/fairify.sh Fairify/src/CP/Verify-CP.py
 # bash Fairify/src/fairify.sh Fairify/src/DF/Verify-DF.py
 
 source ~/openrc
 
 bucket_name="bare_metal_experiment_pattern_data" 
-file_to_upload="Fairify/src/GC/res-age/counterexample.csv"
+file_to_upload="Fairify/src/BM/res/counterexample.csv"
 
 echo
 echo "Uploading results to the object store container $bucket_name"

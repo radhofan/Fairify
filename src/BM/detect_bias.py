@@ -166,7 +166,7 @@ def map_global_to_layer_neuron(model, global_indices):
     return layer_neuron_map
 
 # Map the top biased indices to specific layers
-top_k = 10
+top_k = 1
 top_indices = top_biased_indices[:top_k]
 neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
 
@@ -253,7 +253,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.000000000001)
+optimizer = Adam(learning_rate=0.00001)
 # BM-1 = 0.0001 
 # BM-2 =  
 # BM-3 = 0.000001

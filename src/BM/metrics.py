@@ -396,8 +396,8 @@ if __name__ == "__main__":
     import numpy as np
 
     # Model paths
-    ORIGINAL_MODEL_NAME = "BM-3"
-    FAIRER_MODEL_NAME = "BM-11"
+    ORIGINAL_MODEL_NAME = "BM-2"
+    FAIRER_MODEL_NAME = "BM-10"
     ORIGINAL_MODEL_PATH = f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5'
 

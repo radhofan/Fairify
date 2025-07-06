@@ -192,33 +192,33 @@ X_test_synth = X_synthetic[split_idx:]
 y_test_synth = y_synthetic[split_idx:]
 
 
-print("\n=== COUNTEREXAMPLE ANALYSIS ===")
-print(f"Original training size: {len(X_train_orig)}")
-print(f"Synthetic training size: {len(X_train_synth)}")
+# print("\n=== COUNTEREXAMPLE ANALYSIS ===")
+# print(f"Original training size: {len(X_train_orig)}")
+# print(f"Synthetic training size: {len(X_train_synth)}")
 
 # === MEASURE ORIGINAL MODEL FAIRNESS WITH AIF360 ===
 print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
 original_metrics = measure_fairness_aif360(original_model, X_test_orig, y_test_orig, 
                                          feature_names, protected_attribute='age')
 
-# Debug the preprocessing
-print("CSV column order:", df_synthetic.columns.tolist())
-print("Expected feature order:", feature_names)
+# # Debug the preprocessing
+# print("CSV column order:", df_synthetic.columns.tolist())
+# print("Expected feature order:", feature_names)
 
-# Check first few rows before and after preprocessing
-print("\nFirst 4 rows of synthetic data BEFORE preprocessing:")
-df_raw = pd.read_csv('Fairify/experimentData/counterexamples-BM-1.csv')
-print(df_raw.head(4))
+# # Check first few rows before and after preprocessing
+# print("\nFirst 4 rows of synthetic data BEFORE preprocessing:")
+# df_raw = pd.read_csv('Fairify/experimentData/counterexamples-BM-1.csv')
+# print(df_raw.head(4))
 
-print("\nFirst 4 rows AFTER preprocessing:")
-print(df_synthetic.head(4))
+# print("\nFirst 4 rows AFTER preprocessing:")
+# print(df_synthetic.head(4))
 
-# Check if pairs are still identical except for sex
-print("\nChecking first pair after preprocessing:")
-row1 = df_synthetic.iloc[0].drop('y').values
-row2 = df_synthetic.iloc[1].drop('y').values
-print("Row 1:", row1)
-print("Row 2:", row2)
+# # Check if pairs are still identical except for sex
+# print("\nChecking first pair after preprocessing:")
+# row1 = df_synthetic.iloc[0].drop('y').values
+# row2 = df_synthetic.iloc[1].drop('y').values
+# print("Row 1:", row1)
+# print("Row 2:", row2)
 
 ################################################
 # Dictionary to store activations

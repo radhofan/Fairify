@@ -344,6 +344,18 @@ if __name__ == "__main__":
     _, rate_fair, _ = detector_fair.causal_discrimination(['age'])
 
     print("="*40)
+
     print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
     print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
+
+    print("="*40)
+    
+    y_pred_orig = (original_model.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
+    y_pred_fair = (fairer_model.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
+    
+    accuracy_orig = accuracy_score(y_test, y_pred_orig)
+    accuracy_fair = accuracy_score(y_test, y_pred_fair)
+    
+    print(f"Original model accuracy: {accuracy_orig:.4f}")
+    print(f"Fairer model accuracy: {accuracy_fair:.4f}")
     print("="*40)

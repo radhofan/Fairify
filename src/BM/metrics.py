@@ -10,6 +10,103 @@ import random
 import scipy.stats as st
 import copy
 
+# AIF360 imports
+from aif360.datasets import BinaryLabelDataset
+from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
+
+def create_aif360_dataset(X, y, feature_names, protected_attribute='age', 
+                         favorable_label=1, unfavorable_label=0):
+    """Create AIF360 BinaryLabelDataset from numpy arrays."""
+    # Convert to DataFrame
+    df = pd.DataFrame(X, columns=feature_names)
+    df['y'] = y
+    
+    # Create AIF360 dataset
+    dataset = BinaryLabelDataset(
+        favorable_label=favorable_label,
+        unfavorable_label=unfavorable_label,
+        df=df,
+        label_names=['y'],
+        protected_attribute_names=[protected_attribute]
+    )
+    return dataset
+
+def safe_metric_value(metric_value):
+    """Safely extract scalar value from metric result."""
+    if isinstance(metric_value, np.ndarray):
+        if metric_value.size == 1:
+            return metric_value.item()
+        else:
+            # For arrays with multiple values, return the mean or first value
+            return np.mean(metric_value)
+    return metric_value
+
+def measure_fairness_aif360(model, X_test, y_test, feature_names, 
+                           protected_attribute='sex', pa_col_idx=0):
+    """
+    Measure fairness using proper AIF360 metrics.
+    Returns: dict with all fairness metrics
+    """
+    # Get predictions
+    predictions = model.predict(X_test)
+    pred_binary = (predictions > 0.5).astype(int).flatten()
+    
+    # Calculate accuracy and F1
+    acc = accuracy_score(y_test, pred_binary)
+    f1 = f1_score(y_test, pred_binary)
+    
+    print(f"Accuracy: {acc:.3f}")
+    print(f"F1 Score: {f1:.3f}")
+    
+    # Create AIF360 datasets
+    dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
+    dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
+    
+    # Metrics
+    unprivileged_groups = [{protected_attribute: 0}]
+    privileged_groups = [{protected_attribute: 1}]
+    
+    classified_metric = ClassificationMetric(
+        dataset_orig, dataset_pred,
+        unprivileged_groups=unprivileged_groups,
+        privileged_groups=privileged_groups
+    )
+    
+    metric_pred = BinaryLabelDatasetMetric(
+        dataset_pred,
+        unprivileged_groups=unprivileged_groups,
+        privileged_groups=privileged_groups
+    )
+    
+    # Compute metrics
+    di = classified_metric.disparate_impact()
+    spd = classified_metric.mean_difference()
+    eod = classified_metric.equal_opportunity_difference()
+    aod = classified_metric.average_odds_difference()
+    erd = classified_metric.error_rate_difference()
+    cnt = metric_pred.consistency()  # ✅ Fixed line
+    ti = classified_metric.theil_index()
+    
+    print(f"\n=== FAIRNESS METRICS (AIF360) ===")
+    print(f"Disparate Impact (DI):            {di:.3f}")
+    print(f"Statistical Parity Difference:    {spd:.3f}")
+    print(f"Equal Opportunity Difference:     {eod:.3f}")
+    print(f"Average Odds Difference:          {aod:.3f}")
+    print(f"Error Rate Difference:            {erd:.3f}")
+    print(f"Consistency (CNT):                {float(cnt):.3f}")
+    print(f"Theil Index:                      {ti:.3f}")
+    
+    return {
+        'accuracy': acc,
+        'f1_score': f1,
+        'disparate_impact': di,
+        'statistical_parity_diff': spd,
+        'equal_opportunity_diff': eod,
+        'average_odds_diff': aod,
+        'error_rate_diff': erd,
+        'consistency': float(cnt),
+        'theil_index': ti
+    }
 
 class Input:
     """Class to define an input feature for discrimination testing."""
@@ -311,9 +408,52 @@ if __name__ == "__main__":
 
     # Load data (X_test already preprocessed, no re-encoding)
     df, X_train, y_train, X_test, y_test, encoders = load_bank()
-    feature_names = ["age", "job", "marital", "education", "default", "housing", "loan",
-                    "contact", "month", "day_of_week", "duration", "emp.var.rate",
-                    "campaign", "pdays", "previous", "poutcome"]
+    df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
+
+    feature_names = [
+        "age", "job", "marital", "education", "default", "housing", "loan", 
+        "contact", "month", "day_of_week", "duration", "emp.var.rate", 
+        "campaign", "pdays", "previous", "poutcome"
+    ]
+
+    df_synthetic.dropna(inplace=True)
+    cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
+
+    invalid_values = {'unknown', '(null)'}
+    invalid_months = {'jan', 'feb'}
+
+    for feature in cat_feat:
+        if feature in df_synthetic.columns:
+            if feature == 'month':
+                df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_months)]
+            else:
+                df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
+
+    for feature in cat_feat:
+        if feature in encoders:
+            print(f"Checking feature: {feature}")
+            unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
+            if unseen_values:
+                print(f"Unseen values in '{feature}': {unseen_values}")
+
+    for feature in cat_feat:
+        if feature in encoders:
+            df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
+
+    df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
+    label_name = 'y'
+
+    X_synthetic = df_synthetic.drop(columns=[label_name])
+    y_synthetic = df_synthetic[label_name]
+
+    X_synthetic = df_synthetic.drop(columns=['y']).values
+    y_synthetic = df_synthetic['y'].values
+
+    split_idx = int(0.85 * len(X_synthetic))
+    X_train_synth = X_synthetic[:split_idx]
+    y_train_synth = y_synthetic[:split_idx]
+    X_test_synth = X_synthetic[split_idx:]
+    y_test_synth = y_synthetic[split_idx:]
 
     # Helper to map index array to feature dictionary (assumes same order as feature_names)
     def array_to_feature_dict(arr):
@@ -342,6 +482,16 @@ if __name__ == "__main__":
     print("Running Causal Discrimination Check on 'age'...\n")
     _, rate_orig, _ = detector_orig.causal_discrimination(['age'])
     _, rate_fair, _ = detector_fair.causal_discrimination(['age'])
+
+    print("="*40)
+
+    print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
+    original_metrics = measure_fairness_aif360(original_model, X_test, y_test, 
+                                             feature_names, protected_attribute='age')
+    
+    print("\n=== FAIRER MODEL FAIRNESS (AIF360) ===")
+    original_metrics = measure_fairness_aif360(original_model, X_test_synth, y_test_synth, 
+                                             feature_names, protected_attribute='age')
 
     print("="*40)
 

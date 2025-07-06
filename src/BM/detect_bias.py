@@ -21,7 +21,7 @@ from collections import defaultdict
 from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 
-def create_aif360_dataset(X, y, feature_names, protected_attribute='sex', 
+def create_aif360_dataset(X, y, feature_names, protected_attribute='age', 
                          favorable_label=1, unfavorable_label=0):
     """Create AIF360 BinaryLabelDataset from numpy arrays."""
     # Convert to DataFrame
@@ -402,7 +402,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.00001)
+optimizer = Adam(learning_rate=0.000001)
 # BM-1 = 0.0001 
 # BM-2 =  
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
@@ -432,7 +432,7 @@ for epoch in range(epochs):
 
 # Save the model
 original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
-print("\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
+print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
 X_train_ce = []
@@ -460,4 +460,4 @@ original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_s
 
 # Step 8: Save the retrained model
 original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
-print("\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
+print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")

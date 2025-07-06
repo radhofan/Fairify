@@ -115,8 +115,13 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
         'theil_index': ti
     }
 
+
+# Model paths
+ORIGINAL_MODEL_NAME = "BM-2"
+FAIRER_MODEL_NAME = "BM-10"
+
 print("Loading original model...")
-original_model = load_model('Fairify/models/bank/BM-2.h5')
+original_model = load_model('Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
@@ -149,7 +154,7 @@ feature_names = [   "age",
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-BM-2.csv')
+df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
@@ -246,7 +251,7 @@ for i in range(0, len(X_train_synth)-1, 2):
     diff = x[0, non_sex_idx] - x_prime[0, non_sex_idx]
     
     if not np.allclose(diff, 0, atol=1e-5):
-        print(f"[WARN] Pair {i} and {i+1} has differences outside 'sex':")
+        print(f"[WARN] Pair {i} and {i+1} has differences outside 'age':")
         print("x     :", x[0, non_sex_idx])
         print("x_prime:", x_prime[0, non_sex_idx])
         print("Diff  :", diff)
@@ -280,7 +285,7 @@ biased_neuron_scores /= num_pairs
 top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  # top 10
 
 # Print in table format
-print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'sex'):")
+print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'age'):")
 print("=" * 45)
 print(f"{'Rank':<5} {'Neuron Index':<15} {'Bias Score':>12}")
 print("=" * 45)
@@ -289,7 +294,7 @@ for rank, idx in enumerate(top_biased_indices, start=1):
 
 
 # Use your original model
-original_model = load_model('Fairify/models/bank/BM-2.h5')
+original_model = load_model('Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
 X_train_ce = X_train_synth
 y_train_ce = y_train_synth
 
@@ -397,7 +402,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.01)
+optimizer = Adam(learning_rate=0.1)
 # BM-1 = 0.0001 
 # BM-2 =  
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
@@ -426,8 +431,8 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
 # Save the model
-original_model.save('Fairify/models/bank/BM-10.h5')
-print("\n✅ Bias-repaired model saved as BM-10.h5")
+original_model.save('Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
+print("\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
 X_train_ce = []
@@ -454,5 +459,5 @@ print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
 # Step 8: Save the retrained model
-original_model.save('Fairify/models/bank/BM-10.h5')
-print("\n✅ Bias-repaired model saved as BM-10.h5")
+original_model.save('Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
+print("\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")

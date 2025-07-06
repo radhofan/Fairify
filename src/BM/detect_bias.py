@@ -121,7 +121,7 @@ ORIGINAL_MODEL_NAME = "BM-2"
 FAIRER_MODEL_NAME = "BM-10"
 
 print("Loading original model...")
-original_model = load_model('Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
+original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
@@ -154,7 +154,7 @@ feature_names = [   "age",
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
+df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
@@ -294,7 +294,7 @@ for rank, idx in enumerate(top_biased_indices, start=1):
 
 
 # Use your original model
-original_model = load_model('Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
+original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
 X_train_ce = X_train_synth
 y_train_ce = y_train_synth
 
@@ -431,7 +431,7 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
 # Save the model
-original_model.save('Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
+original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
 print("\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
@@ -459,5 +459,5 @@ print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
 # Step 8: Save the retrained model
-original_model.save('Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
+original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
 print("\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")

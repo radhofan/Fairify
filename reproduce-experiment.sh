@@ -34,8 +34,8 @@ python Fairify/src/AC/detect_bias.py
 python Fairify/src/AC/metrics.py
 # bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new2.py
 
-# python Fairify/src/GC/metrics.py
 # python Fairify/src/GC/detect_bias.py
+# python Fairify/src/GC/metrics.py
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
 
 # python Fairify/src/BM/detect_bias.py

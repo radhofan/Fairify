@@ -336,10 +336,10 @@ if __name__ == "__main__":
     for fname in feature_names:
         unique_vals = sorted(set(df[fname]))
         detector_orig.add_feature(fname, unique_vals)
-        # detector_fair.add_feature(fname, unique_vals)
+        detector_fair.add_feature(fname, unique_vals)
 
     # Run on 'sex' only
-    print("Running Causal Discrimination Check on 'sex'...\n")
+    print("Running Causal Discrimination Check on 'age'...\n")
     _, rate_orig, _ = detector_orig.causal_discrimination(['age'])
     _, rate_fair, _ = detector_fair.causal_discrimination(['age'])
 

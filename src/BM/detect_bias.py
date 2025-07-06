@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "BM-2"
-FAIRER_MODEL_NAME = "BM-10"
+ORIGINAL_MODEL_NAME = "BM-3"
+FAIRER_MODEL_NAME = "BM-11"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -253,7 +253,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.1)
+optimizer = Adam(learning_rate=0.000001)
 # BM-1 = 0.0001 
 # BM-2 =  
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])

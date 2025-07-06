@@ -301,7 +301,7 @@ if __name__ == "__main__":
     # Model paths
     ORIGINAL_MODEL_NAME = "BM-1"
     FAIRER_MODEL_NAME = "BM-9"
-    ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
+    ORIGINAL_MODEL_PATH = f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5'
     # FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 
     # Load models
@@ -310,7 +310,7 @@ if __name__ == "__main__":
     # fairer_model = load_model(FAIRER_MODEL_PATH)
 
     # Load data (X_test already preprocessed, no re-encoding)
-    df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
+    df, X_train, y_train, X_test, y_test, encoders = load_bank()
     feature_names = ["age", "job", "marital", "education", "default", "housing", "loan",
                     "contact", "month", "day_of_week", "duration", "emp.var.rate",
                     "campaign", "pdays", "previous", "poutcome"]

@@ -162,6 +162,13 @@ for feature in cat_feat:
         if unseen_values:
             print(f"Unseen values in '{feature}': {unseen_values}")
 
+if 'poutcome' in df_synthetic.columns:
+    poutcome_map = {
+        '0': 'nonexistent', 
+        '1': 'success'
+    }
+    df_synthetic['poutcome'] = df_synthetic['poutcome'].replace(poutcome_map)
+
 for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])

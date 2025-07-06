@@ -302,12 +302,12 @@ if __name__ == "__main__":
     ORIGINAL_MODEL_NAME = "BM-1"
     FAIRER_MODEL_NAME = "BM-9"
     ORIGINAL_MODEL_PATH = f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5'
-    # FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
+    FAIRER_MODEL_PATH = f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5'
 
     # Load models
     print("Loading models...")
     original_model = load_model(ORIGINAL_MODEL_PATH)
-    # fairer_model = load_model(FAIRER_MODEL_PATH)
+    fairer_model = load_model(FAIRER_MODEL_PATH)
 
     # Load data (X_test already preprocessed, no re-encoding)
     df, X_train, y_train, X_test, y_test, encoders = load_bank()
@@ -324,14 +324,14 @@ if __name__ == "__main__":
         x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
         return int(original_model.predict(x, verbose=0)[0][0] > 0.5)
 
-    # def model_predict_fn_fairer(feature_dict):
-    #     x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
-    #     return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
+    def model_predict_fn_fairer(feature_dict):
+        x = np.array([[feature_dict[f] for f in feature_names]], dtype=np.float32)
+        return int(fairer_model.predict(x, verbose=0)[0][0] > 0.5)
 
     # Initialize causal detector
     print("Setting up detector...")
     detector_orig = CausalDiscriminationDetector(model_predict_fn_original, max_samples=1000, min_samples=100)
-    # detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
+    detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
 
     for fname in feature_names:
         unique_vals = sorted(set(df[fname]))
@@ -341,9 +341,9 @@ if __name__ == "__main__":
     # Run on 'sex' only
     print("Running Causal Discrimination Check on 'sex'...\n")
     _, rate_orig, _ = detector_orig.causal_discrimination(['age'])
-    # _, rate_fair, _ = detector_fair.causal_discrimination(['age'])
+    _, rate_fair, _ = detector_fair.causal_discrimination(['age'])
 
     print("="*40)
     print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
-    # print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
+    print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
     print("="*40)

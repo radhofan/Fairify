@@ -49,7 +49,7 @@ def safe_metric_value(metric_value):
     return metric_value
 
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
-                           protected_attribute='sex', sex_col_idx=8):
+                           protected_attribute='sex', sex_col_idx=0):
     """
     Measure fairness using proper AIF360 metrics.
     Returns: dict with all fairness metrics
@@ -138,7 +138,7 @@ feature_names = [   "age",
                     "campaign",
                     "pdays",
                     "previous",
-                    "poutcome"]
+                    "poutcome" ]
 
 # Ensure we have the right number of feature names
 # if len(feature_names) != X_test_orig.shape[1]:

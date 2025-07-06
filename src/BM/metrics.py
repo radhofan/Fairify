@@ -408,52 +408,12 @@ if __name__ == "__main__":
 
     # Load data (X_test already preprocessed, no re-encoding)
     df, X_train, y_train, X_test, y_test, encoders = load_bank()
-    df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
     feature_names = [
         "age", "job", "marital", "education", "default", "housing", "loan", 
         "contact", "month", "day_of_week", "duration", "emp.var.rate", 
         "campaign", "pdays", "previous", "poutcome"
     ]
-
-    df_synthetic.dropna(inplace=True)
-    cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
-
-    invalid_values = {'unknown', '(null)'}
-    invalid_months = {'jan', 'feb'}
-
-    for feature in cat_feat:
-        if feature in df_synthetic.columns:
-            if feature == 'month':
-                df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_months)]
-            else:
-                df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
-
-    for feature in cat_feat:
-        if feature in encoders:
-            print(f"Checking feature: {feature}")
-            unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
-            if unseen_values:
-                print(f"Unseen values in '{feature}': {unseen_values}")
-
-    for feature in cat_feat:
-        if feature in encoders:
-            df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
-
-    df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
-    label_name = 'y'
-
-    X_synthetic = df_synthetic.drop(columns=[label_name])
-    y_synthetic = df_synthetic[label_name]
-
-    X_synthetic = df_synthetic.drop(columns=['y']).values
-    y_synthetic = df_synthetic['y'].values
-
-    split_idx = int(0.85 * len(X_synthetic))
-    X_train_synth = X_synthetic[:split_idx]
-    y_train_synth = y_synthetic[:split_idx]
-    X_test_synth = X_synthetic[split_idx:]
-    y_test_synth = y_synthetic[split_idx:]
 
     # Helper to map index array to feature dictionary (assumes same order as feature_names)
     def array_to_feature_dict(arr):
@@ -489,7 +449,7 @@ if __name__ == "__main__":
                                              feature_names, protected_attribute='age')
     
     print("\n=== FAIRER MODEL FAIRNESS (AIF360) ===")
-    original_metrics = measure_fairness_aif360(fairer_model, X_test_synth, y_test_synth, 
+    original_metrics = measure_fairness_aif360(fairer_model, X_test, y_test, 
                                              feature_names, protected_attribute='age')
 
     print("="*40)

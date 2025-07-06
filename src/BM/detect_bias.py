@@ -155,19 +155,29 @@ df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-BM-1.csv')
 df_synthetic.dropna(inplace=True)
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 
-for feature in cat_feat:
-    if feature in encoders:
-        print(f"Checking feature: {feature}")
-        unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
-        if unseen_values:
-            print(f"Unseen values in '{feature}': {unseen_values}")
-
 if 'poutcome' in df_synthetic.columns:
     poutcome_map = {
         '0': 'nonexistent', 
         '1': 'success'
     }
     df_synthetic['poutcome'] = df_synthetic['poutcome'].replace(poutcome_map)
+
+invalid_values = {'unknown', '(null)'}
+invalid_months = {'jan', 'feb'}
+
+for feature in cat_feat:
+    if feature in df_synthetic.columns:
+        if feature == 'month':
+            df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_months)]
+        else:
+            df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
+
+for feature in cat_feat:
+    if feature in encoders:
+        print(f"Checking feature: {feature}")
+        unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
+        if unseen_values:
+            print(f"Unseen values in '{feature}': {unseen_values}")
 
 for feature in cat_feat:
     if feature in encoders:

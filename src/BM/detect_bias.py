@@ -50,12 +50,12 @@ for feature in cat_feat:
         else:
             df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
 
-for feature in cat_feat:
-    if feature in encoders:
-        print(f"Checking feature: {feature}")
-        unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
-        if unseen_values:
-            print(f"Unseen values in '{feature}': {unseen_values}")
+# for feature in cat_feat:
+#     if feature in encoders:
+#         print(f"Checking feature: {feature}")
+#         unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
+#         if unseen_values:
+#             print(f"Unseen values in '{feature}': {unseen_values}")
 
 for feature in cat_feat:
     if feature in encoders:

@@ -19,14 +19,14 @@ def create_aif360_dataset(X, y, feature_names, protected_attribute='age',
     """Create AIF360 BinaryLabelDataset from numpy arrays."""
     # Convert to DataFrame
     df = pd.DataFrame(X, columns=feature_names)
-    df['y'] = y
+    df['label'] = y
     
     # Create AIF360 dataset
     dataset = BinaryLabelDataset(
         favorable_label=favorable_label,
         unfavorable_label=unfavorable_label,
         df=df,
-        label_names=['y'],
+        label_names=['label'],
         protected_attribute_names=[protected_attribute]
     )
     return dataset
@@ -42,7 +42,7 @@ def safe_metric_value(metric_value):
     return metric_value
 
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
-                           protected_attribute='sex', pa_col_idx=0):
+                           protected_attribute='age', pa_col_idx=0):
     """
     Measure fairness using proper AIF360 metrics.
     Returns: dict with all fairness metrics
@@ -84,7 +84,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
     eod = classified_metric.equal_opportunity_difference()
     aod = classified_metric.average_odds_difference()
     erd = classified_metric.error_rate_difference()
-    cnt = metric_pred.consistency()  # ✅ Fixed line
+    cnt = metric_pred.consistency()  
     ti = classified_metric.theil_index()
     
     print(f"\n=== FAIRNESS METRICS (AIF360) ===")

@@ -38,8 +38,8 @@ sudo apt install -y python3-swiftclient
 # python Fairify/src/GC/detect_bias.py
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
 
-python Fairify/src/BM/metrics.py
 python Fairify/src/BM/detect_bias.py
+python Fairify/src/BM/metrics.py
 bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-new2.py
 
 

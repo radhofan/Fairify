@@ -166,7 +166,7 @@ def map_global_to_layer_neuron(model, global_indices):
     return layer_neuron_map
 
 # Map the top biased indices to specific layers
-top_k = 1
+top_k = 3
 top_indices = top_biased_indices[:top_k]
 neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
 

@@ -1,0 +1,7 @@
+age,job,marital,education,default,housing,loan,contact,month,day_of_week,duration,emp.var.rate,campaign,pdays,previous,poutcome,output,decision
+1,admin.,divorced,basic.4y,yes,no,yes,telephone,sep,fri,610,1,31,267,7,failure,0.49696814981276416,0
+0,admin.,divorced,basic.4y,yes,no,yes,telephone,sep,fri,610,1,31,267,7,failure,0.5399761066982726,1
+1,admin.,divorced,basic.4y,yes,no,yes,telephone,mar,fri,749,1,30,578,6,nonexistent,0.4969482798497259,0
+0,admin.,divorced,basic.4y,yes,no,yes,telephone,mar,fri,749,1,30,578,6,nonexistent,0.5399761066982726,1
+1,unemployed,divorced,high.school,yes,no,no,cellular,sep,mon,751,1,7,689,6,nonexistent,0.48678729186401715,0
+0,unemployed,divorced,high.school,yes,no,no,cellular,sep,mon,751,1,7,689,6,nonexistent,0.5399761066982726,1

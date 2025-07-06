@@ -126,7 +126,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.endswith('.h5'):
     #     continue
     
-    if not model_file.startswith(("BM-2.")):
+    if not model_file.startswith(("BM-3.")):
         continue
 
     print('==================  STARTING MODEL ' + model_file)

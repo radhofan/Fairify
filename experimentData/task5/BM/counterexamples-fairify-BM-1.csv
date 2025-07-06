@@ -1,0 +1,15 @@
+age,job,marital,education,default,housing,loan,contact,month,day_of_week,duration,emp.var.rate,campaign,pdays,previous,poutcome,output,decision
+0,services,married,basic.4y,yes,yes,no,telephone,sep,fri,682,-1,1,656,4,failure,0.5628045137286137,1
+1,services,married,basic.4y,yes,yes,no,telephone,sep,fri,682,-1,1,656,4,failure,0.4985231727933228,0
+1,unemployed,divorced,basic.6y,yes,yes,yes,cellular,oct,fri,853,1,47,570,2,failure,0.4896811167067241,0
+0,unemployed,divorced,basic.6y,yes,yes,yes,cellular,oct,fri,853,1,47,570,2,failure,0.5503467271045936,1
+0,technician,single,illiterate,no,yes,no,telephone,jul,fri,739,0,41,709,2,nonexistent,0.5628045137286137,1
+1,technician,single,illiterate,no,yes,no,telephone,jul,fri,739,0,41,709,2,nonexistent,0.4972819741796335,0
+0,services,divorced,basic.4y,yes,no,yes,cellular,apr,fri,702,0,10,692,1,failure,0.5628045137286137,1
+1,services,divorced,basic.4y,yes,no,yes,cellular,apr,fri,702,0,10,692,1,failure,0.49800093000511253,0
+0,unemployed,divorced,basic.9y,yes,no,yes,telephone,nov,fri,617,0,33,330,7,failure,0.5628045137286137,1
+1,unemployed,divorced,basic.9y,yes,no,yes,telephone,nov,fri,617,0,33,330,7,failure,0.4962715294277902,0
+0,blue-collar,married,basic.4y,no,yes,no,telephone,mar,fri,781,0,20,666,4,nonexistent,0.5628045137286137,1
+1,blue-collar,married,basic.4y,no,yes,no,telephone,mar,fri,781,0,20,666,4,nonexistent,0.49636858125372174,0
+1,admin.,divorced,basic.4y,yes,yes,no,telephone,may,fri,932,0,38,821,0,failure,0.4903747662303457,0
+0,admin.,divorced,basic.4y,yes,yes,no,telephone,may,fri,932,0,38,821,0,failure,0.5564214221645277,1

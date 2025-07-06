@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "AC-1"
-FAIRER_MODEL_NAME = "AC-13"
+ORIGINAL_MODEL_NAME = "AC-2"
+FAIRER_MODEL_NAME = "AC-14"
 
 # Load pre-trained adult model
 print("Loading original model...")
@@ -254,8 +254,8 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.00002)
-# AC-1 = 0.00001
+optimizer = Adam(learning_rate=0.00001)
+# AC-1 = 0.00002
 # AC-2 =
 # AC-3 = 
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])

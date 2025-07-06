@@ -454,19 +454,19 @@ if __name__ == "__main__":
         detector_orig.add_feature(fname, unique_vals)
         detector_fair.add_feature(fname, unique_vals)
 
-    print("Running Causal Discrimination Check on 'sex'...\n")
-    _, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
-    _, rate_fair, _ = detector_fair.causal_discrimination(['sex'])
+    print("Running Causal Discrimination Check on 'age'...\n")
+    _, rate_orig, _ = detector_orig.causal_discrimination(['age'])
+    _, rate_fair, _ = detector_fair.causal_discrimination(['age'])
 
     print("="*40)
 
     print("\n=== ORIGINAL MODEL FAIRNESS (AIF360) ===")
     original_metrics = measure_fairness_aif360(original_model, X_test, y_test, 
-                                             feature_names, protected_attribute='sex')
+                                             feature_names, protected_attribute='age')
     
     print("\n=== FAIRER MODEL FAIRNESS (AIF360) ===")
     original_metrics = measure_fairness_aif360(fairer_model, X_test, y_test, 
-                                             feature_names, protected_attribute='sex')
+                                             feature_names, protected_attribute='age')
 
     print("="*40)
 

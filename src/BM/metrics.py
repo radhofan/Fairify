@@ -299,8 +299,8 @@ if __name__ == "__main__":
     import numpy as np
 
     # Model paths
-    ORIGINAL_MODEL_NAME = "BM-1"
-    FAIRER_MODEL_NAME = "BM-9"
+    ORIGINAL_MODEL_NAME = "BM-2"
+    FAIRER_MODEL_NAME = "BM-10"
     ORIGINAL_MODEL_PATH = f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5'
 
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
 
     print("="*40)
-    
+
     y_pred_orig = (original_model.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
     y_pred_fair = (fairer_model.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
     

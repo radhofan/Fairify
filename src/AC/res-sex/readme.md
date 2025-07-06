@@ -1,1 +1,0 @@
-Running the verification will produce result in `csv` files and save in this directory. 

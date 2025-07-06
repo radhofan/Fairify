@@ -29,20 +29,24 @@ sudo apt install -y python3-swiftclient
 
 # Retrain existing model with counterexamples + synthethic data
 # python Fairify/src/AC/new_model_2.py
+
 # python Fairify/src/AC/metrics.py
-# python Fairify/src/AC/metrics2.py
 # python Fairify/src/AC/detect_bias.py
+# bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new2.py
+
+# python Fairify/src/GC/metrics.py
 # python Fairify/src/GC/detect_bias.py
+# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
+
+python Fairify/src/BM/metrics.py
 python Fairify/src/BM/detect_bias.py
+bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-new2.py
 
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py
-# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-new2.py
-# bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new.py
-# bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-new2.py
+# bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment.py
 # bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment.py
-bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-new2.py
 # bash Fairify/src/fairify.sh Fairify/src/CP/Verify-CP.py
 # bash Fairify/src/fairify.sh Fairify/src/DF/Verify-DF.py
 

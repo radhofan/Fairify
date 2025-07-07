@@ -199,7 +199,7 @@ def map_global_to_layer_neuron(model, global_indices):
     return layer_neuron_map
 
 # Map the top biased indices to specific layers
-top_k = 1
+top_k = 20
 top_indices = top_biased_indices[:top_k]
 neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
 
@@ -319,8 +319,6 @@ for epoch in range(epochs):
 original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
-
-print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 
 X_train_ce = []
 y_train_ce = []

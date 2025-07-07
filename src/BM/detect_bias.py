@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "BM-1"
-FAIRER_MODEL_NAME = "BM-9"
+ORIGINAL_MODEL_NAME = "BM-2"
+FAIRER_MODEL_NAME = "BM-10"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -320,6 +320,8 @@ original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
+print(f"Training on {len(X_train_ce)} relabeled CE samples...")
+
 X_train_ce = []
 y_train_ce = []
 
@@ -327,7 +329,6 @@ for i in range(0, len(X_train_synth)-1, 2):
     x = X_train_synth[i]
     x_prime = X_train_synth[i+1]
     
-    # Relabel both with the *same* label — max of the two (more conservative)
     label = max(y_train_synth[i], y_train_synth[i+1])
     
     X_train_ce.append(x)

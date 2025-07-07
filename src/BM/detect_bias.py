@@ -86,8 +86,6 @@ unfavorable_label = 0
 favorable_classes = ['yes']
 
 # Use pandas comparison instead of numpy
-label_array = df_synthetic[label_name].astype(str).to_numpy()
-favorable_array = np.array(favorable_classes, dtype=str)
 pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
 
 # Extract features and labels

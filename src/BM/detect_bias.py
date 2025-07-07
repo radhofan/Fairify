@@ -323,22 +323,22 @@ print("✅ Only the identified biased neurons were updated!")
 X_train_ce = []
 y_train_ce = []
 
-for i in range(0, len(X_train_synth)-1, 2):
-    x = X_train_synth[i]
-    x_prime = X_train_synth[i+1]
+# for i in range(0, len(X_train_synth)-1, 2):
+#     x = X_train_synth[i]
+#     x_prime = X_train_synth[i+1]
     
-    # Relabel both with the *same* label — max of the two (more conservative)
-    label = max(y_train_synth[i], y_train_synth[i+1])
+#     # Relabel both with the *same* label — max of the two (more conservative)
+#     label = max(y_train_synth[i], y_train_synth[i+1])
     
-    X_train_ce.append(x)
-    X_train_ce.append(x_prime)
-    y_train_ce.append(label)
-    y_train_ce.append(label)
+#     X_train_ce.append(x)
+#     X_train_ce.append(x_prime)
+#     y_train_ce.append(label)
+#     y_train_ce.append(label)
 
-X_train_ce = np.array(X_train_ce)
-y_train_ce = np.array(y_train_ce)
+# X_train_ce = np.array(X_train_ce)
+# y_train_ce = np.array(y_train_ce)
 
-print(f"Training on {len(X_train_ce)} relabeled CE samples...")
+# print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 
 # Step 7: Retrain the model (only top layer will update)
 original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)

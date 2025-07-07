@@ -85,6 +85,9 @@ favorable_label = 1
 unfavorable_label = 0
 favorable_classes = ['yes']
 
+label_array = df_synthetic[label_name].astype(str).to_numpy()
+favorable_array = np.array(favorable_classes, dtype=str)
+
 pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df_synthetic[label_name].to_numpy()))
 df_synthetic.loc[pos, label_name] = favorable_label
 df_synthetic.loc[~pos, label_name] = unfavorable_label

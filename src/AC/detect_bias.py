@@ -257,7 +257,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
 optimizer = Adam(learning_rate=0.000003)
 # AC-1 = 0.000015
 # AC-2 = 0.0000001
-# AC-3 = 0.0000009
+# AC-3 = 0.000003
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Convert data to tensors

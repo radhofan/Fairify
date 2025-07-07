@@ -37,7 +37,16 @@ feature_names = [
     "campaign", "pdays", "previous", "poutcome"
 ]
 
-df_synthetic.dropna(inplace=True)
+na_values=['unknown']
+df = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv', sep=';', na_values=na_values)
+
+dropped = df.dropna()
+count = df.shape[0] - dropped.shape[0]
+print("Missing Data: {} rows removed.".format(count))
+df = dropped
+
+# dropped = df.dropna(inplace=true)
+
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 
 invalid_values = {'unknown', '(null)'}
@@ -50,26 +59,46 @@ for feature in cat_feat:
         else:
             df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
 
-# for feature in cat_feat:
-#     if feature in encoders:
-#         print(f"Checking feature: {feature}")
-#         unseen_values = set(df_synthetic[feature].unique()) - set(encoders[feature].classes_)
-#         if unseen_values:
-#             print(f"Unseen values in '{feature}': {unseen_values}")
-
 for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
 
-df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
-label_name = 'y'
+# df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
+# label_name = 'y'
 
-X_synthetic = df_synthetic.drop(columns=[label_name])
+# X_synthetic = df_synthetic.drop(columns=[label_name])
+# y_synthetic = df_synthetic[label_name]
+
+# X_synthetic = df_synthetic.drop(columns=['y']).values
+# y_synthetic = df_synthetic['y'].values
+
+# split_idx = int(0.85 * len(X_synthetic))
+# X_train_synth = X_synthetic[:split_idx]
+# y_train_synth = y_synthetic[:split_idx]
+# X_test_synth = X_synthetic[split_idx:]
+# y_test_synth = y_synthetic[split_idx:]
+
+df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
+
+# Apply the same label processing as in load_bank()
+label_name = 'y'
+favorable_label = 1
+unfavorable_label = 0
+favorable_classes = ['yes']
+
+pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df_synthetic[label_name].to_numpy()))
+df_synthetic.loc[pos, label_name] = favorable_label
+df_synthetic.loc[~pos, label_name] = unfavorable_label
+
+# Extract features and labels
+X_synthetic = df_synthetic.drop(labels=[label_name], axis=1, inplace=False)
 y_synthetic = df_synthetic[label_name]
 
-X_synthetic = df_synthetic.drop(columns=['y']).values
-y_synthetic = df_synthetic['y'].values
+# Convert to numpy arrays
+X_synthetic = X_synthetic.values
+y_synthetic = y_synthetic.values
 
+# Split the data
 split_idx = int(0.85 * len(X_synthetic))
 X_train_synth = X_synthetic[:split_idx]
 y_train_synth = y_synthetic[:split_idx]

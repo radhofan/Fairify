@@ -193,7 +193,7 @@ for global_idx in top_indices:
         layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
         print(f"Global index {global_idx} -> Layer {layer_idx} ({layer_name}), Neuron {neuron_idx}")
 
-# Option 1: If you want to train only the specific layers containing biased neurons
+# Option 1: If you want to train only the specific layers containing biased neuronsf
 target_layers = set()
 for global_idx in top_indices:
     if global_idx in neuron_mapping:
@@ -270,7 +270,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.0000005)
+optimizer = Adam(learning_rate=0.0000001)
 # GC-1 = 
 # GC-2 = 
 # GC-3 = 

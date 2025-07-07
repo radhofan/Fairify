@@ -254,7 +254,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.0000004)
+optimizer = Adam(learning_rate=0.0000005)
 # AC-1 = 0.00002
 # AC-2 = 0.0000001
 # AC-3 = 

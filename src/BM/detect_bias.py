@@ -79,14 +79,15 @@ for feature in cat_feat:
 
 df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
 
-# Apply the same label processing as in load_bank() - simplified version
+# Apply the same label processing as in load_bank()
 label_name = 'y'
 favorable_label = 1
 unfavorable_label = 0
 favorable_classes = ['yes']
 
-# Use pandas comparison instead of numpy
-pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
+pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df_synthetic[label_name].to_numpy()))
+df_synthetic.loc[pos, label_name] = favorable_label
+df_synthetic.loc[~pos, label_name] = unfavorable_label
 
 # Extract features and labels
 X_synthetic = df_synthetic.drop(labels=[label_name], axis=1, inplace=False)

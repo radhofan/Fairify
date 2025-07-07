@@ -39,7 +39,6 @@ feature_names = [
 
 na_values=['unknown']
 df = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv', sep=';', na_values=na_values)
-
 dropped = df.dropna()
 count = df.shape[0] - dropped.shape[0]
 print("Missing Data: {} rows removed.".format(count))
@@ -87,7 +86,9 @@ unfavorable_label = 0
 favorable_classes = ['yes']
 
 # Use pandas comparison instead of numpy
-df_synthetic[label_name] = df_synthetic[label_name].map(lambda x: favorable_label if x in favorable_classes else unfavorable_label)
+label_array = df_synthetic[label_name].astype(str).to_numpy()
+favorable_array = np.array(favorable_classes, dtype=str)
+pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df[label_name].to_numpy()))
 
 # Extract features and labels
 X_synthetic = df_synthetic.drop(labels=[label_name], axis=1, inplace=False)

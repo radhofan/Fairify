@@ -313,7 +313,8 @@ def load_bank():
                     'campaign', 'pdays', 'previous', 'poutcome', 'y']
     na_values=['unknown']
    
-    df = pd.read_csv(file_path, sep=';', na_values=na_values)
+    # df = pd.read_csv(file_path, sep=';', na_values=na_values)
+    df = pd.read_csv(file_path, sep=';')
    
     ### Drop na values
     dropped = df.dropna()

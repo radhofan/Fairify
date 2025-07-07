@@ -78,17 +78,19 @@ for feature in cat_feat:
 # y_test_synth = y_synthetic[split_idx:]
 
 df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
-
 # Apply the same label processing as in load_bank()
 label_name = 'y'
 favorable_label = 1
 unfavorable_label = 0
 favorable_classes = ['yes']
 
+# Convert to string arrays with proper data type
 label_array = df_synthetic[label_name].astype(str).to_numpy()
 favorable_array = np.array(favorable_classes, dtype=str)
 
-pos = np.logical_or.reduce(np.equal.outer(favorable_classes, df_synthetic[label_name].to_numpy()))
+# Use the numpy arrays, not the original list
+pos = np.logical_or.reduce(np.equal.outer(favorable_array, label_array))
+
 df_synthetic.loc[pos, label_name] = favorable_label
 df_synthetic.loc[~pos, label_name] = unfavorable_label
 

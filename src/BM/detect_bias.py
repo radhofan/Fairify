@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "BM-1"
-FAIRER_MODEL_NAME = "BM-9"
+ORIGINAL_MODEL_NAME = "BM-2"
+FAIRER_MODEL_NAME = "BM-10"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -286,7 +286,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.0001)
+optimizer = Adam(learning_rate=100)
 # BM-1 = 0.0001 
 # BM-2 =  
 # BM-3 = 0.000001
@@ -341,7 +341,7 @@ y_train_ce = np.array(y_train_ce)
 print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 
 # Step 7: Retrain the model (only top layer will update)
-original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
+original_model.fit(X_train_ce, y_train_ce, epochs=20, batch_size=32, validation_split=0.1)
 
 # Step 8: Save the retrained model
 original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')

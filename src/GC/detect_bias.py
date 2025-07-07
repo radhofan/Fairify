@@ -53,17 +53,16 @@ feature_names = [
         "sex"
 ]
 
-# Ensure we have the right number of feature names
-if len(feature_names) != X_test_orig.shape[1]:
-    print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
-    # Generate generic names if needed
-    feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
-    feature_names[11] = 'age'  # Ensure sex column is properly named
+# # Ensure we have the right number of feature names
+# if len(feature_names) != X_test_orig.shape[1]:
+#     print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
+#     # Generate generic names if needed
+#     feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
+#     feature_names[11] = 'age'  # Ensure sex column is properly named
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-GC-1.csv')
-# df_synthetic = df_synthetic[df_synthetic['age'] <= 70]
+df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
@@ -271,7 +270,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.000001)
+optimizer = Adam(learning_rate=0.0000001)
 # GC-1 = 
 # GC-2 = 
 # GC-3 = 

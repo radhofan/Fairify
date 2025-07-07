@@ -23,70 +23,37 @@ FAIRER_MODEL_NAME = "CP-1-Retrained"
 
 # Load pre-trained adult model
 print("Loading original model...")
-original_model = load_model(f'Fairify/models/german/{ORIGINAL_MODEL_NAME}.h5')
+original_model = load_model(f'Fairify/models/compass/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
 
 # Load original dataset using your function
-df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_german()
+df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_compass()
 
 # Define feature names (you might need to adjust these based on your actual dataset)
-feature_names = [
-        "status",
-        "month",
-        "credit_history",
-        "purpose",
-        "credit_amount",
-        "savings",
-        "employment",
-        "investment_as_income_percentage",
-        "other_debtors",
-        "residence_since",
-        "property",
-        "age",
-        "installment_plans",
-        "housing",
-        "number_of_credits",
-        "skill_level",
-        "people_liable_for",
-        "telephone",
-        "foreign_worker",
-        "sex"
-]
-
-# Ensure we have the right number of feature names
-if len(feature_names) != X_test_orig.shape[1]:
-    print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
-    # Generate generic names if needed
-    feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
-    feature_names[11] = 'age'  # Ensure sex column is properly named
+feature_names = ['Two_yr_Recidivism', 'Number_of_Priors', 'Age', 'Race', 'Female', 'Misdemeanor', 'score_factor']
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv('Fairify/experimentData/counterexamples-GC-1.csv')
-# df_synthetic = df_synthetic[df_synthetic['age'] <= 70]
+df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
-df_synthetic['age'] = df_synthetic['age'].apply(lambda x: np.float(x >= 26))
-df_synthetic = german_custom_preprocessing(df_synthetic)
 
-cat_feat = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'installment_plans',
-            'housing', 'skill_level', 'telephone', 'foreign_worker']
+cat_feat = ['Two_yr_Recidivism', 'Number_of_Priors', 'Age', 'Race', 'Female', 'Misdemeanor']
 
-df_synthetic = df_synthetic[df_synthetic['purpose'] != 'A47']
 
 for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
 
-df_synthetic.rename(columns={'decision': 'credit'}, inplace=True)
-label_name = 'credit'
+df_synthetic.rename(columns={'decision': 'score_factor'}, inplace=True)
+label_name = 'score_factor'
 
 X_synthetic = df_synthetic.drop(columns=[label_name])
 y_synthetic = df_synthetic[label_name]
 
-X_synthetic = df_synthetic.drop(columns=['credit']).values
-y_synthetic = df_synthetic['credit'].values
+X_synthetic = df_synthetic.drop(columns=['score_factor']).values
+y_synthetic = df_synthetic['score_factor'].values
 
 split_idx = int(0.85 * len(X_synthetic))
 X_train_synth = X_synthetic[:split_idx]
@@ -107,7 +74,7 @@ def get_activation_model(model):
 activation_model = get_activation_model(original_model)
 
 # Get column index of 'sex'
-sex_idx = df_synthetic.drop(columns=['credit']).columns.get_loc('age')
+sex_idx = df_synthetic.drop(columns=['score_factor']).columns.get_loc('Age')
 
 biased_neuron_scores = None
 num_pairs = 0
@@ -120,7 +87,7 @@ for i in range(0, len(X_train_synth)-1, 2):
     diff = x[0, non_sex_idx] - x_prime[0, non_sex_idx]
     
     if not np.allclose(diff, 0, atol=1e-5):
-        print(f"[WARN] Pair {i} and {i+1} has differences outside 'age':")
+        print(f"[WARN] Pair {i} and {i+1} has differences outside 'Age':")
         print("x     :", x[0, non_sex_idx])
         print("x_prime:", x_prime[0, non_sex_idx])
         print("Diff  :", diff)
@@ -154,7 +121,7 @@ biased_neuron_scores /= num_pairs
 top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  # top 10
 
 # Print in table format
-print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'age'):")
+print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'Age'):")
 print("=" * 45)
 print(f"{'Rank':<5} {'Neuron Index':<15} {'Bias Score':>12}")
 print("=" * 45)
@@ -163,7 +130,7 @@ for rank, idx in enumerate(top_biased_indices, start=1):
 
 
 # Use your original model
-original_model = load_model(f'Fairify/models/german/{ORIGINAL_MODEL_NAME}.h5')
+original_model = load_model(f'Fairify/models/compass/{ORIGINAL_MODEL_NAME}.h5')
 X_train_ce = X_train_synth
 y_train_ce = y_train_synth
 
@@ -272,9 +239,9 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
 
 # Compile model
 optimizer = Adam(learning_rate=0.00001)
-# GC-1 = 
-# GC-2 = 
-# GC-3 = 
+# CP-1 = 
+# CP-2 = 
+# CP-3 = 
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Convert data to tensors
@@ -301,7 +268,7 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
 # Save the model
-original_model.save(f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5')
+original_model.save(f'Fairify/models/compass/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
@@ -329,5 +296,5 @@ print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
 # Step 8: Save the retrained model
-original_model.save(f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5')
+original_model.save(f'Fairify/models/compass/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")

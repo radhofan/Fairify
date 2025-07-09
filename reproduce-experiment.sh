@@ -53,7 +53,7 @@ source ~/openrc
 
 bucket_name="bare_metal_experiment_pattern_data" 
 # file_to_upload="Fairify/src/BM/res/counterexample.csv"
-file_to_upload="Fairify/src/BM/res/BM-1-metrics.csv"
+file_to_upload="Fairify/src/BM/res/BM-1-Retrained-metrics.csv"
 
 echo
 echo "Uploading results to the object store container $bucket_name"

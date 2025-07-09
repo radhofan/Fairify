@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "BM-1"
-FAIRER_MODEL_NAME = "BM-1-Retrained"
+ORIGINAL_MODEL_NAME = "BM-3"
+FAIRER_MODEL_NAME = "BM-3-Retrained"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')

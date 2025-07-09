@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "BM-2"
-FAIRER_MODEL_NAME = "BM-10"
+ORIGINAL_MODEL_NAME = "BM-1"
+FAIRER_MODEL_NAME = "BM-1-Retrained"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -199,7 +199,7 @@ def map_global_to_layer_neuron(model, global_indices):
     return layer_neuron_map
 
 # Map the top biased indices to specific layers
-top_k = 20
+top_k = 1
 top_indices = top_biased_indices[:top_k]
 neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
 

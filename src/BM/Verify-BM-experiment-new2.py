@@ -126,7 +126,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.endswith('.h5'):
     #     continue
     
-    if not model_file.startswith(("BM-1.")):
+    if not model_file.startswith(("BM-1","BM-1-Retrained.")):
         continue
 
     print('==================  STARTING MODEL ' + model_file)
@@ -301,6 +301,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         # In[]
         print('V time: ', s.statistics().time)
         file = result_dir + model_name + '.csv'
+        confidence_gaps = []
     
         # In[]
         c_check_correct = 0
@@ -338,6 +339,12 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
             print("pred2_orig: ", pred2_orig)
             print("class_1_orig: ", class_1_orig)
             print("class_2_orig: ", class_2_orig)
+
+            confidence1 = abs(pred1_orig - 0.5)
+            confidence2 = abs(pred2_orig  - 0.5)
+
+            gap = abs(confidence1 - confidence2)
+            confidence_gaps.append(gap)
 
             #####################################################################################################
             def decode_counterexample(encoded_row, encoders):
@@ -521,12 +528,13 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         erd = classified_metric.error_rate_difference()
         cnt = metric_pred.consistency()
         ti = classified_metric.theil_index()
+        cis = np.mean(confidence_gaps)
 
         # Save metric to csv
         model_prefix = next((prefix for prefix in ["BM"] if model_file.startswith(prefix)), "unknown")
         file_name = f"{result_dir}synthetic-bank-predicted-{model_prefix}-metrics.csv"
-        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI']
-        data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti]
+        cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI', 'CIS']
+        data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti, cis]
         file_exists = os.path.isfile(file_name)
         with open(file_name, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')

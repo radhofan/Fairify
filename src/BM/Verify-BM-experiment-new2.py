@@ -134,6 +134,8 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     if model_name == '':
         continue
     
+    confidence_gaps = []
+    
     model_funcs = 'utils.' + model_name + '-Model-Functions'
     mod = import_module(model_funcs)
     layer_net = getattr(mod, 'layer_net')
@@ -301,7 +303,6 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         # In[]
         print('V time: ', s.statistics().time)
         file = result_dir + model_name + '.csv'
-        confidence_gaps = []
     
         # In[]
         c_check_correct = 0

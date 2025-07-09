@@ -49,19 +49,20 @@ bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-new2.py
 # bash Fairify/src/fairify.sh Fairify/src/CP/Verify-CP.py
 # bash Fairify/src/fairify.sh Fairify/src/DF/Verify-DF.py
 
-# source ~/openrc
+source ~/openrc
 
-# bucket_name="bare_metal_experiment_pattern_data" 
+bucket_name="bare_metal_experiment_pattern_data" 
 # file_to_upload="Fairify/src/BM/res/counterexample.csv"
+file_to_upload="Fairify/src/BM/res/BM-1-metrics.csv"
 
-# echo
-# echo "Uploading results to the object store container $bucket_name"
-# swift post $bucket_name
+echo
+echo "Uploading results to the object store container $bucket_name"
+swift post $bucket_name
 
-# if [ -f "$file_to_upload" ]; then
-#     echo "Uploading $file_to_upload"
-#     swift upload "$bucket_name" "$file_to_upload" --object-name "counterexamples.csv"
-# else
-#     echo "ERROR: File $file_to_upload does not exist!" >&2
-#     exit 1
-# fi
+if [ -f "$file_to_upload" ]; then
+    echo "Uploading $file_to_upload"
+    swift upload "$bucket_name" "$file_to_upload" --object-name "counterexamples.csv"
+else
+    echo "ERROR: File $file_to_upload does not exist!" >&2
+    exit 1
+fi

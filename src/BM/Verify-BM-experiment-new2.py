@@ -135,7 +135,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         continue
     
     confidence_gaps = []
-    
+
     model_funcs = 'utils.' + model_name + '-Model-Functions'
     mod = import_module(model_funcs)
     layer_net = getattr(mod, 'layer_net')
@@ -532,7 +532,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         cis = np.mean(confidence_gaps)
 
         # Save metric to csv
-        file_name = f"{result_dir}-{model_name}-metrics.csv"
+        file_name = f"{result_dir}{model_name}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI', 'CIS']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti, cis]
         file_exists = os.path.isfile(file_name)

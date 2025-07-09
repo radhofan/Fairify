@@ -532,7 +532,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
 
         # Save metric to csv
         model_prefix = next((prefix for prefix in ["BM"] if model_file.startswith(prefix)), "unknown")
-        file_name = f"{result_dir}synthetic-bank-predicted-{model_prefix}-metrics.csv"
+        file_name = f"{result_dir}-{model_prefix}-metrics.csv"
         cols = ['Partition ID', 'Original Accuracy', 'Original F1 Score', 'Pruned Accuracy', 'Pruned F1', 'DI', 'SPD', 'EOD', 'AOD', 'ERD', 'CNT', 'TI', 'CIS']
         data_row = [partition_id, orig_acc, orig_f1, pruned_acc, pruned_f1, di, spd, eod, aod, erd, cnt, ti, cis]
         file_exists = os.path.isfile(file_name)

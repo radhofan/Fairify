@@ -417,7 +417,7 @@ if __name__ == "__main__":
         feature_names=feature_names,
         range_dict=range_dict,
         num_samples=1000,
-        protected_attributes=['race', 'sex']
+        protected_attributes=['sex']
     )
 
     print(f"Found {len(counterfactuals)} counterfactuals.")

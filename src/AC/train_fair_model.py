@@ -131,7 +131,7 @@ def map_global_to_layer_neuron(model, global_indices):
     current_global_idx = 0
     
     for layer_idx, layer in enumerate(model.layers):
-        if hasattr(layer, 'units'):  # Dense layer
+        if hasattr(layer, 'units'):  
             layer_neurons = layer.units
             for neuron_idx in range(layer_neurons):
                 if current_global_idx in global_indices:

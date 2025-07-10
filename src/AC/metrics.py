@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
-"""
-Simplified Causal Discrimination Detector
-Integrates directly with ML models and predictions
-"""
 
 from itertools import chain, combinations, product
 import math
 import random
 import scipy.stats as st
 from scipy.stats import qmc
-
-# AIF360 imports
 from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 
 def create_aif360_dataset(X, y, feature_names, protected_attribute='age', 
                          favorable_label=1, unfavorable_label=0):
     """Create AIF360 BinaryLabelDataset from numpy arrays."""
-    # Convert to DataFrame
     df = pd.DataFrame(X, columns=feature_names)
     df['label'] = y
     
-    # Create AIF360 dataset
     dataset = BinaryLabelDataset(
         favorable_label=favorable_label,
         unfavorable_label=unfavorable_label,
@@ -37,32 +29,24 @@ def safe_metric_value(metric_value):
         if metric_value.size == 1:
             return metric_value.item()
         else:
-            # For arrays with multiple values, return the mean or first value
             return np.mean(metric_value)
     return metric_value
 
 def measure_fairness_aif360(model, X_test, y_test, feature_names, 
                            protected_attribute='age', pa_col_idx=0):
-    """
-    Measure fairness using proper AIF360 metrics.
-    Returns: dict with all fairness metrics
-    """
-    # Get predictions
+
     predictions = model.predict(X_test)
     pred_binary = (predictions > 0.5).astype(int).flatten()
-    
-    # Calculate accuracy and F1
+
     acc = accuracy_score(y_test, pred_binary)
     f1 = f1_score(y_test, pred_binary)
     
     print(f"Accuracy: {acc:.3f}")
     print(f"F1 Score: {f1:.3f}")
     
-    # Create AIF360 datasets
     dataset_orig = create_aif360_dataset(X_test, y_test, feature_names, protected_attribute)
     dataset_pred = create_aif360_dataset(X_test, pred_binary, feature_names, protected_attribute)
     
-    # Metrics
     unprivileged_groups = [{protected_attribute: 0}]
     privileged_groups = [{protected_attribute: 1}]
     
@@ -78,7 +62,6 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
         privileged_groups=privileged_groups
     )
     
-    # Compute metrics
     di = classified_metric.disparate_impact()
     spd = classified_metric.mean_difference()
     eod = classified_metric.equal_opportunity_difference()

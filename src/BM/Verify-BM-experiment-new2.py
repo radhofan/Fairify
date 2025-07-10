@@ -104,22 +104,22 @@ shuffle(p_list)
 # Shuffle partitions
 shuffle(p_list)
 
-# Store partition results for hybrid prediction
-partition_results = {}  # Format: {partition_bounds: result_status}
+# # Store partition results for hybrid prediction
+# partition_results = {}  # Format: {partition_bounds: result_status}
 
-def partition_to_key(partition):
-    """Convert partition bounds to a hashable key - FIXED VERSION"""
-    # Sort by attribute name to ensure consistent ordering
-    key_parts = []
-    for attr in sorted(partition.keys()):
-        bounds = partition[attr]
-        if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
-            key_parts.append((attr, bounds[0], bounds[1]))
-        elif isinstance(bounds, (list, tuple)):
-            key_parts.append((attr, tuple(bounds)))
-        else:
-            key_parts.append((attr, bounds))
-    return tuple(key_parts)
+# def partition_to_key(partition):
+#     """Convert partition bounds to a hashable key - FIXED VERSION"""
+#     # Sort by attribute name to ensure consistent ordering
+#     key_parts = []
+#     for attr in sorted(partition.keys()):
+#         bounds = partition[attr]
+#         if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+#             key_parts.append((attr, bounds[0], bounds[1]))
+#         elif isinstance(bounds, (list, tuple)):
+#             key_parts.append((attr, tuple(bounds)))
+#         else:
+#             key_parts.append((attr, bounds))
+#     return tuple(key_parts)
 
 model_files = os.listdir(model_dir)
 for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model files loop
@@ -234,9 +234,9 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
         print('Verifying ...')
         res = s.check()
 
-        # Inside the partition loop, after res = s.check()
-        partition_key = partition_to_key(p)
-        partition_results[partition_key] = str(res)  # 'sat', 'unsat', or 'unknown'
+        # # Inside the partition loop, after res = s.check()
+        # partition_key = partition_to_key(p)
+        # partition_results[partition_key] = str(res)  # 'sat', 'unsat', or 'unknown'
     
         print(res)
         if res == sat:

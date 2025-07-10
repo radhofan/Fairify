@@ -62,7 +62,7 @@ feature_names = [
 
 # Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
+df_synthetic = pd.read_csv(f'Fairify/counterexamples/GC/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
 # === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)

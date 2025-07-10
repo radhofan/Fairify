@@ -29,7 +29,7 @@ print(original_model.summary())
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_bank()
 
 print("Loading synthetic counterexamples...")
-df_synthetic = pd.read_csv(f'Fairify/experimentData/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
+df_synthetic = pd.read_csv(f'Fairify/counterexamples/BM/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
 feature_names = [
     "age", "job", "marital", "education", "default", "housing", "loan", 

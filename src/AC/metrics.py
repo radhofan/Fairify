@@ -10,7 +10,6 @@ from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 
 def create_aif360_dataset(X, y, feature_names, protected_attribute='age', 
                          favorable_label=1, unfavorable_label=0):
-    """Create AIF360 BinaryLabelDataset from numpy arrays."""
     df = pd.DataFrame(X, columns=feature_names)
     df['label'] = y
     
@@ -92,19 +91,7 @@ def measure_fairness_aif360(model, X_test, y_test, feature_names,
     }
 
 class Input:
-    """Class to define an input feature for discrimination testing."""
-    
     def __init__(self, name, values, kind="categorical"):
-        """
-        Parameters:
-        -----------
-        name : str
-            Name of the input feature
-        values : list
-            List of possible values for this feature
-        kind : str
-            Type of input ("categorical" or "continuous")
-        """
         self.name = name
         self.values = [str(v) for v in values]
         self.kind = kind
@@ -205,11 +192,9 @@ class CausalDiscriminationDetector:
         return discriminatory_features
 
     def _generate_random_assignment(self, feature_names):
-        """Generate random values for specified features."""
         return {name: self.inputs[name].get_random_value() for name in feature_names}
 
     def _generate_all_assignments(self, feature_names):
-        """Generate all possible value combinations for specified features."""
         if not feature_names:
             return [{}]
             
@@ -219,7 +204,6 @@ class CausalDiscriminationDetector:
         return [dict(zip(feature_names, combo)) for combo in combinations]
 
     def _get_prediction(self, assignment):
-        """Get model prediction for given feature assignment."""
         cache_key = tuple(assignment[name] for name in self.input_order)
         
         if cache_key in self._cache:
@@ -231,7 +215,6 @@ class CausalDiscriminationDetector:
         return prediction
 
     def _check_stopping_condition(self, count, num_sampled, conf, margin):
-        """Check if we should stop sampling based on confidence interval."""
         if num_sampled < self.min_samples:
             return 0, False
             

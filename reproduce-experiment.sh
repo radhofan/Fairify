@@ -26,8 +26,8 @@ sudo apt install -y python3-swiftclient
 
 python Fairify/src/AC/train_fair_model.py
 # python Fairify/src/AC/metric_aif360.py
-# python Fairify/src/AC/metric_themis_causal.py
-python Fairify/src/AC/metric_themis_unfairness.py
+# python Fairify/src/AC/metric_themis.py
+python Fairify/src/AC/metric_unfairness.py
 # python Fairify/src/AC/metrics.py
 # bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-v2.py
 

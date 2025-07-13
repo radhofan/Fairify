@@ -370,19 +370,11 @@ if __name__ == "__main__":
 
     print("="*40)
 
-    # New unfairness estimation using generated test cases
     print("Running Unfairness Estimation...")
-    
-    # Estimate unfairness for original model
     print("\nEstimating unfairness for original model...")
     E_original, orig_scores = detector_orig.estimate_unfairness_from_generated_cases(['sex'], T=100)
-    
-    # Estimate unfairness for fairer model
     print("\nEstimating unfairness for fairer model...")
     E_repaired, fair_scores = detector_fair.estimate_unfairness_from_generated_cases(['sex'], T=100)
-    
-    # Calculate fairness improvement
     improvement = detector_orig.calculate_fairness_improvement(E_original, E_repaired)
-    
-    # Print results
+
     detector_orig.print_unfairness_results(E_original, E_repaired, improvement)

@@ -174,6 +174,7 @@ class CausalDiscriminationDetector:
                     print(f"    Modified:  {modified}")
                 if len(data['pairs']) > 3:
                     print(f"    ... and {len(data['pairs']) - 3} more")
+                    
 
 if __name__ == "__main__":
     import sys

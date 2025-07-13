@@ -302,6 +302,52 @@ class CausalDiscriminationDetector:
         print(f"Test Cases Used:                         {len(self.generated_test_cases) if self.generated_test_cases else 'N/A'}")
         print("="*60)
 
+    def calculate_fairness_improvement(self, other_detector, protected_features, trials=100):
+        """
+        Calculate fairness improvement between this detector and another one.
+        
+        Args:
+            other_detector: Another CausalDiscriminationDetector instance
+            protected_features: List of protected features to check
+            trials: Number of trials for estimation
+            
+        Returns:
+            Dictionary containing:
+            - original_unfairness
+            - repaired_unfairness
+            - improvement_percentage
+        """
+        total_orig = 0.0
+        total_repaired = 0.0
+        
+        for _ in range(trials):
+            # Estimate unfairness for original model
+            _, rate_orig, _ = self.causal_discrimination(
+                protected_features=protected_features,
+                conf=0.95,
+                margin=0.01
+            )
+            total_orig += rate_orig
+            
+            # Estimate unfairness for repaired model
+            _, rate_repaired, _ = other_detector.causal_discrimination(
+                protected_features=protected_features,
+                conf=0.95,
+                margin=0.01
+            )
+            total_repaired += rate_repaired
+        
+        E_original = total_orig / trials
+        E_repaired = total_repaired / trials
+        
+        improvement = (abs(E_repaired - E_original) / E_original) * 100 if E_original != 0 else 0
+        
+        return {
+            'original_unfairness': E_original,
+            'repaired_unfairness': E_repaired,
+            'improvement_percentage': improvement
+        }
+
 
 if __name__ == "__main__":
     import sys
@@ -328,17 +374,6 @@ if __name__ == "__main__":
                      'capital-loss', 'hours-per-week', 'native-country']
 
     print("="*40)
-  
-    y_pred_orig = (original_model.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
-    y_pred_fair = (fairer_model.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
-    
-    accuracy_orig = accuracy_score(y_test, y_pred_orig)
-    accuracy_fair = accuracy_score(y_test, y_pred_fair)
-    
-    print(f"Original model accuracy: {accuracy_orig:.4f}")
-    print(f"Fairer model accuracy: {accuracy_fair:.4f}")
-
-    print("="*40)
 
     def array_to_feature_dict(arr):
         return {feature_names[i]: arr[i] for i in range(len(feature_names))}
@@ -356,24 +391,38 @@ if __name__ == "__main__":
     detector_fair = CausalDiscriminationDetector(model_predict_fn_fairer, max_samples=1000, min_samples=100)
 
     for fname in feature_names:
-        unique_vals = sorted(set(df[fname]))
-        detector_orig.add_feature(fname, unique_vals)
-        detector_fair.add_feature(fname, unique_vals)
+      unique_vals = sorted(set(df[fname]))
+      detector_orig.add_feature(fname, unique_vals)
+      detector_fair.add_feature(fname, unique_vals)
 
     print("Running Causal Discrimination Check on 'sex'...\n")
     _, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
     _, rate_fair, _ = detector_fair.causal_discrimination(['sex'])
 
-    print(f"Discrimination rate on original model ({ORIGINAL_MODEL_NAME}): {rate_orig:.4f}")
-    print(f"Discrimination rate on fairer model   ({FAIRER_MODEL_NAME}): {rate_fair:.4f}")
-
     print("="*40)
 
-    print("Running Unfairness Estimation...")
-    print("\nEstimating unfairness for original model...")
-    E_original, orig_scores = detector_orig.estimate_unfairness_from_generated_cases(['sex'], T=100)
-    print("\nEstimating unfairness for fairer model...")
-    E_repaired, fair_scores = detector_fair.estimate_unfairness_from_generated_cases(['sex'], T=100)
-    improvement = detector_orig.calculate_fairness_improvement(E_original, E_repaired)
+    print("\nCalculating fairness improvement...")
+    fairness_results = detector_orig.calculate_fairness_improvement(
+        detector_fair, 
+        protected_features=['sex'],
+        trials=100
+    )
+    
+    print("\n" + "="*60)
+    print("FAIRNESS IMPROVEMENT RESULTS")
+    print("="*60)
+    print(f"Original model unfairness: {fairness_results['original_unfairness']:.4f}")
+    print(f"Repaired model unfairness: {fairness_results['repaired_unfairness']:.4f}")
+    print(f"Fairness improvement: {fairness_results['improvement_percentage']:.2f}%")
+    print("="*60)
 
-    detector_orig.print_unfairness_results(E_original, E_repaired, improvement)
+    # print("Running Unfairness Estimation...")
+    # print("\nEstimating unfairness for original model...")
+    # E_original, orig_scores = detector_orig.estimate_unfairness_from_generated_cases(['sex'], T=100)
+    # print("\nEstimating unfairness for fairer model...")
+    # E_repaired, fair_scores = detector_fair.estimate_unfairness_from_generated_cases(['sex'], T=100)
+    # improvement = detector_orig.calculate_fairness_improvement(E_original, E_repaired)
+
+    # detector_orig.print_unfairness_results(E_original, E_repaired, improvement)
+
+    print("="*40)

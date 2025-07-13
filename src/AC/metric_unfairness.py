@@ -72,14 +72,25 @@ def similar_set(x, num_attribs, protected_attribs, constraint):
 
 def is_discriminatory(x, similar_x, model):
     # identify whether the instance is discriminatory w.r.t. the model
-    # logit = model(torch.Tensor([x]))
-    # print(x)
-    logit = model(torch.Tensor(np.array(x).reshape(-1, len(x))))
-    _, y_pred = torch.max(logit, dim=1)
+    # For Keras/TensorFlow models, use numpy arrays
+    x_input = np.array(x).reshape(1, -1)
+    logit = model(x_input)
+    
+    # Get prediction for binary classification
+    if logit.shape[1] > 1:
+        y_pred = np.argmax(logit, axis=1)[0]
+    else:
+        y_pred = (logit > 0.5).astype(int)[0][0]
+    
     for x_new in similar_x:
-        # logit_similar = model(torch.Tensor([x_new]))
-        logit_similar = model(torch.Tensor(np.array(x_new).reshape(-1, len(x))))
-        _, y_pre_similar = torch.max(logit_similar, dim=1)
+        x_new_input = np.array(x_new).reshape(1, -1)
+        logit_similar = model(x_new_input)
+        
+        if logit_similar.shape[1] > 1:
+            y_pre_similar = np.argmax(logit_similar, axis=1)[0]
+        else:
+            y_pre_similar = (logit_similar > 0.5).astype(int)[0][0]
+            
         if y_pre_similar != y_pred:
             return True
     return False
@@ -87,12 +98,12 @@ def is_discriminatory(x, similar_x, model):
 
 def max_diff(x, similar_x, model):
     # select a similar instance such that the DNN outputs on them are maximally different
-
-    # y_pred_proba = model(torch.Tensor([x]))
-    y_pred_proba = model(torch.Tensor(np.array(x)))
+    x_input = np.array(x).reshape(1, -1)
+    y_pred_proba = model(x_input)
 
     def distance(x_new):
-        return np.sum(np.square(y_pred_proba - model(torch.Tensor([x_new]))))
+        x_new_input = np.array(x_new).reshape(1, -1)
+        return np.sum(np.square(y_pred_proba - model(x_new_input)))
 
     max_dist = 0.0
     x_potential_pair = x.copy()
@@ -107,12 +118,14 @@ def find_pair(x, similar_x, model):
     # find a discriminatory pair given an individual discriminatory instance
 
     pairs = np.empty(shape=(0, len(x)))
-    # y_pred = (model(torch.Tensor([x])) > 0.5)
-    y_pred = (model(torch.Tensor(np.array(x))) > 0.5)
+    x_input = np.array(x).reshape(1, -1)
+    y_pred = (model(x_input) > 0.5)
+    
     for x_pair in similar_x:
-        # if (model(torch.Tensor([x_pair])) > 0.5) != y_pred:
-        if (model(torch.Tensor(np.array(x_pair))) > 0.5) != y_pred:
+        x_pair_input = np.array(x_pair).reshape(1, -1)
+        if (model(x_pair_input) > 0.5) != y_pred:
             pairs = np.append(pairs, [x_pair], axis=0)
+    
     selected_p = random_pick([1.0 / pairs.shape[0]] * pairs.shape[0])
     return pairs[selected_p]
 

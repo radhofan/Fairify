@@ -313,8 +313,8 @@ if __name__ == "__main__":
     from tensorflow.keras.models import load_model
     import numpy as np
 
-    ORIGINAL_MODEL_NAME = "AC-2"
-    FAIRER_MODEL_NAME = "AC-2-Retrained"
+    ORIGINAL_MODEL_NAME = "AC-3"
+    FAIRER_MODEL_NAME = "AC-3-Retrained"
     ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 
@@ -360,7 +360,6 @@ if __name__ == "__main__":
         detector_orig.add_feature(fname, unique_vals)
         detector_fair.add_feature(fname, unique_vals)
 
-    # Original causal discrimination check
     print("Running Causal Discrimination Check on 'sex'...\n")
     _, rate_orig, _ = detector_orig.causal_discrimination(['sex'])
     _, rate_fair, _ = detector_fair.causal_discrimination(['sex'])

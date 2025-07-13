@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-ORIGINAL_MODEL_NAME = "AC-2"
-FAIRER_MODEL_NAME = "AC-2-Retrained"
+ORIGINAL_MODEL_NAME = "AC-3"
+FAIRER_MODEL_NAME = "AC-3-Retrained"
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())

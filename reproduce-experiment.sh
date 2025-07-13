@@ -20,6 +20,7 @@ pip install -r Fairify/requirements.txt
 pip install tqdm
 sudo apt install csvtool
 sudo apt install -y python3-swiftclient
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # Retrain existing model with counterexamples + synthethic data
 # python Fairify/src/AC/new_model_2.py

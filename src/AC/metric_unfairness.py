@@ -74,7 +74,7 @@ def is_discriminatory(x, similar_x, model):
     # identify whether the instance is discriminatory w.r.t. the model
     # For Keras/TensorFlow models, use numpy arrays
     x_input = np.array(x).reshape(1, -1)
-    logit = model(x_input)
+    logit = model(x_input).numpy()
     
     # Get prediction for binary classification
     if logit.shape[1] > 1:
@@ -84,7 +84,7 @@ def is_discriminatory(x, similar_x, model):
     
     for x_new in similar_x:
         x_new_input = np.array(x_new).reshape(1, -1)
-        logit_similar = model(x_new_input)
+        logit_similar = model(x_new_input).numpy()
         
         if logit_similar.shape[1] > 1:
             y_pre_similar = np.argmax(logit_similar, axis=1)[0]
@@ -99,11 +99,11 @@ def is_discriminatory(x, similar_x, model):
 def max_diff(x, similar_x, model):
     # select a similar instance such that the DNN outputs on them are maximally different
     x_input = np.array(x).reshape(1, -1)
-    y_pred_proba = model(x_input)
+    y_pred_proba = model(x_input).numpy()
 
     def distance(x_new):
         x_new_input = np.array(x_new).reshape(1, -1)
-        return np.sum(np.square(y_pred_proba - model(x_new_input)))
+        return np.sum(np.square(y_pred_proba - model(x_new_input).numpy()))
 
     max_dist = 0.0
     x_potential_pair = x.copy()
@@ -119,11 +119,11 @@ def find_pair(x, similar_x, model):
 
     pairs = np.empty(shape=(0, len(x)))
     x_input = np.array(x).reshape(1, -1)
-    y_pred = (model(x_input) > 0.5)
+    y_pred = (model(x_input).numpy() > 0.5)
     
     for x_pair in similar_x:
         x_pair_input = np.array(x_pair).reshape(1, -1)
-        if (model(x_pair_input) > 0.5) != y_pred:
+        if (model(x_pair_input).numpy() > 0.5) != y_pred:
             pairs = np.append(pairs, [x_pair], axis=0)
     
     selected_p = random_pick([1.0 / pairs.shape[0]] * pairs.shape[0])

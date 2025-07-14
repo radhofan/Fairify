@@ -14,7 +14,6 @@ from scipy.stats import qmc
 
 
 def clustering(data, c_num):
-    # standard KMeans algorithm
     from sklearn import cluster
     kmeans = cluster.KMeans(n_clusters=c_num)
     y_pred = kmeans.fit_predict(data)
@@ -22,12 +21,10 @@ def clustering(data, c_num):
 
 
 def clip(instance, constraint):
-    # clip the generated instance to satisfy the constraint
     return np.minimum(constraint[:, 1], np.maximum(constraint[:, 0], instance))
 
 
 def random_pick(probability):
-    # randomly pick an element from a probability distribution
     random_number = np.random.rand()
     current_proba = 0
     for i in range(len(probability)):
@@ -37,9 +34,6 @@ def random_pick(probability):
 
 
 def get_seed(clustered_data, X_len, c_num, cluster_i, fashion='RoundRobin'):
-    # get a seed from the specified cluster in a round-robin fashion alternatively choose 'Distribution' to randomly
-    # sample a seed from a cluster with the probability proportional to the cluster size
-
     if fashion == 'RoundRobin':
         index = np.random.randint(0, len(clustered_data[cluster_i]))
         return clustered_data[cluster_i][index]
@@ -51,9 +45,6 @@ def get_seed(clustered_data, X_len, c_num, cluster_i, fashion='RoundRobin'):
 
 
 def similar_set(x, num_attribs, protected_attribs, constraint):
-    # find all similar inputs corresponding to different combinations of protected attributes with non-protected
-    # attributes unchanged
-
     similar_x = np.empty(shape=(0, num_attribs))
 
     protected_domain = []
@@ -69,12 +60,9 @@ def similar_set(x, num_attribs, protected_attribs, constraint):
 
 
 def is_discriminatory(x, similar_x, model):
-    # identify whether the instance is discriminatory w.r.t. the model
-    # For Keras/TensorFlow models, use numpy arrays
     x_input = np.array(x).reshape(1, -1)
     logit = model(x_input).numpy()
     
-    # Get prediction for binary classification
     if logit.shape[1] > 1:
         y_pred = np.argmax(logit, axis=1)[0]
     else:
@@ -95,7 +83,6 @@ def is_discriminatory(x, similar_x, model):
 
 
 def max_diff(x, similar_x, model):
-    # select a similar instance such that the DNN outputs on them are maximally different
     x_input = np.array(x).reshape(1, -1)
     y_pred_proba = model(x_input).numpy()
 
@@ -113,8 +100,6 @@ def max_diff(x, similar_x, model):
 
 
 def find_pair(x, similar_x, model):
-    # find a discriminatory pair given an individual discriminatory instance
-
     pairs = np.empty(shape=(0, len(x)))
     x_input = np.array(x).reshape(1, -1)
     y_pred = (model(x_input).numpy() > 0.5)
@@ -129,8 +114,6 @@ def find_pair(x, similar_x, model):
 
 
 def normalization(grad1, grad2, protected_attribs, epsilon):
-    # gradient normalization during local search
-
     gradient = np.zeros_like(grad1)
     grad1 = np.abs(grad1)
     grad2 = np.abs(grad2)
@@ -145,8 +128,6 @@ def normalization(grad1, grad2, protected_attribs, epsilon):
 
 
 def purely_random(num_attribs, protected_attribs, constraint, model, gen_num):
-    # generate instances in a purely random fashion
-
     gen_id = np.empty(shape=(0, num_attribs))
     for i in range(gen_num):
         x_picked = [0] * num_attribs
@@ -182,7 +163,7 @@ class FairnessEvaluator:
     def __init__(self, model, constraint, protected_attribs=None, num_attribs=13):
         self.model = model
         self.constraint = constraint
-        self.protected_attribs = protected_attribs if protected_attribs else [8]  # default to sex attribute
+        self.protected_attribs = protected_attribs if protected_attribs else [8]  
         self.num_attribs = num_attribs
     
     def evaluate_individual_fairness(self, sample_round=10, num_gen=1000):
@@ -213,11 +194,26 @@ if __name__ == "__main__":
     fairer_model = load_model(FAIRER_MODEL_PATH)
     
     df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
+
+    print("="*40)
     
-    # Get constraint from the data
-    constraint = np.array([[int(X_train[:, i].min()), int(X_train[:, i].max())] for i in range(X_train.shape[1])])
+    # constraint = np.array([[int(X_train[:, i].min()), int(X_train[:, i].max())] for i in range(X_train.shape[1])])
+    constraint = np.array([
+        [10, 100],    # age
+        [0, 6],       # workclass
+        [0, 15],      # education
+        [1, 16],      # education-num
+        [0, 6],       # marital-status
+        [0, 13],      # occupation
+        [0, 5],       # relationship
+        [0, 4],       # race
+        [0, 1],       # sex
+        [0, 19],      # capital-gain
+        [0, 19],      # capital-loss
+        [1, 100],     # hours-per-week
+        [0, 40]       # native-country
+    ])
     
-    # Evaluate both models using FairnessEvaluator class
     print("Using FairnessEvaluator class:")
     print("Original Model:")
     original_evaluator = FairnessEvaluator(original_model, constraint)
@@ -226,3 +222,5 @@ if __name__ == "__main__":
     print("\nFairer Model:")
     fairer_evaluator = FairnessEvaluator(fairer_model, constraint)
     fairer_evaluator.evaluate_individual_fairness()
+
+    print("="*40)

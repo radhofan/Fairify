@@ -15,7 +15,8 @@ class FairnessConfig:
     """Configuration for fairness testing"""
     def __init__(self):
         self.params = 13  # Number of features for Adult dataset
-        self.sensitive_param = 8  # Sex attribute position (1-indexed)
+        self.sensitive_param = 8  # Sex attribute position (1-indexed, will be converted to 0-indexed)
+        self.sensitive_param_idx = self.sensitive_param - 1  # 0-indexed position for array access
         self.perturbation_unit = 1
         self.threshold = 0.5
         self.input_bounds = [
@@ -68,17 +69,21 @@ class FairnessAnalyzer:
     
     def predict_model(self, model, input_data):
         """Make prediction using the given model"""
-        input_array = np.array(input_data).reshape(1, -1)
-        prediction = model.predict(input_array, verbose=0)
-        return np.sign(prediction[0][0] - 0.5)  # Convert to -1/1 format
+        try:
+            input_array = np.array(input_data).reshape(1, -1)
+            prediction = model.predict(input_array, verbose=0)
+            return np.sign(prediction[0][0] - 0.5)  # Convert to -1/1 format
+        except Exception as e:
+            print(f"Error in prediction: {e}")
+            return 0  # Return neutral prediction on error
     
     def evaluate_input(self, inp, model):
         """Evaluate if an input is discriminatory for a given model"""
         inp0 = [int(i) for i in inp]
         inp1 = [int(i) for i in inp]
         
-        inp0[self.config.sensitive_param - 1] = 0  # Male
-        inp1[self.config.sensitive_param - 1] = 1  # Female
+        inp0[self.config.sensitive_param_idx] = 0  # Male
+        inp1[self.config.sensitive_param_idx] = 1  # Female
         
         out0 = self.predict_model(model, inp0)
         out1 = self.predict_model(model, inp1)
@@ -87,44 +92,51 @@ class FairnessAnalyzer:
     
     def evaluate_global(self, inp, model):
         """Global evaluation function for basinhopping"""
+        # Convert to integers for discrete evaluation
         inp0 = [int(i) for i in inp]
         inp1 = [int(i) for i in inp]
         
-        inp0[self.config.sensitive_param - 1] = 0
-        inp1[self.config.sensitive_param - 1] = 1
+        inp0[self.config.sensitive_param_idx] = 0
+        inp1[self.config.sensitive_param_idx] = 1
         
         out0 = self.predict_model(model, inp0)
         out1 = self.predict_model(model, inp1)
         
         self.tot_inputs.add(tuple(inp0))
         
-        if (abs(out0 - out1) > self.config.threshold and 
-            tuple(inp0) not in self.global_disc_inputs):
+        is_discriminatory = abs(out0 - out1) > self.config.threshold
+        
+        if (is_discriminatory and tuple(inp0) not in self.global_disc_inputs):
             self.global_disc_inputs.add(tuple(inp0))
             self.global_disc_inputs_list.append(inp0)
         
-        return not abs(out0 - out1) > self.config.threshold
+        # Return a float value for optimization (minimize non-discrimination)
+        return float(not is_discriminatory)
     
     def evaluate_local(self, inp, model):
         """Local evaluation function for basinhopping"""
+        # Convert to integers for discrete evaluation
         inp0 = [int(i) for i in inp]
         inp1 = [int(i) for i in inp]
         
-        inp0[self.config.sensitive_param - 1] = 0
-        inp1[self.config.sensitive_param - 1] = 1
+        inp0[self.config.sensitive_param_idx] = 0
+        inp1[self.config.sensitive_param_idx] = 1
         
         out0 = self.predict_model(model, inp0)
         out1 = self.predict_model(model, inp1)
         
         self.tot_inputs.add(tuple(inp0))
         
-        if (abs(out0 - out1) > self.config.threshold and 
+        is_discriminatory = abs(out0 - out1) > self.config.threshold
+        
+        if (is_discriminatory and 
             tuple(inp0) not in self.global_disc_inputs and 
             tuple(inp0) not in self.local_disc_inputs):
             self.local_disc_inputs.add(tuple(inp0))
             self.local_disc_inputs_list.append(inp0)
         
-        return not abs(out0 - out1) > self.config.threshold
+        # Return a float value for optimization (minimize non-discrimination)
+        return float(not is_discriminatory)
     
     class LocalPerturbation:
         def __init__(self, analyzer):
@@ -199,7 +211,13 @@ class FairnessAnalyzer:
                     analyzer.config.input_bounds[i][1]
                 )
             
-            x[analyzer.config.sensitive_param - 1] = 0
+            x[analyzer.config.sensitive_param_idx] = 0
+            
+            # Ensure bounds are respected
+            for i in range(len(x)):
+                x[i] = max(analyzer.config.input_bounds[i][0], x[i])
+                x[i] = min(analyzer.config.input_bounds[i][1], x[i])
+            
             return x
     
     def analyze_model_fairness(self, model, model_name):
@@ -219,12 +237,14 @@ class FairnessAnalyzer:
         # Initial input (representative adult dataset input)
         initial_input = [39, 7, 77516, 13, 13, 2, 1, 1, 4, 0, 2174, 0, 40]
         
-        minimizer = {"method": "L-BFGS-B"}
+        # Set up bounds for L-BFGS-B
+        bounds = [(bound[0], bound[1]) for bound in self.config.input_bounds]
+        minimizer = {"method": "L-BFGS-B", "bounds": bounds}
         
         global_discovery = self.GlobalDiscovery(self)
         local_perturbation = self.LocalPerturbation(self)
         
-        # Global search
+        # Global search - using original basinhopping approach
         basinhopping(
             lambda x: self.evaluate_global(x, model), 
             initial_input, 
@@ -238,7 +258,7 @@ class FairnessAnalyzer:
         print(f"Percentage discriminatory inputs - {self.get_discrimination_percentage():.2f}%")
         print("Starting Local Search")
         
-        # Local search
+        # Local search - using original basinhopping approach
         for inp in self.global_disc_inputs_list:
             basinhopping(
                 lambda x: self.evaluate_local(x, model), 

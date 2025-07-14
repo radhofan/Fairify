@@ -16,7 +16,7 @@ class FairnessConfig:
     def __init__(self):
         self.params = 13  # Number of features for Adult dataset
         self.sensitive_param = 8  # Sex attribute position (1-indexed, will be converted to 0-indexed)
-        self.sensitive_param_idx = self.sensitive_param - 1  # 0-indexed position for array access
+        self.sensitive_param_idx = self.sensitive_param  # 0-indexed position for array access
         self.perturbation_unit = 1
         self.threshold = 0.5
         self.input_bounds = [

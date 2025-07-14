@@ -32,6 +32,7 @@ class FairnessConfig:
             (0, 99999),  # capital-gain
             (0, 4356),   # capital-loss
             (1, 99),     # hours-per-week
+            (0, 42)      # native-country
         ]
 
 class FairnessAnalyzer:

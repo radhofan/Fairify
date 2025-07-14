@@ -17,7 +17,6 @@ from utils.verif_utils import *
 import tensorflow as tf
 from collections import defaultdict
 
-# Model paths
 ORIGINAL_MODEL_NAME = "BM-3"
 FAIRER_MODEL_NAME = "BM-3-Retrained"
 
@@ -25,7 +24,6 @@ print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
 
-# Load original dataset using your function
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_bank()
 
 print("Loading synthetic counterexamples...")
@@ -44,8 +42,6 @@ count = df.shape[0] - dropped.shape[0]
 print("Missing Data: {} rows removed.".format(count))
 df = dropped
 
-# dropped = df.dropna(inplace=true)
-
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 
 invalid_values = {'unknown', '(null)'}
@@ -62,47 +58,26 @@ for feature in cat_feat:
     if feature in encoders:
         df_synthetic[feature] = encoders[feature].transform(df_synthetic[feature])
 
-# df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
-# label_name = 'y'
-
-# X_synthetic = df_synthetic.drop(columns=[label_name])
-# y_synthetic = df_synthetic[label_name]
-
-# X_synthetic = df_synthetic.drop(columns=['y']).values
-# y_synthetic = df_synthetic['y'].values
-
-# split_idx = int(0.85 * len(X_synthetic))
-# X_train_synth = X_synthetic[:split_idx]
-# y_train_synth = y_synthetic[:split_idx]
-# X_test_synth = X_synthetic[split_idx:]
-# y_test_synth = y_synthetic[split_idx:]
-
 df_synthetic.rename(columns={'decision': 'y'}, inplace=True)
-# Apply the same label processing as in load_bank()
 label_name = 'y'
 favorable_label = 1
 unfavorable_label = 0
 favorable_classes = ['yes']
 
-# Convert to string arrays with proper data type
 label_array = df_synthetic[label_name].astype(str).to_numpy()
 favorable_array = np.array(favorable_classes, dtype=str)
 
-# Use the numpy arrays, not the original list
 pos = np.logical_or.reduce(np.equal.outer(favorable_array, label_array))
 
 df_synthetic.loc[pos, label_name] = favorable_label
 df_synthetic.loc[~pos, label_name] = unfavorable_label
 
-# Extract features and labels
 X_synthetic = df_synthetic.drop(labels=[label_name], axis=1, inplace=False)
 y_synthetic = df_synthetic[label_name]
 
-# Convert to numpy arrays
 X_synthetic = X_synthetic.values
 y_synthetic = y_synthetic.values
 
-# Split the data
 split_idx = int(0.85 * len(X_synthetic))
 X_train_synth = X_synthetic[:split_idx]
 y_train_synth = y_synthetic[:split_idx]

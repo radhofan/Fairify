@@ -25,23 +25,26 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # Retrain existing model with counterexamples + synthethic data
 # python Fairify/src/AC/new_model_2.py
 
-# python Fairify/src/AC/train_fair_model.py
+python Fairify/src/AC/train_fair_model.py
 # python Fairify/src/AC/metric_aif360.py
 # python Fairify/src/AC/metric_themis.py
-# python Fairify/src/AC/metric_unfairness.py
+python Fairify/src/AC/metric_unfairness.py
 # python Fairify/src/AC/metrics.py
 # bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-v2.py
 
-python Fairify/src/BM/train_fair_model.py
-# python Fairify/src/BM/metric_aif360.py
-# python Fairify/src/AC/metric_themis.py
-python Fairify/src/BM/metric_unfairness.py
-# python Fairify/src/AC/metrics.py
-# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
-
 # python Fairify/src/BM/train_fair_model.py
+# python Fairify/src/BM/metric_aif360.py
+# python Fairify/src/BM/metric_themis.py
+# python Fairify/src/BM/metric_unfairness.py
 # python Fairify/src/BM/metrics.py
 # bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-v2.py
+
+# python Fairify/src/GC/train_fair_model.py
+# python Fairify/src/GC/metric_aif360.py
+# python Fairify/src/GC/metric_themis.py
+# python Fairify/src/GC/metric_unfairness.py
+# python Fairify/src/GC/metrics.py
+# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py

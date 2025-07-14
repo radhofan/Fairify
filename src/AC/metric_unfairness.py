@@ -166,7 +166,7 @@ class FairnessEvaluator:
         self.protected_attribs = protected_attribs if protected_attribs else [8]  
         self.num_attribs = num_attribs
     
-    def evaluate_individual_fairness(self, sample_round=100, num_gen=10000):
+    def evaluate_individual_fairness(self, sample_round=20, num_gen=1000):
         """
         Evaluate individual fairness using generation utilities
         """

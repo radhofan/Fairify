@@ -15,10 +15,9 @@ class FairnessConfig:
     """Configuration for fairness testing"""
     def __init__(self):
         self.params = 13  # Number of features for Adult dataset
-        self.sensitive_param = 8  # Sex attribute position (1-indexed, will be converted to 0-indexed)
-        self.sensitive_param_idx = self.sensitive_param  # 0-indexed position for array access
+        self.sensitive_param = 8  # Sex attribute position (0-indexed)
         self.perturbation_unit = 1
-        self.threshold = 0.5
+        self.threshold = 0.0  # Lowered threshold to detect more discrimination
         self.input_bounds = [
             (17, 90),    # age
             (1, 9),      # workclass
@@ -65,17 +64,37 @@ class FairnessAnalyzer:
     def normalise_probability(self):
         """Normalize parameter probabilities to sum to 1"""
         probability_sum = sum(self.param_probability)
-        for i in range(self.config.params):
-            self.param_probability[i] = self.param_probability[i] / probability_sum
+        if probability_sum > 0:
+            for i in range(self.config.params):
+                self.param_probability[i] = self.param_probability[i] / probability_sum
+        else:
+            # Reset to uniform if all probabilities are zero
+            self.param_probability = [1.0/self.config.params] * self.config.params
     
     def predict_model(self, model, input_data):
         """Make prediction using the given model"""
         try:
-            input_array = np.array(input_data).reshape(1, -1)
+            input_array = np.array(input_data, dtype=np.float32).reshape(1, -1)
             prediction = model.predict(input_array, verbose=0)
-            return np.sign(prediction[0][0] - 0.5)  # Convert to -1/1 format
+            
+            # Handle different prediction formats
+            if isinstance(prediction, np.ndarray):
+                if prediction.shape[-1] == 1:
+                    # Binary classification with single output
+                    pred_value = prediction[0][0]
+                else:
+                    # Multi-class or binary with 2 outputs
+                    pred_value = prediction[0][1] if len(prediction[0]) > 1 else prediction[0][0]
+            else:
+                pred_value = prediction
+            
+            # Convert to binary output (-1 or 1)
+            return 1 if pred_value > 0.5 else -1
+            
         except Exception as e:
             print(f"Error in prediction: {e}")
+            print(f"Input shape: {np.array(input_data).shape}")
+            print(f"Input data: {input_data}")
             return 0  # Return neutral prediction on error
     
     def evaluate_input(self, inp, model):
@@ -83,22 +102,31 @@ class FairnessAnalyzer:
         inp0 = [int(i) for i in inp]
         inp1 = [int(i) for i in inp]
         
-        inp0[self.config.sensitive_param_idx] = 0  # Male
-        inp1[self.config.sensitive_param_idx] = 1  # Female
+        inp0[self.config.sensitive_param] = 0  # Male
+        inp1[self.config.sensitive_param] = 1  # Female
         
         out0 = self.predict_model(model, inp0)
         out1 = self.predict_model(model, inp1)
+        
+        # Debug: Print some predictions to verify they're working
+        if random.random() < 0.001:  # Print 0.1% of predictions
+            print(f"Debug - Input: {inp0[:5]}..., Male pred: {out0}, Female pred: {out1}")
         
         return abs(out0 - out1) > self.config.threshold
     
     def evaluate_global(self, inp, model):
         """Global evaluation function for basinhopping"""
+        # Ensure input is within bounds
+        inp = [max(self.config.input_bounds[i][0], 
+                  min(self.config.input_bounds[i][1], inp[i])) 
+               for i in range(len(inp))]
+        
         # Convert to integers for discrete evaluation
         inp0 = [int(i) for i in inp]
         inp1 = [int(i) for i in inp]
         
-        inp0[self.config.sensitive_param_idx] = 0
-        inp1[self.config.sensitive_param_idx] = 1
+        inp0[self.config.sensitive_param] = 0
+        inp1[self.config.sensitive_param] = 1
         
         out0 = self.predict_model(model, inp0)
         out1 = self.predict_model(model, inp1)
@@ -116,12 +144,17 @@ class FairnessAnalyzer:
     
     def evaluate_local(self, inp, model):
         """Local evaluation function for basinhopping"""
+        # Ensure input is within bounds
+        inp = [max(self.config.input_bounds[i][0], 
+                  min(self.config.input_bounds[i][1], inp[i])) 
+               for i in range(len(inp))]
+        
         # Convert to integers for discrete evaluation
         inp0 = [int(i) for i in inp]
         inp1 = [int(i) for i in inp]
         
-        inp0[self.config.sensitive_param_idx] = 0
-        inp1[self.config.sensitive_param_idx] = 1
+        inp0[self.config.sensitive_param] = 0
+        inp1[self.config.sensitive_param] = 1
         
         out0 = self.predict_model(model, inp0)
         out1 = self.predict_model(model, inp1)
@@ -146,6 +179,11 @@ class FairnessAnalyzer:
         
         def __call__(self, x):
             analyzer = self.analyzer
+            
+            # Ensure x is a numpy array
+            if not isinstance(x, np.ndarray):
+                x = np.array(x)
+            
             param_choice = np.random.choice(
                 range(analyzer.config.params), 
                 p=analyzer.param_probability
@@ -158,17 +196,20 @@ class FairnessAnalyzer:
                    (1 - analyzer.direction_probability[param_choice])]
             )
             
+            # Check bounds
             if (x[param_choice] == analyzer.config.input_bounds[param_choice][0] or 
                 x[param_choice] == analyzer.config.input_bounds[param_choice][1]):
                 direction_choice = np.random.choice(perturbation_options)
             
             x[param_choice] = x[param_choice] + (direction_choice * analyzer.config.perturbation_unit)
             
+            # Ensure bounds are respected
             x[param_choice] = max(analyzer.config.input_bounds[param_choice][0], x[param_choice])
             x[param_choice] = min(analyzer.config.input_bounds[param_choice][1], x[param_choice])
             
             ei = analyzer.evaluate_input(x, analyzer.current_model)
             
+            # Update direction probability
             if (ei and direction_choice == -1) or (not ei and direction_choice == 1):
                 analyzer.direction_probability[param_choice] = min(
                     analyzer.direction_probability[param_choice] + 
@@ -182,6 +223,7 @@ class FairnessAnalyzer:
                     0
                 )
             
+            # Update parameter probability
             if ei:
                 analyzer.param_probability[param_choice] = (
                     analyzer.param_probability[param_choice] + 
@@ -205,14 +247,19 @@ class FairnessAnalyzer:
         
         def __call__(self, x):
             analyzer = self.analyzer
+            
+            # Ensure x is a numpy array
+            if not isinstance(x, np.ndarray):
+                x = np.array(x)
+            
             for i in range(analyzer.config.params):
-                random.seed(time.time())
                 x[i] = random.randint(
                     analyzer.config.input_bounds[i][0], 
                     analyzer.config.input_bounds[i][1]
                 )
             
-            x[analyzer.config.sensitive_param_idx] = 0
+            # Set sensitive attribute to 0 for consistency
+            x[analyzer.config.sensitive_param] = 0
             
             # Ensure bounds are respected
             for i in range(len(x)):
@@ -221,9 +268,46 @@ class FairnessAnalyzer:
             
             return x
     
+    def test_model_predictions(self, model, num_samples=100):
+        """Test model predictions to ensure they're working"""
+        print(f"Testing model predictions with {num_samples} samples...")
+        predictions = []
+        
+        for _ in range(num_samples):
+            # Generate random input
+            test_input = []
+            for i in range(self.config.params):
+                test_input.append(random.randint(
+                    self.config.input_bounds[i][0], 
+                    self.config.input_bounds[i][1]
+                ))
+            
+            # Test with both gender values
+            test_input[self.config.sensitive_param] = 0
+            pred0 = self.predict_model(model, test_input)
+            
+            test_input[self.config.sensitive_param] = 1
+            pred1 = self.predict_model(model, test_input)
+            
+            predictions.append((pred0, pred1))
+            
+            # Check for discrimination
+            if abs(pred0 - pred1) > self.config.threshold:
+                print(f"Found discriminatory input: {test_input}")
+                print(f"Male prediction: {pred0}, Female prediction: {pred1}")
+        
+        unique_preds = set(predictions)
+        print(f"Found {len(unique_preds)} unique prediction combinations")
+        print(f"Sample predictions: {list(unique_preds)[:10]}")
+        
+        return predictions
+    
     def analyze_model_fairness(self, model, model_name):
         """Analyze fairness for a single model"""
         print(f"\nAnalyzing fairness for {model_name}...")
+        
+        # Test model predictions first
+        self.test_model_predictions(model, 100)
         
         # Reset containers for this model
         self.global_disc_inputs = set()
@@ -232,11 +316,21 @@ class FairnessAnalyzer:
         self.local_disc_inputs_list = []
         self.tot_inputs = set()
         
+        # Reset probabilities
+        self.direction_probability = [self.init_prob] * self.config.params
+        self.param_probability = [1.0/self.config.params] * self.config.params
+        
         # Set current model for perturbation classes
         self.current_model = model
         
-        # Initial input (representative adult dataset input)
-        initial_input = [39, 7, 77516, 13, 13, 2, 1, 1, 4, 0, 2174, 0, 40]
+        # Multiple initial inputs for better coverage
+        initial_inputs = [
+            [39, 7, 77516, 13, 13, 2, 1, 1, 4, 0, 2174, 0, 40],  # Original
+            [25, 1, 100000, 9, 9, 1, 1, 1, 0, 0, 0, 0, 20],      # Young, low education
+            [55, 5, 200000, 16, 16, 5, 2, 2, 1, 5000, 0, 0, 60], # Older, high education
+            [30, 3, 150000, 12, 12, 3, 3, 3, 0, 1000, 500, 0, 35], # Mid-range
+            [45, 6, 80000, 10, 10, 4, 4, 4, 1, 0, 1000, 0, 50],  # Another variant
+        ]
         
         # Set up bounds for L-BFGS-B
         bounds = [(bound[0], bound[1]) for bound in self.config.input_bounds]
@@ -245,30 +339,40 @@ class FairnessAnalyzer:
         global_discovery = self.GlobalDiscovery(self)
         local_perturbation = self.LocalPerturbation(self)
         
-        # Global search - using original basinhopping approach
-        basinhopping(
-            lambda x: self.evaluate_global(x, model), 
-            initial_input, 
-            stepsize=1.0, 
-            take_step=global_discovery,
-            minimizer_kwargs=minimizer, 
-            niter=self.global_iteration_limit
-        )
+        # Global search with multiple starting points
+        for initial_input in initial_inputs:
+            try:
+                basinhopping(
+                    lambda x: self.evaluate_global(x, model), 
+                    initial_input, 
+                    stepsize=1.0, 
+                    take_step=global_discovery,
+                    minimizer_kwargs=minimizer, 
+                    niter=self.global_iteration_limit // len(initial_inputs)
+                )
+            except Exception as e:
+                print(f"Error in global search: {e}")
+                continue
         
         print(f"Finished Global Search for {model_name}")
+        print(f"Found {len(self.global_disc_inputs_list)} discriminatory inputs")
         print(f"Percentage discriminatory inputs - {self.get_discrimination_percentage():.2f}%")
         print("Starting Local Search")
         
-        # Local search - using original basinhopping approach
+        # Local search
         for inp in self.global_disc_inputs_list:
-            basinhopping(
-                lambda x: self.evaluate_local(x, model), 
-                inp, 
-                stepsize=1.0, 
-                take_step=local_perturbation, 
-                minimizer_kwargs=minimizer,
-                niter=self.local_iteration_limit
-            )
+            try:
+                basinhopping(
+                    lambda x: self.evaluate_local(x, model), 
+                    inp, 
+                    stepsize=1.0, 
+                    take_step=local_perturbation, 
+                    minimizer_kwargs=minimizer,
+                    niter=self.local_iteration_limit // max(1, len(self.global_disc_inputs_list))
+                )
+            except Exception as e:
+                print(f"Error in local search: {e}")
+                continue
         
         print(f"Local Search Finished for {model_name}")
         

@@ -5,8 +5,6 @@ This python file provides essential functions for individual discrimination gene
 
 import torch
 import numpy as np
-# import tensorflow as tf
-# from sklearn import cluster
 import itertools
 from itertools import chain, combinations, product
 import math
@@ -155,7 +153,6 @@ def purely_random(num_attribs, protected_attribs, constraint, model, gen_num):
         for a in range(num_attribs):
             x_picked[a] = np.random.randint(constraint[a][0], constraint[a][1] + 1)
         similar_set_data = similar_set(x_picked, num_attribs, protected_attribs, constraint)
-        # print('similar set data is {}\n'.format(similar_set_data))
         if is_discriminatory(x_picked, similar_set_data, model):
             gen_id = np.append(gen_id, [x_picked], axis=0)
     return gen_id
@@ -177,25 +174,16 @@ def ids_percentage(sample_round, num_gen, num_attribs, protected_attribs, constr
     return avg, interval
 
 
-def measure_discrimination(sample_round, num_gen, input_len, model, constraint):
-    """
-    Measure the discrimination degree of model for Adult dataset with sex as protected attribute
-    """
-    print('Percentage of discriminatory instances for sex attribute:')
-    protected_attribs = [8]  # sex is at index 8
-    ids_percentage(sample_round, num_gen, input_len, protected_attribs, constraint, model)
-
-
 class FairnessEvaluator:
     """
     Simple fairness evaluator for individual discrimination using generation utilities
     """
     
-    def __init__(self, model, constraint):
+    def __init__(self, model, constraint, protected_attribs=None, num_attribs=13):
         self.model = model
         self.constraint = constraint
-        self.protected_attribs = [8]  # sex attribute index
-        self.num_attribs = 13  # adult dataset has 13 features
+        self.protected_attribs = protected_attribs if protected_attribs else [8]  # default to sex attribute
+        self.num_attribs = num_attribs
     
     def evaluate_individual_fairness(self, sample_round=10, num_gen=1000):
         """
@@ -226,24 +214,11 @@ if __name__ == "__main__":
     
     df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
     
-    feature_names = ['age', 'workclass', 'education', 'education-num', 'marital-status',
-                     'occupation', 'relationship', 'race', 'sex', 'capital-gain',
-                     'capital-loss', 'hours-per-week', 'native-country']
-    
-    print("="*40)
-    
     # Get constraint from the data
     constraint = np.array([[int(X_train[:, i].min()), int(X_train[:, i].max())] for i in range(X_train.shape[1])])
     
-    # Evaluate both models
-    print("\nEvaluating Original Model:")
-    measure_discrimination(10, 1000, 13, original_model, constraint)
-    
-    print("\nEvaluating Fairer Model:")
-    measure_discrimination(10, 1000, 13, fairer_model, constraint)
-    
-    # Using the class
-    print("\nUsing FairnessEvaluator class:")
+    # Evaluate both models using FairnessEvaluator class
+    print("Using FairnessEvaluator class:")
     print("Original Model:")
     original_evaluator = FairnessEvaluator(original_model, constraint)
     original_evaluator.evaluate_individual_fairness()

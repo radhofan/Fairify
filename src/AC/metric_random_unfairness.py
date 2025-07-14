@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-This python file provides essential functions for individual discrimination generation.
-"""
-
 import torch
 import numpy as np
 import itertools

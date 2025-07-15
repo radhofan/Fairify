@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-ORIGINAL_MODEL_NAME = "AC-2"
-FAIRER_MODEL_NAME = "AC-2-Retrained"
+ORIGINAL_MODEL_NAME = "AC-3"
+FAIRER_MODEL_NAME = "AC-3-Retrained"
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
@@ -219,7 +219,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 
-optimizer = Adam(learning_rate=0.0000001)
+optimizer = Adam(learning_rate=0.000003)
 # AC-1 = 0.000015
 # AC-2 = 0.0000001
 # AC-3 = 0.000003

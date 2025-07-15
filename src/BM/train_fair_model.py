@@ -35,12 +35,12 @@ feature_names = [
     "campaign", "pdays", "previous", "poutcome"
 ]
 
-na_values=['unknown']
-df = pd.read_csv(f'Fairify/counterexamples/BM/counterexamples-{ORIGINAL_MODEL_NAME}.csv', sep=';', na_values=na_values)
-dropped = df.dropna()
-count = df.shape[0] - dropped.shape[0]
-print("Missing Data: {} rows removed.".format(count))
-df = dropped
+# na_values=['unknown']
+# df = pd.read_csv(f'Fairify/counterexamples/BM/counterexamples-{ORIGINAL_MODEL_NAME}.csv', sep=';', na_values=na_values)
+# dropped = df.dropna()
+# count = df.shape[0] - dropped.shape[0]
+# print("Missing Data: {} rows removed.".format(count))
+# df = dropped
 
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 

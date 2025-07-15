@@ -44,15 +44,26 @@ df = dropped
 
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 
-# invalid_values = {'unknown', '(null)'}
-# invalid_months = {'jan', 'feb'}
+invalid_values = {'unknown', '(null)'}
+invalid_months = {'jan', 'feb'}
 
-# for feature in cat_feat:
-#     if feature in df_synthetic.columns:
-#         if feature == 'month':
-#             df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_months)]
-#         else:
-#             df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
+invalid_value_count = 0
+invalid_month_count = 0
+
+for feature in cat_feat:
+    if feature in df_synthetic.columns:
+        if feature == 'month':
+            count = df_synthetic[feature].isin(invalid_months).sum()
+            invalid_month_count += count
+            print(f"[month] Invalid month count: {count}")
+        else:
+            count = df_synthetic[feature].isin(invalid_values).sum()
+            invalid_value_count += count
+            print(f"[{feature}] Invalid value count: {count}")
+
+print("="*40)
+print(f"Total invalid 'month' entries: {invalid_month_count}")
+print(f"Total invalid categorical entries (excluding 'month'): {invalid_value_count}")
 
 for feature in cat_feat:
     if feature in encoders:

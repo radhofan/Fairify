@@ -126,7 +126,7 @@ def run_fairness_test(model, X_train, y_train, sensitive_param, threshold=0.5, p
             global_disc_inputs.add(tuple(inp0))
             global_disc_inputs_list.append(inp0)
 
-        return not abs(out0 - out1) > threshold
+        return float(not abs(out0 - out1) > threshold)
 
     def evaluate_local(inp):
         inp0 = [int(i) for i in inp]
@@ -144,7 +144,7 @@ def run_fairness_test(model, X_train, y_train, sensitive_param, threshold=0.5, p
             local_disc_inputs.add(tuple(inp0))
             local_disc_inputs_list.append(inp0)
 
-        return not abs(out0 - out1) > threshold
+        return float(not abs(out0 - out1) > threshold)
 
     initial_input = [7, 4, 26, 1, 4, 4, 0, 0, 0, 1, 5, 73, 1]
     minimizer = {"method": "L-BFGS-B"}

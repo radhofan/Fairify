@@ -32,15 +32,15 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # python Fairify/src/AC/metric_aequitas_unfairness.py
 # bash Fairify/src/fairify.sh Fairify/src/AC/Verify-AC-experiment-v2.py
 
-python Fairify/src/BM/train_fair_model.py
-python Fairify/src/BM/metric_aif360.py
+# python Fairify/src/BM/train_fair_model.py
+# python Fairify/src/BM/metric_aif360.py
 # python Fairify/src/BM/metric_themis_causality.py
 # python Fairify/src/BM/metric_random_unfairness.py
 # python Fairify/src/BM/metric_aequitas_unfairness.py
 # bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-v2.py
 
-# python Fairify/src/GC/train_fair_model.py
-# python Fairify/src/GC/metric_aif360.py
+python Fairify/src/GC/train_fair_model.py
+python Fairify/src/GC/metric_aif360.py
 # python Fairify/src/GC/metric_themis_causality.py
 # python Fairify/src/GC/metric_random_unfairness.py
 # python Fairify/src/GC/metric_aequitas_unfairness.py

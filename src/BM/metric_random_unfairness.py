@@ -166,7 +166,7 @@ class FairnessEvaluator:
         self.protected_attribs = protected_attribs if protected_attribs else [0]  
         self.num_attribs = num_attribs
     
-    def evaluate_individual_fairness(self, sample_round=100, num_gen=10000):
+    def evaluate_individual_fairness(self, sample_round=10, num_gen=100):
         """
         Evaluate individual fairness using generation utilities
         """
@@ -177,6 +177,10 @@ class FairnessEvaluator:
 if __name__ == "__main__":
     import sys
     import os
+
+    np.random.seed(42)
+    random.seed(42)
+    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
     sys.path.append(src_dir)

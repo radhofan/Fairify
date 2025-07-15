@@ -17,8 +17,8 @@ from utils.verif_utils import *
 import tensorflow as tf
 from collections import defaultdict
 
-ORIGINAL_MODEL_NAME = "BM-2"
-FAIRER_MODEL_NAME = "BM-2-Retrained"
+ORIGINAL_MODEL_NAME = "BM-3"
+FAIRER_MODEL_NAME = "BM-3-Retrained"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -242,7 +242,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
     return loss
 
-optimizer = Adam(learning_rate=0.001)
+optimizer = Adam(learning_rate=0.000001)
 # BM-1 = 0.0001 
 # BM-2 = 0.001
 # BM-3 = 0.000001

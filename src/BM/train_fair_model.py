@@ -44,15 +44,15 @@ df = dropped
 
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 
-invalid_values = {'unknown', '(null)'}
-invalid_months = {'jan', 'feb'}
+# invalid_values = {'unknown', '(null)'}
+# invalid_months = {'jan', 'feb'}
 
-for feature in cat_feat:
-    if feature in df_synthetic.columns:
-        if feature == 'month':
-            df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_months)]
-        else:
-            df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
+# for feature in cat_feat:
+#     if feature in df_synthetic.columns:
+#         if feature == 'month':
+#             df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_months)]
+#         else:
+#             df_synthetic = df_synthetic[~df_synthetic[feature].isin(invalid_values)]
 
 for feature in cat_feat:
     if feature in encoders:

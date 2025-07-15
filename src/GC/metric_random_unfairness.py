@@ -173,6 +173,10 @@ class FairnessEvaluator:
 if __name__ == "__main__":
     import sys
     import os
+
+    np.random.seed(42)
+    random.seed(42)
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
     src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
     sys.path.append(src_dir)
@@ -219,9 +223,6 @@ if __name__ == "__main__":
         [0, 1],       # foreign_worker
         [0, 1],       # sex
     ])
-
-    # np.random.seed(42)
-    # random.seed(42)
 
     print("Using FairnessEvaluator class:")
     print("Original Model:")

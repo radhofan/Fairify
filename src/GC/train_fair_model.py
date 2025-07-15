@@ -18,8 +18,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "GC-3"
-FAIRER_MODEL_NAME = "GC-3-Retrained"
+ORIGINAL_MODEL_NAME = "GC-2"
+FAIRER_MODEL_NAME = "GC-2-Retrained"
 
 # Load pre-trained adult model
 print("Loading original model...")

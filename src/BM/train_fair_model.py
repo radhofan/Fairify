@@ -17,8 +17,8 @@ from utils.verif_utils import *
 import tensorflow as tf
 from collections import defaultdict
 
-ORIGINAL_MODEL_NAME = "BM-3"
-FAIRER_MODEL_NAME = "BM-3-Retrained"
+ORIGINAL_MODEL_NAME = "BM-1"
+FAIRER_MODEL_NAME = "BM-1-Retrained"
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -34,13 +34,6 @@ feature_names = [
     "contact", "month", "day_of_week", "duration", "emp.var.rate", 
     "campaign", "pdays", "previous", "poutcome"
 ]
-
-# na_values=['unknown']
-# df = pd.read_csv(f'Fairify/counterexamples/BM/counterexamples-{ORIGINAL_MODEL_NAME}.csv', sep=';', na_values=na_values)
-# dropped = df.dropna()
-# count = df.shape[0] - dropped.shape[0]
-# print("Missing Data: {} rows removed.".format(count))
-# df = dropped
 
 cat_feat = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'day_of_week', 'poutcome']
 
@@ -249,7 +242,7 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
     return loss
 
-optimizer = Adam(learning_rate=0.000001)
+optimizer = Adam(learning_rate=0.0001)
 # BM-1 = 0.0001 
 # BM-2 = 
 # BM-3 = 0.000001

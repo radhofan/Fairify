@@ -188,8 +188,8 @@ if __name__ == "__main__":
     from utils.verif_utils import *
     from tensorflow.keras.models import load_model
     
-    ORIGINAL_MODEL_NAME = "BM-3"
-    FAIRER_MODEL_NAME = "BM-3-Retrained"
+    ORIGINAL_MODEL_NAME = "BM-1"
+    FAIRER_MODEL_NAME = "BM-1-Retrained"
     ORIGINAL_MODEL_PATH = f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5'
     

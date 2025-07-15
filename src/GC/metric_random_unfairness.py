@@ -181,8 +181,8 @@ if __name__ == "__main__":
     import numpy as np
 
     # Model paths
-    ORIGINAL_MODEL_NAME = "GC-2"
-    FAIRER_MODEL_NAME = "GC-2-Retrained"
+    ORIGINAL_MODEL_NAME = "GC-3"
+    FAIRER_MODEL_NAME = "GC-3-Retrained"
     ORIGINAL_MODEL_PATH = f'Fairify/models/german/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5'
 
@@ -219,6 +219,9 @@ if __name__ == "__main__":
         [0, 1],       # foreign_worker
         [0, 1],       # sex
     ])
+
+    # np.random.seed(42)
+    # random.seed(42)
 
     print("Using FairnessEvaluator class:")
     print("Original Model:")

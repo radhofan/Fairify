@@ -1,34 +1,33 @@
 #!/usr/bin/env bash
 
-# Optional: wipe old miniconda if needed
+# Optional: nuke old miniconda if needed
 rm -rf $HOME/miniconda
 
-# Install Miniconda
+# Install Miniconda silently
 curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
 bash miniconda.sh -b -p $HOME/miniconda <<< "Yes"
 
-# Set up conda path and config
+# Set path
 export PATH="$HOME/miniconda/bin:$PATH"
-export MAMBA_ROOT_PREFIX="$HOME/miniconda"
 
-# Remove default channels (to avoid TOS) and use conda-forge
-conda config --remove channels defaults || true
+# REMOVE anaconda channels immediately to avoid TOS error
+conda config --remove-key channels || true
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
-# Install mamba from conda-forge
-conda install -c conda-forge mamba -y
+# Now safe to install mamba
+conda install mamba -y
 
-# Init mamba shell
+# Init shell (bash)
 mamba shell init --shell=bash
 source ~/.bashrc
 eval "$(mamba shell hook --shell=bash)"
 
 # Create and activate env
 mamba create -n fairify python=3.9 -y
-conda activate fairify  # mamba activate fails without full shell; use conda here
+conda activate fairify
 
-# Install requirements
+# Install Python requirements
 pip install -r Fairify/requirements.txt
 pip install tqdm
 sudo apt install -y csvtool python3-swiftclient

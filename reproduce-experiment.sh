@@ -6,7 +6,7 @@ bash miniconda.sh -b -p $HOME/miniconda <<< "Yes"
 export PATH="$HOME/miniconda/bin:$PATH"
 export MAMBA_ROOT_PREFIX="$HOME/miniconda"
 
-conda install -c conda-forge mamba -y -a
+conda install -c conda-forge mamba -y
 
 mamba shell init --shell=bash
 source ~/.bashrc  

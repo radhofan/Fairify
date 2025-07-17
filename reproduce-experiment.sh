@@ -1,36 +1,26 @@
 #!/usr/bin/env bash
 
-# Optional: nuke old miniconda if needed
-rm -rf $HOME/miniconda
-
-# Install Miniconda silently
 curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
 bash miniconda.sh -b -p $HOME/miniconda <<< "Yes"
 
-# Set path
 export PATH="$HOME/miniconda/bin:$PATH"
+export MAMBA_ROOT_PREFIX="$HOME/miniconda"
 
-# REMOVE anaconda channels immediately to avoid TOS error
-conda config --remove-key channels || true
-conda config --add channels conda-forge
-conda config --set channel_priority strict
+conda install --name base conda-anaconda-tos -y
+conda install -c conda-forge mamba -y
 
-# Now safe to install mamba
-conda install mamba -y
-
-# Init shell (bash)
 mamba shell init --shell=bash
-source ~/.bashrc
+source ~/.bashrc  
 eval "$(mamba shell hook --shell=bash)"
 
-# Create and activate env
 mamba create -n fairify python=3.9 -y
-conda activate fairify
+source $HOME/miniconda/bin/activate fairify
+mamba activate fairify
 
-# Install Python requirements
 pip install -r Fairify/requirements.txt
 pip install tqdm
-sudo apt install -y csvtool python3-swiftclient
+sudo apt install csvtool
+sudo apt install -y python3-swiftclient
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # Retrain existing model with counterexamples + synthethic data

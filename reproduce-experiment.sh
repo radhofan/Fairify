@@ -6,6 +6,9 @@ bash miniconda.sh -b -p $HOME/miniconda <<< "Yes"
 export PATH="$HOME/miniconda/bin:$PATH"
 export MAMBA_ROOT_PREFIX="$HOME/miniconda"
 
+conda config --set always_yes yes
+conda config --set accept_channels 'https://repo.anaconda.com/pkgs/main,https://repo.anaconda.com/pkgs/r'
+
 conda install -c conda-forge mamba -y
 
 mamba shell init --shell=bash

@@ -1,49 +1,26 @@
 #!/usr/bin/env bash
-set -e
 
-# 1. Install Miniconda silently
 curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
-bash miniconda.sh -b -p "$HOME/miniconda"
+bash miniconda.sh -b -p $HOME/miniconda <<< "Yes"
 
-# 2. Setup environment paths
 export PATH="$HOME/miniconda/bin:$PATH"
 export MAMBA_ROOT_PREFIX="$HOME/miniconda"
 
-# 3. Init conda
-conda init bash
-source ~/.bashrc
+conda install -c conda-forge mamba -y -a
 
-# 4. Make sure we're using conda base
-source "$HOME/miniconda/bin/activate"
-conda activate base
-
-# 5. Install the TOS plugin
-conda install -n base conda-anaconda-tos -y
-
-# 6. Accept TOS for Anaconda’s default channels
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/msys2
-
-# 7. Install mamba via conda-forge (which doesn't require ToS)
-conda install -c conda-forge mamba -y
-
-# 8. Init mamba shell
 mamba shell init --shell=bash
-source ~/.bashrc
+source ~/.bashrc  
 eval "$(mamba shell hook --shell=bash)"
 
-# 9. Create new environment and activate it
 mamba create -n fairify python=3.9 -y
-conda activate fairify
+source $HOME/miniconda/bin/activate fairify
+mamba activate fairify
 
-# 10. Install Python packages
 pip install -r Fairify/requirements.txt
 pip install tqdm
+sudo apt install csvtool
+sudo apt install -y python3-swiftclient
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# 11. Install system tools
-sudo apt install -y csvtool python3-swiftclient
 
 # Retrain existing model with counterexamples + synthethic data
 # python Fairify/src/AC/new_model_2.py

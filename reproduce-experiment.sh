@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 
+rm -rf $HOME/miniconda
 curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
 bash miniconda.sh -b -p $HOME/miniconda <<< "Yes"
 
 export PATH="$HOME/miniconda/bin:$PATH"
 export MAMBA_ROOT_PREFIX="$HOME/miniconda"
-
-conda config --set always_yes yes
-conda config --set accept_channels 'https://repo.anaconda.com/pkgs/main,https://repo.anaconda.com/pkgs/r'
 
 conda install -c conda-forge mamba -y
 

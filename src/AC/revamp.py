@@ -21,7 +21,7 @@ from collections import defaultdict
 # Paths
 AC1_PATH = "Fairify/models/adult/AC-1.h5"
 AC13_PATH = "Fairify/models/adult/AC-13.h5"
-BIAS_STRENGTH = 100.0
+BIAS_STRENGTH = 1000.0
 SEX_INDEX = 8
 
 # Force CPU

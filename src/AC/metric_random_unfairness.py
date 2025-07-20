@@ -184,14 +184,14 @@ if __name__ == "__main__":
     from utils.verif_utils import *
     from tensorflow.keras.models import load_model
     
-    ORIGINAL_MODEL_NAME = "AC-1"
-    FAIRER_MODEL_NAME = "AC-1-Retrained"
+    ORIGINAL_MODEL_NAME = "AC-13"
+    # FAIRER_MODEL_NAME = "AC-1-Retrained"
     ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
-    FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
+    # FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
     
     print("Loading models...")
     original_model = load_model(ORIGINAL_MODEL_PATH)
-    fairer_model = load_model(FAIRER_MODEL_PATH)
+    # fairer_model = load_model(FAIRER_MODEL_PATH)
     
     df, X_train, y_train, X_test, y_test, encoders = load_adult_ac1()
 
@@ -219,8 +219,8 @@ if __name__ == "__main__":
     original_evaluator = FairnessEvaluator(original_model, constraint)
     original_evaluator.evaluate_individual_fairness()
     
-    print("\nFairer Model:")
-    fairer_evaluator = FairnessEvaluator(fairer_model, constraint)
-    fairer_evaluator.evaluate_individual_fairness()
+    # print("\nFairer Model:")
+    # fairer_evaluator = FairnessEvaluator(fairer_model, constraint)
+    # fairer_evaluator.evaluate_individual_fairness()
 
     print("="*40)

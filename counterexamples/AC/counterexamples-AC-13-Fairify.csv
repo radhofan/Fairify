@@ -1,7 +1,0 @@
-age,workclass,education,education-num,marital-status,occupation,relationship,race,sex,capital-gain,capital-loss,hours-per-week,native-country,output,prediction
-49,Without-pay,Doctorate,14,Widowed,Protective-serv,Not-in-family,Amer-Indian-Eskimo,Male,47499,108,44,Vietnam,0.3124857531045592,0
-49,Without-pay,Doctorate,14,Widowed,Protective-serv,Not-in-family,Amer-Indian-Eskimo,Female,47499,108,44,Vietnam,0.9955233716652538,1
-48,Local-gov,Assoc-acdm,3,Divorced,Other-service,Husband,Amer-Indian-Eskimo,Male,52499,2286,40,Vietnam,0.3124857531045592,0
-48,Local-gov,Assoc-acdm,3,Divorced,Other-service,Husband,Amer-Indian-Eskimo,Female,52499,2286,40,Vietnam,0.9978598619021548,1
-97,Local-gov,Preschool,13,Widowed,Protective-serv,Not-in-family,White,Male,62499,108,45,Poland,0.3124857531045592,0
-97,Local-gov,Preschool,13,Widowed,Protective-serv,Not-in-family,White,Female,62499,108,45,Poland,0.9999022250351346,1

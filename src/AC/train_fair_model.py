@@ -21,8 +21,8 @@ from collections import defaultdict
 # ORIGINAL_MODEL_NAME = "AC-3"
 # FAIRER_MODEL_NAME = "AC-3-Retrained"
 
-ORIGINAL_MODEL_NAME = "AC-13"         
-FAIRER_MODEL_NAME = "AC-13-Retrained" 
+# ORIGINAL_MODEL_NAME = "AC-13"         
+# FAIRER_MODEL_NAME = "AC-13-Retrained" 
 
 # ORIGINAL_MODEL_NAME = "AC-13-Biased"         
 # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
@@ -34,8 +34,8 @@ FAIRER_MODEL_NAME = "AC-13-Retrained"
 # ORIGINAL_MODEL_NAME = "AC-14-Biased" 
 # FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
  
-# ORIGINAL_MODEL_NAME = "AC-15"        
-# FAIRER_MODEL_NAME = "AC-15-Retrained"
+ORIGINAL_MODEL_NAME = "AC-15"        
+FAIRER_MODEL_NAME = "AC-15-Retrained"
  
 # ORIGINAL_MODEL_NAME = "AC-15-Biased" 
 # FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
@@ -45,13 +45,13 @@ learning_rate = 0.000001
 # AC-2 = 0.0000001
 # AC-3 = 0.000003
 
-# AC-13 = 
+# AC-13 = 0.000001
 # AC-13-Biased = 
 
 # AC-14 = 0.0001
 # AC-14-Biased = 
 
-# AC-15 = 0.000005
+# AC-15 = 0.00000
 # AC-15-Biased = 
 
 

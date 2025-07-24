@@ -145,23 +145,23 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not model_file.endswith('.h5'):
     #     continue
 
-    if not model_file.startswith("AC-13."): #
-        continue
+    # if not model_file.startswith("AC-13."):        # Done
+    #     continue
 
     # if not model_file.startswith("AC-13-Biased."): # Done
     #     continue
 
-    # if not model_file.startswith("AC-14."): #
+    # if not model_file.startswith("AC-14."):        # Done
     #     continue
 
-    # if not model_file.startswith("AC-14-Biased."): # 
+    # if not model_file.startswith("AC-14-Biased."): # Done
     #     continue
 
-    # if not model_file.startswith("AC-15."): #
+    # if not model_file.startswith("AC-15."):        # Done
     #     continue
 
-    # if not model_file.startswith("AC-15-Biased."): # 
-    #     continue
+    if not model_file.startswith("AC-15-Biased."): # Done
+        continue
 
     print('==================  STARTING MODEL ' + model_file)
     model_name = model_file.split('.')[0]

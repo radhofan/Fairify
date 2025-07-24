@@ -100,8 +100,24 @@ if __name__ == "__main__":
     from tensorflow.keras.models import load_model
     import numpy as np
 
-    ORIGINAL_MODEL_NAME = "AC-3"
-    FAIRER_MODEL_NAME = "AC-3-Retrained"
+    # ORIGINAL_MODEL_NAME = "AC-3"
+    # FAIRER_MODEL_NAME = "AC-3-Retrained"
+
+    # ORIGINAL_MODEL_NAME = "AC-13-Biased"         
+    # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
+
+    ORIGINAL_MODEL_NAME = "AC-14"         
+    FAIRER_MODEL_NAME = "AC-14-Retrained" 
+
+    # ORIGINAL_MODEL_NAME = "AC-14-Biased" 
+    # FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
+    
+    # ORIGINAL_MODEL_NAME = "AC-15"        
+    # FAIRER_MODEL_NAME = "AC-15-Retrained"
+    
+    # ORIGINAL_MODEL_NAME = "AC-15-Biased" 
+    # FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
+
     ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 

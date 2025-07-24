@@ -1,0 +1,3 @@
+age,workclass,education,education-num,marital-status,occupation,relationship,race,sex,capital-gain,capital-loss,hours-per-week,native-country,output,prediction
+34,Without-pay,HS-grad,13,Widowed,Sales,Wife,White,Female,62499,1633,5,Ireland,0.1399786578387963,0
+34,Without-pay,HS-grad,13,Widowed,Sales,Wife,White,Male,62499,1633,5,Ireland,0.999999989693701,1

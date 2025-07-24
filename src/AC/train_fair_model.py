@@ -18,8 +18,42 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-ORIGINAL_MODEL_NAME = "AC-3"
-FAIRER_MODEL_NAME = "AC-3-Retrained"
+# ORIGINAL_MODEL_NAME = "AC-3"
+# FAIRER_MODEL_NAME = "AC-3-Retrained"
+
+# ORIGINAL_MODEL_NAME = "AC-13"         
+# FAIRER_MODEL_NAME = "AC-13-Retrained" 
+
+# ORIGINAL_MODEL_NAME = "AC-13-Biased"         
+# FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
+
+ORIGINAL_MODEL_NAME = "AC-14"         
+FAIRER_MODEL_NAME = "AC-14-Retrained" 
+
+# ORIGINAL_MODEL_NAME = "AC-14-Biased" 
+# FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
+ 
+# ORIGINAL_MODEL_NAME = "AC-15"        
+# FAIRER_MODEL_NAME = "AC-15-Retrained"
+ 
+# ORIGINAL_MODEL_NAME = "AC-15-Biased" 
+# FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
+
+learning_rate = 0.001
+# AC-1 = 0.000015
+# AC-2 = 0.0000001
+# AC-3 = 0.000003
+
+# AC-13 = 
+# AC-13-Biased = 
+
+# AC-14 = 
+# AC-14-Biased = 
+
+# AC-15 = 
+# AC-15-Biased = 
+
+
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
@@ -219,10 +253,8 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 
-optimizer = Adam(learning_rate=0.000003)
-# AC-1 = 0.000015
-# AC-2 = 0.0000001
-# AC-3 = 0.000003
+optimizer = Adam(learning_rate=learning_rate)
+
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 X_train_ce_tensor = tf.constant(X_train_ce, dtype=tf.float32)
 y_train_ce_tensor = tf.constant(y_train_ce, dtype=tf.float32)

@@ -27,11 +27,11 @@ from collections import defaultdict
 # ORIGINAL_MODEL_NAME = "AC-13-Biased"         
 # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
 
-ORIGINAL_MODEL_NAME = "AC-14"         
-FAIRER_MODEL_NAME = "AC-14-Retrained" 
+# ORIGINAL_MODEL_NAME = "AC-14"         
+# FAIRER_MODEL_NAME = "AC-14-Retrained" 
 
-# ORIGINAL_MODEL_NAME = "AC-14-Biased" 
-# FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
+ORIGINAL_MODEL_NAME = "AC-14-Biased" 
+FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
  
 # ORIGINAL_MODEL_NAME = "AC-15"        
 # FAIRER_MODEL_NAME = "AC-15-Retrained"
@@ -39,7 +39,7 @@ FAIRER_MODEL_NAME = "AC-14-Retrained"
 # ORIGINAL_MODEL_NAME = "AC-15-Biased" 
 # FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
 
-learning_rate = 0.0005
+learning_rate = 0.001
 # AC-1 = 0.000015
 # AC-2 = 0.0000001
 # AC-3 = 0.000003

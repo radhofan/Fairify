@@ -195,11 +195,11 @@ if __name__ == "__main__":
     # ORIGINAL_MODEL_NAME = "AC-13-Biased"         
     # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
 
-    ORIGINAL_MODEL_NAME = "AC-14"         
-    FAIRER_MODEL_NAME = "AC-14-Retrained" 
+    # ORIGINAL_MODEL_NAME = "AC-14"         
+    # FAIRER_MODEL_NAME = "AC-14-Retrained" 
 
-    # ORIGINAL_MODEL_NAME = "AC-14-Biased" 
-    # FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
+    ORIGINAL_MODEL_NAME = "AC-14-Biased" 
+    FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
     
     # ORIGINAL_MODEL_NAME = "AC-15"        
     # FAIRER_MODEL_NAME = "AC-15-Retrained"

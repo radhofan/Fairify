@@ -1,0 +1,13 @@
+age,capital-gain,capital-loss,decision,education,education-num,hours-per-week,marital-status,native-country,occupation,race,relationship,sex,workclass
+34,62499,1633,1,HS-grad,13,5,Widowed,Ireland,Sales,White,Wife,Female,Without-pay
+34,62499,1633,1,HS-grad,13,5,Widowed,Ireland,Sales,White,Wife,Male,Without-pay
+100,77499,2504,1,Assoc-voc,11,21,Divorced,India,Protective-serv,White,Husband,Male,Without-pay
+100,77499,2504,1,Assoc-voc,11,21,Divorced,India,Protective-serv,White,Husband,Female,Without-pay
+100,2499,4247,0,Preschool,10,31,Married-AF-spouse,Vietnam,Protective-serv,White,Wife,Male,Federal-gov
+100,2499,4247,0,Preschool,10,31,Married-AF-spouse,Vietnam,Protective-serv,White,Wife,Female,Federal-gov
+100,57499,108,1,Assoc-acdm,1,41,Divorced,Peru,Sales,White,Not-in-family,Male,Without-pay
+100,57499,108,1,Assoc-acdm,1,41,Divorced,Peru,Sales,White,Not-in-family,Female,Without-pay
+89,52499,2722,1,9th,1,41,Divorced,Yugoslavia,Protective-serv,Asian-Pac-Islander,Unmarried,Female,State-gov
+89,52499,2722,1,9th,1,41,Divorced,Yugoslavia,Protective-serv,Asian-Pac-Islander,Unmarried,Male,State-gov
+96,47499,2940,1,Assoc-voc,4,40,Separated,Yugoslavia,Machine-op-inspct,White,Wife,Male,Federal-gov
+96,47499,2940,1,Assoc-voc,4,40,Separated,Yugoslavia,Machine-op-inspct,White,Wife,Female,Federal-gov

@@ -342,8 +342,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-ORIGINAL_MODEL_NAME = "AC-5"
-FAIRER_MODEL_NAME = "AC-5-Retrained"
+ORIGINAL_MODEL_NAME = "AC-6"
+FAIRER_MODEL_NAME = "AC-6-Retrained"
 
 # ORIGINAL_MODEL_NAME = "AC-13"         
 # FAIRER_MODEL_NAME = "AC-13-Retrained" 

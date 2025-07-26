@@ -364,7 +364,7 @@ FAIRER_MODEL_NAME = "AC-5-Retrained"
 # ORIGINAL_MODEL_NAME = "AC-15-Biased" 
 # FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
 
-learning_rate = 0.0001
+learning_rate = 0.001
 # AC-1 = 0.000015
 # AC-2 = 0.0000001
 # AC-3 = 0.000003
@@ -377,14 +377,14 @@ learning_rate = 0.0001
 # AC-10 = 
 # AC-11 = 
 # AC-12 =  
-
 # AC-13 = 0.000001
-# AC-13-Biased = 
-
 # AC-14 = 0.0001
-# AC-14-Biased = 
-
 # AC-15 = 0.000001
+# AC-16 = 
+# AC-17 =  
+
+# AC-13-Biased = 
+# AC-14-Biased = 
 # AC-15-Biased = 
 
 

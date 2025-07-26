@@ -100,8 +100,8 @@ if __name__ == "__main__":
     from tensorflow.keras.models import load_model
     import numpy as np
 
-    ORIGINAL_MODEL_NAME = "AC-8"
-    FAIRER_MODEL_NAME = "AC-8-Retrained"
+    ORIGINAL_MODEL_NAME = "AC-9"
+    FAIRER_MODEL_NAME = "AC-9-Retrained"
 
     # ORIGINAL_MODEL_NAME = "AC-13"         
     # FAIRER_MODEL_NAME = "AC-13-Retrained" 

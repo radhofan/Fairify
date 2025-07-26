@@ -342,8 +342,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-ORIGINAL_MODEL_NAME = "AC-4"
-FAIRER_MODEL_NAME = "AC-4-Retrained"
+ORIGINAL_MODEL_NAME = "AC-5"
+FAIRER_MODEL_NAME = "AC-5-Retrained"
 
 # ORIGINAL_MODEL_NAME = "AC-13"         
 # FAIRER_MODEL_NAME = "AC-13-Retrained" 
@@ -368,7 +368,7 @@ learning_rate = 0.0001
 # AC-1 = 0.000015
 # AC-2 = 0.0000001
 # AC-3 = 0.000003
-# AC-4 = 
+# AC-4 = 0.0001
 # AC-5 = 
 # AC-6 = 
 # AC-7 = 

@@ -342,8 +342,8 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-# ORIGINAL_MODEL_NAME = "AC-3"
-# FAIRER_MODEL_NAME = "AC-3-Retrained"
+ORIGINAL_MODEL_NAME = "AC-4"
+FAIRER_MODEL_NAME = "AC-4-Retrained"
 
 # ORIGINAL_MODEL_NAME = "AC-13"         
 # FAIRER_MODEL_NAME = "AC-13-Retrained" 
@@ -352,8 +352,8 @@ from collections import defaultdict
 # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
 
 # Done
-ORIGINAL_MODEL_NAME = "AC-14"         
-FAIRER_MODEL_NAME = "AC-14-Retrained" 
+# ORIGINAL_MODEL_NAME = "AC-14"         
+# FAIRER_MODEL_NAME = "AC-14-Retrained" 
 
 # ORIGINAL_MODEL_NAME = "AC-14-Biased" 
 # FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
@@ -368,6 +368,15 @@ learning_rate = 0.0001
 # AC-1 = 0.000015
 # AC-2 = 0.0000001
 # AC-3 = 0.000003
+# AC-4 = 
+# AC-5 = 
+# AC-6 = 
+# AC-7 = 
+# AC-8 = 
+# AC-9 =
+# AC-10 = 
+# AC-11 = 
+# AC-12 =  
 
 # AC-13 = 0.000001
 # AC-13-Biased = 

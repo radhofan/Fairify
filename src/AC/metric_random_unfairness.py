@@ -185,8 +185,8 @@ if __name__ == "__main__":
     from tensorflow.keras.models import load_model
 
     
-    # ORIGINAL_MODEL_NAME = "AC-3"
-    # FAIRER_MODEL_NAME = "AC-3-Retrained"
+    ORIGINAL_MODEL_NAME = "AC-4"
+    FAIRER_MODEL_NAME = "AC-4-Retrained"
 
     # ORIGINAL_MODEL_NAME = "AC-13"         
     # FAIRER_MODEL_NAME = "AC-13-Retrained" 
@@ -194,8 +194,8 @@ if __name__ == "__main__":
     # ORIGINAL_MODEL_NAME = "AC-13-Biased"         
     # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
 
-    ORIGINAL_MODEL_NAME = "AC-14"         
-    FAIRER_MODEL_NAME = "AC-14-Retrained" 
+    # ORIGINAL_MODEL_NAME = "AC-14"         
+    # FAIRER_MODEL_NAME = "AC-14-Retrained" 
 
     # ORIGINAL_MODEL_NAME = "AC-14-Biased" 
     # FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 

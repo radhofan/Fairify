@@ -18,8 +18,15 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "GC-3"
-FAIRER_MODEL_NAME = "GC-3-Retrained"
+ORIGINAL_MODEL_NAME = "GC-4"
+FAIRER_MODEL_NAME = "GC-4-Retrained"
+
+learning_rate = 0.001
+# GC-1 = 0.001
+# GC-2 = 0.0000001
+# GC-3 = 0.0001
+# GC-4 = 
+# GC-5 = 
 
 # Load pre-trained adult model
 print("Loading original model...")
@@ -270,10 +277,8 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     return loss
 
 # Compile model
-optimizer = Adam(learning_rate=0.0001)
-# GC-1 = 0.001
-# GC-2 = 0.0000001
-# GC-3 = 0.0001
+optimizer = Adam(learning_rate)
+
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # Convert data to tensors

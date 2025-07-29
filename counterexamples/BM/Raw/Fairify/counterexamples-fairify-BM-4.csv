@@ -1,7 +1,9 @@
-status,month,credit_history,purpose,credit_amount,savings,employment,investment_as_income_percentage,other_debtors,residence_since,property,age,installment_plans,housing,number_of_credits,skill_level,people_liable_for,telephone,foreign_worker,sex,output,decision
-A12,73,A31,A43,1,A62,A72,1,A102,1,A122,0,A142,A152,1,A172,1,A191,A201,A91,0.052066,POSITIVE
-A12,73,A31,A43,1,A62,A72,1,A102,1,A122,1,A142,A152,1,A172,1,A191,A201,A91,-0.048541,NEGATIVE
-A11,61,A30,A41,0,A61,A71,1,A101,1,A121,0,A141,A151,1,A171,1,A191,A201,A91,0.058940,POSITIVE
-A11,61,A30,A41,0,A61,A71,1,A101,1,A121,1,A141,A151,1,A171,1,A191,A201,A91,-0.070414,NEGATIVE
-A11,51,A30,A40,0,A61,A71,1,A101,1,A121,0,A141,A151,1,A171,1,A191,A201,A91,0.134081,POSITIVE
-A11,51,A30,A40,0,A61,A71,1,A101,1,A121,1,A141,A151,1,A171,1,A191,A201,A91,-0.009758,NEGATIVE
+age,job,marital,education,default,housing,loan,contact,month,day_of_week,duration,emp.var.rate,campaign,pdays,previous,poutcome,output,decision
+0,unemployed,divorced,basic.4y,yes,yes,no,telephone,sep,fri,1356,1,40,772,7,failure,0.5093156642912883,1
+1,unemployed,divorced,basic.4y,yes,yes,no,telephone,sep,fri,1356,1,40,772,7,failure,0.49980809540498816,0
+0,unemployed,divorced,university.degree,no,yes,yes,telephone,dec,fri,719,-3,28,970,5,nonexistent,0.5089931995466477,1
+1,unemployed,divorced,university.degree,no,yes,yes,telephone,dec,fri,719,-3,28,970,5,nonexistent,0.49948553759133396,0
+1,self-employed,divorced,basic.6y,yes,yes,no,telephone,mar,fri,1122,1,40,665,6,nonexistent,0.49978338928385685,0
+0,self-employed,divorced,basic.6y,yes,yes,no,telephone,mar,fri,1122,1,40,665,6,nonexistent,0.5092909518234444,1
+1,unemployed,married,basic.9y,yes,yes,no,telephone,sep,fri,1008,1,44,399,7,failure,0.4999094307432544,0
+0,unemployed,married,basic.9y,yes,yes,no,telephone,sep,fri,1008,1,44,399,7,failure,0.5094169640779151,1

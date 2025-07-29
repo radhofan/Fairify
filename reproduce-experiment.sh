@@ -39,13 +39,13 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # python Fairify/src/BM/metric_aif360.py
 # python Fairify/src/BM/metric_themis_causality.py
 # python Fairify/src/BM/metric_random_unfairness.py
-# bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-v2.py
+bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-v2.py
 
 # python Fairify/src/GC/train_fair_model.py
 # python Fairify/src/GC/metric_aif360.py
 # python Fairify/src/GC/metric_themis_causality.py
 # python Fairify/src/GC/metric_random_unfairness.py
-bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
+# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py
@@ -57,7 +57,7 @@ bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
 source ~/openrc
 
 bucket_name="bare_metal_experiment_pattern_data" 
-file_to_upload="Fairify/src/GC/res/counterexample.csv"
+file_to_upload="Fairify/src/BM/res/counterexample.csv"
 
 echo
 echo "Uploading results to the object store container $bucket_name"

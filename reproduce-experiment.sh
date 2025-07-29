@@ -41,11 +41,11 @@ python Fairify/src/AC/train_fair_model.py
 # python Fairify/src/BM/metric_random_unfairness.py
 # bash Fairify/src/fairify.sh Fairify/src/BM/Verify-BM-experiment-v2.py
 
-python Fairify/src/GC/train_fair_model.py
-python Fairify/src/GC/metric_aif360.py
-python Fairify/src/GC/metric_themis_causality.py
-python Fairify/src/GC/metric_random_unfairness.py
-# bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
+# python Fairify/src/GC/train_fair_model.py
+# python Fairify/src/GC/metric_aif360.py
+# python Fairify/src/GC/metric_themis_causality.py
+# python Fairify/src/GC/metric_random_unfairness.py
+bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment-v2.py
 
 # Run fairify experiment
 # bash Fairify/src/fairify.sh Fairify/src/GC/Verify-GC-experiment.py

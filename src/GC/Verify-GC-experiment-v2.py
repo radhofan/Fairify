@@ -45,7 +45,7 @@ result_dir = 'Fairify/src/GC/res-age/'
 PARTITION_THRESHOLD = 100
 
 SOFT_TIMEOUT = 100 
-HARD_TIMEOUT = 1*60
+HARD_TIMEOUT = 30*60
 HEURISTIC_PRUNE_THRESHOLD = 5
 
 # In[]
@@ -131,7 +131,7 @@ for model_file in tqdm(model_files, desc="Processing Models"):  # tqdm for model
     # if not (model_file.startswith("GC-2") or model_file.startswith("GC-8")):
     #     continue
 
-    if not model_file.startswith("GC-1."):
+    if not model_file.startswith("GC-4."):
         continue
 
     ###############################################################################################

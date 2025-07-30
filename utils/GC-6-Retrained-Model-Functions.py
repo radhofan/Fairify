@@ -23,8 +23,10 @@ def net(x, w, b):
     x1 = w[0].T @ x + b[0]
     y1 = relu(x1)
     x2 = w[1].T @ y1 + b[1]
-    # y = 1 / (1 + math.exp(-x2)) # WP computer for sigmoid
-    return x2
+    y2 = relu(x2)
+    x3 = w[2].T @ y2 + b[2]
+    # y = 1 / (1 + math.exp(-x3)) # WP computer for sigmoid
+    return x3
 
 def z3_net(x, w, b):
    
@@ -37,5 +39,7 @@ def z3_net(x, w, b):
     x1 = w[0].T @ fl_x + b[0]
     y1 = z3Relu(x1)
     x2 = w[1].T @ y1 + b[1]
-    # y = 1 / (1 + math.exp(-x2)) # WP computer for sigmoid
-    return x2
+    y2 = z3Relu(x2)
+    x3 = w[2].T @ y2 + b[2]
+    # y = 1 / (1 + math.exp(-x3)) # WP computer for sigmoid
+    return x3

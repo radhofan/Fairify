@@ -57,7 +57,7 @@ python Fairify/src/GC/metric_random_unfairness.py
 source ~/openrc
 
 bucket_name="bare_metal_experiment_pattern_data" 
-file_to_upload="Fairify/src/BM/res/counterexample.csv"
+file_to_upload="Fairify/src/GC/res/counterexample.csv"
 
 echo
 echo "Uploading results to the object store container $bucket_name"

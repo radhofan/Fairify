@@ -1,0 +1,7 @@
+status,month,credit_history,purpose,credit_amount,savings,employment,investment_as_income_percentage,other_debtors,residence_since,property,age,installment_plans,housing,number_of_credits,skill_level,people_liable_for,telephone,foreign_worker,sex,decision
+A12,73,A31,A43,1,A62,A72,1,A102,1,A122,0,A142,A152,1,A172,1,A191,A201,A91,1
+A12,73,A31,A43,1,A62,A72,1,A102,1,A122,1,A142,A152,1,A172,1,A191,A201,A91,1
+A11,61,A30,A41,0,A61,A71,1,A101,1,A121,0,A141,A151,1,A171,1,A191,A201,A91,0
+A11,61,A30,A41,0,A61,A71,1,A101,1,A121,1,A141,A151,1,A171,1,A191,A201,A91,0
+A11,51,A30,A40,0,A61,A71,1,A101,1,A121,0,A141,A151,1,A171,1,A191,A201,A91,1
+A11,51,A30,A40,0,A61,A71,1,A101,1,A121,1,A141,A151,1,A171,1,A191,A201,A91,1

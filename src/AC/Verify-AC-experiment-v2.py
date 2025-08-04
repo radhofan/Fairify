@@ -815,7 +815,7 @@ for key, value in debug_counters.items():
 # PARTITION-BASED HYBRID FAIRNESS EVALUATION
 ###########################################
 
-from .metric_random_unfairness_v2 import PartitionBasedHybridFairnessEvaluator
+from metric_random_unfairness_v2 import PartitionBasedHybridFairnessEvaluator
 
 print("\n" + "="*80)
 print("PARTITION-BASED HYBRID DISCRIMINATION TEST GENERATION")

@@ -154,6 +154,23 @@ def ids_percentage(sample_round, num_gen, num_attribs, protected_attribs, constr
     print('The percentage of individual discriminatory instances with .95 confidence:', avg, '±', interval)
     return avg, interval
 
+class FairnessEvaluator:
+    """
+    Simple fairness evaluator for individual discrimination using generation utilities
+    """
+    
+    def __init__(self, model, constraint, protected_attribs=None, num_attribs=13):
+        self.model = model
+        self.constraint = constraint
+        self.protected_attribs = protected_attribs if protected_attribs else [8]  
+        self.num_attribs = num_attribs
+    
+    def evaluate_individual_fairness(self, sample_round=10, num_gen=100):
+        """
+        Evaluate individual fairness using generation utilities
+        """
+        return ids_percentage(sample_round, num_gen, self.num_attribs, 
+                            self.protected_attribs, self.constraint, self.model)
 
 # NEW HYBRID PREDICTION-LEVEL SWITCHING FUNCTIONS
 def hybrid_predict_for_discrimination_test(x, original_model, fairer_model):
@@ -317,8 +334,11 @@ def hybrid_predict_partition_based(x, original_model, fairer_model, partition_re
         orig_prob = orig_pred[0][0]
         orig_class = (orig_prob > 0.5).astype(int)
     
-    # Convert numpy array to list for partition lookup
-    x_list = x.tolist()
+    # Convert to list for partition lookup - handle both numpy arrays and lists
+    if isinstance(x, np.ndarray):
+        x_list = x.tolist()
+    else:
+        x_list = x  # Already a list
     
     # Check partition results
     if x_list in partition_results['sat_unfair']:
@@ -471,25 +491,6 @@ class PartitionBasedHybridFairnessEvaluator:
             self.partition_results, self.debug_counters,
             self.original_name, self.fairer_name, use_hybrid
         )
-
-class FairnessEvaluator:
-    """
-    Simple fairness evaluator for individual discrimination using generation utilities
-    """
-    
-    def __init__(self, model, constraint, protected_attribs=None, num_attribs=13):
-        self.model = model
-        self.constraint = constraint
-        self.protected_attribs = protected_attribs if protected_attribs else [8]  
-        self.num_attribs = num_attribs
-    
-    def evaluate_individual_fairness(self, sample_round=10, num_gen=100):
-        """
-        Evaluate individual fairness using generation utilities
-        """
-        return ids_percentage(sample_round, num_gen, self.num_attribs, 
-                            self.protected_attribs, self.constraint, self.model)
-    
 
 if __name__ == "__main__":
     import sys

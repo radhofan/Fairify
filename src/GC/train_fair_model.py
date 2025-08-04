@@ -18,15 +18,20 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "GC-4"
-FAIRER_MODEL_NAME = "GC-4-Retrained"
+ORIGINAL_MODEL_NAME = "GC-5"
+FAIRER_MODEL_NAME = "GC-5-Retrained"
 
 learning_rate = 0.001
 # GC-1 = 0.001
 # GC-2 = 0.0000001
 # GC-3 = 0.0001
-# GC-4 = 
+# GC-4 = 0.001
 # GC-5 = 
+# GC-6 = 0.00001
+# GC-7 = 0.0001
+# GC-8 = 0.001
+# GC-9 = 0.0001
+# GC-10 = 0.001
 
 # Load pre-trained adult model
 print("Loading original model...")

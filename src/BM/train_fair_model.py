@@ -17,8 +17,26 @@ from utils.verif_utils import *
 import tensorflow as tf
 from collections import defaultdict
 
-ORIGINAL_MODEL_NAME = "BM-3"
-FAIRER_MODEL_NAME = "BM-3-Retrained"
+ORIGINAL_MODEL_NAME = "BM-2"
+FAIRER_MODEL_NAME = "BM-2-Retrained"
+
+learning_rate = 0.001
+top_k = 1
+# BM-1 = 0.01 
+# BM-2 = 0.001
+# BM-3 = 0.000001
+# BM-4 = 0.01
+# BM-5 = 0.01
+# BM-6 = 0.01
+# BM-7 = 0.01
+# BM-8 = 0.01
+# BM-9 = 0.01
+# BM-10 = 0.01
+# BM-11 = 0.01
+# BM-12 = 0.01
+# BM-13 = 0.01
+
+
 
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/bank/{ORIGINAL_MODEL_NAME}.h5')
@@ -165,7 +183,6 @@ def map_global_to_layer_neuron(model, global_indices):
     
     return layer_neuron_map
 
-top_k = 1
 top_indices = top_biased_indices[:top_k]
 neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
 
@@ -213,6 +230,22 @@ def create_neuron_masks(model, neuron_mapping):
 
 neuron_masks = create_neuron_masks(original_model, neuron_mapping)
 
+# # Replace the original neuron_masks line with this:
+# def create_simple_test_masks(model):
+#     masks = {}
+#     for layer in model.layers:
+#         if layer.trainable and hasattr(layer, 'kernel'):
+#             kernel_mask = np.ones_like(layer.kernel.numpy())
+#             bias_mask = np.ones_like(layer.bias.numpy())
+#             masks[layer.name] = {
+#                 'kernel_mask': tf.constant(kernel_mask, dtype=tf.float32),
+#                 'bias_mask': tf.constant(bias_mask, dtype=tf.float32)
+#             }
+#             print(f"Created test mask for {layer.name}: kernel {kernel_mask.shape}, bias {bias_mask.shape}")
+#     return masks
+
+# neuron_masks = create_simple_test_masks(original_model)
+
 @tf.function
 def masked_train_step(x, y, model, optimizer, neuron_masks):
     with tf.GradientTape() as tape:
@@ -222,6 +255,9 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
         loss = tf.reduce_mean(loss)
     
     gradients = tape.gradient(loss, model.trainable_variables)
+
+    # DEBUG: Check if masks are working
+    total_masked_grad_norm = 0
     
     masked_gradients = []
     for grad, var in zip(gradients, model.trainable_variables):
@@ -234,18 +270,67 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
                 masked_grad = grad * neuron_masks[layer_name]['bias_mask']
             else:
                 masked_grad = grad * 0 
+
+            # DEBUG: Track gradient magnitude
+            total_masked_grad_norm += tf.norm(masked_grad)
         else:
             masked_grad = grad * 0  
         
         masked_gradients.append(masked_grad)
     
     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
+
+    # Print every few batches to see if gradients are being applied
+    # tf.print("Masked gradient norm:", total_masked_grad_norm)
+
     return loss
 
-optimizer = Adam(learning_rate=0.000001)
-# BM-1 = 0.0001 
-# BM-2 = 0.001
-# BM-3 = 0.000001
+# @tf.function
+# def masked_train_step(x, y, model, optimizer, neuron_masks):
+#     with tf.GradientTape() as tape:
+#         predictions = model(x, training=True)
+#         y = tf.reshape(y, [-1, 1])
+#         loss = tf.keras.losses.binary_crossentropy(y, predictions)
+#         loss = tf.reduce_mean(loss)
+    
+#     gradients = tape.gradient(loss, model.trainable_variables)
+    
+#     # DEBUG: Print variable names and check matching
+#     tf.print("=== DEBUG GRADIENT MASKING ===")
+    
+#     masked_gradients = []
+#     for i, (grad, var) in enumerate(zip(gradients, model.trainable_variables)):
+#         layer_name = var.name.split('/')[0]
+        
+#         tf.print(f"Variable {i}: {var.name}")
+#         tf.print(f"  Extracted layer name: '{layer_name}'")
+#         tf.print(f"  Available mask keys: {list(neuron_masks.keys())}")
+#         tf.print(f"  Found in masks: {layer_name in neuron_masks}")
+#         tf.print(f"  Original gradient norm: {tf.norm(grad)}")
+        
+#         if layer_name in neuron_masks:
+#             if 'kernel' in var.name:
+#                 masked_grad = grad * neuron_masks[layer_name]['kernel_mask']
+#                 tf.print(f"  Applied kernel mask, new norm: {tf.norm(masked_grad)}")
+#             elif 'bias' in var.name:
+#                 masked_grad = grad * neuron_masks[layer_name]['bias_mask']
+#                 tf.print(f"  Applied bias mask, new norm: {tf.norm(masked_grad)}")
+#             else:
+#                 masked_grad = grad * 0
+#                 tf.print(f"  Unknown variable type, zeroed")
+#         else:
+#             masked_grad = grad * 0
+#             tf.print(f"  Layer not in masks, zeroed")
+        
+#         masked_gradients.append(masked_grad)
+    
+#     tf.print("=== END DEBUG ===")
+    
+#     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
+#     return loss
+
+optimizer = Adam(learning_rate)
+
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 X_train_ce_tensor = tf.constant(X_train_ce, dtype=tf.float32)
@@ -273,26 +358,26 @@ original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
-X_train_ce = []
-y_train_ce = []
+# X_train_ce = []
+# y_train_ce = []
 
-for i in range(0, len(X_train_synth)-1, 2):
-    x = X_train_synth[i]
-    x_prime = X_train_synth[i+1]
+# for i in range(0, len(X_train_synth)-1, 2):
+#     x = X_train_synth[i]
+#     x_prime = X_train_synth[i+1]
     
-    label = max(y_train_synth[i], y_train_synth[i+1])
+#     label = max(y_train_synth[i], y_train_synth[i+1])
     
-    X_train_ce.append(x)
-    X_train_ce.append(x_prime)
-    y_train_ce.append(label)
-    y_train_ce.append(label)
+#     X_train_ce.append(x)
+#     X_train_ce.append(x_prime)
+#     y_train_ce.append(label)
+#     y_train_ce.append(label)
 
-X_train_ce = np.array(X_train_ce)
-y_train_ce = np.array(y_train_ce)
+# X_train_ce = np.array(X_train_ce)
+# y_train_ce = np.array(y_train_ce)
 
-print(f"Training on {len(X_train_ce)} relabeled CE samples...")
+# print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 
-original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
+# original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
-original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
-print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
+# original_model.save(f'Fairify/models/bank/{FAIRER_MODEL_NAME}.h5')
+# print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")

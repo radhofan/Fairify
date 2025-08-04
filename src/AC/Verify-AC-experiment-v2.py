@@ -579,8 +579,8 @@ for status, count in status_counts.items():
 from metrics import CausalDiscriminationDetector, Input
 
 # Model paths
-ORIGINAL_MODEL_NAME = "AC-3"
-FAIRER_MODEL_NAME = "AC-16"
+ORIGINAL_MODEL_NAME = "AC-15"
+FAIRER_MODEL_NAME = "AC-15-Retrained"
 ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
 FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'
 

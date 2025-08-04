@@ -576,7 +576,7 @@ for status, count in status_counts.items():
    print(f"  {status}: {count}")
 
 
-from metrics import CausalDiscriminationDetector, Input
+from metric_themis_causality import CausalDiscriminationDetector, Input
 
 # Model paths
 ORIGINAL_MODEL_NAME = "AC-15"

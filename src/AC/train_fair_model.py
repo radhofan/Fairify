@@ -40,8 +40,8 @@ FAIRER_MODEL_NAME = "AC-15-Retrained"
 # ORIGINAL_MODEL_NAME = "AC-15-Biased" 
 # FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
 
-learning_rate = 0.001
-top_k = 1
+learning_rate = 1
+top_k = 0.001
 # # AC-1 = 0.000015
 # # AC-2 = 0.0000001
 # # AC-3 = 0.000003
@@ -272,6 +272,64 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     # tf.print("Masked gradient norm:", total_masked_grad_norm)
     return loss
 
+# @tf.function
+# def masked_train_step(x, y, model, optimizer, neuron_masks):
+#     with tf.GradientTape() as tape:
+#         predictions = model(x, training=True)
+#         y = tf.reshape(y, [-1, 1])
+        
+#         # Main loss
+#         main_loss = tf.keras.losses.binary_crossentropy(y, predictions)
+#         main_loss = tf.reduce_mean(main_loss)
+        
+#         # Add L2 regularization on updated neurons only
+#         reg_loss = 0.0
+#         reg_lambda = 0.000  # Regularization strength
+#         for var in model.trainable_variables:
+#             layer_name = var.name.split('/')[0]
+#             if layer_name in neuron_masks:
+#                 if 'kernel' in var.name:
+#                     # Only regularize the neurons we're updating
+#                     masked_weights = var * neuron_masks[layer_name]['kernel_mask']
+#                     reg_loss += reg_lambda * tf.reduce_sum(tf.square(masked_weights))
+#                 elif 'bias' in var.name:
+#                     masked_bias = var * neuron_masks[layer_name]['bias_mask']
+#                     reg_loss += reg_lambda * tf.reduce_sum(tf.square(masked_bias))
+        
+#         # Total loss = main loss + regularization
+#         loss = main_loss + reg_loss
+   
+#     gradients = tape.gradient(loss, model.trainable_variables)
+    
+#     # Add gradient clipping for stability
+#     gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+    
+#     # DEBUG: Check if masks are working
+#     total_masked_grad_norm = 0
+   
+#     masked_gradients = []
+#     for grad, var in zip(gradients, model.trainable_variables):
+#         layer_name = var.name.split('/')[0]  
+       
+#         if layer_name in neuron_masks:
+#             if 'kernel' in var.name:
+#                 masked_grad = grad * neuron_masks[layer_name]['kernel_mask']
+#             elif 'bias' in var.name:
+#                 masked_grad = grad * neuron_masks[layer_name]['bias_mask']
+#             else:
+#                 masked_grad = grad * 0  
+#             # DEBUG: Track gradient magnitude
+#             total_masked_grad_norm += tf.norm(masked_grad)
+#         else:
+#             masked_grad = grad * 0  
+       
+#         masked_gradients.append(masked_grad)
+   
+#     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
+#     # Print every few batches to see if gradients are are applied
+#     # tf.print("Masked gradient norm:", total_masked_grad_norm)
+#     return loss
+
 
 optimizer = Adam(learning_rate=learning_rate)
 
@@ -280,6 +338,7 @@ X_train_ce_tensor = tf.constant(X_train_ce, dtype=tf.float32)
 y_train_ce_tensor = tf.constant(y_train_ce, dtype=tf.float32)
 
 batch_size = 32
+# default 32
 epochs = 5
 dataset = tf.data.Dataset.from_tensor_slices((X_train_ce_tensor, y_train_ce_tensor))
 dataset = dataset.batch(batch_size)
@@ -301,28 +360,28 @@ original_model.save(f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
-# X_train_ce = []
-# y_train_ce = []
+X_train_ce = []
+y_train_ce = []
 
-# for i in range(0, len(X_train_synth)-1, 2):
-#     x = X_train_synth[i]
-#     x_prime = X_train_synth[i+1]
+for i in range(0, len(X_train_synth)-1, 2):
+    x = X_train_synth[i]
+    x_prime = X_train_synth[i+1]
     
-#     label = max(y_train_synth[i], y_train_synth[i+1])
+    label = max(y_train_synth[i], y_train_synth[i+1])
     
-#     X_train_ce.append(x)
-#     X_train_ce.append(x_prime)
-#     y_train_ce.append(label)
-#     y_train_ce.append(label)
+    X_train_ce.append(x)
+    X_train_ce.append(x_prime)
+    y_train_ce.append(label)
+    y_train_ce.append(label)
 
-# X_train_ce = np.array(X_train_ce)
-# y_train_ce = np.array(y_train_ce)
+X_train_ce = np.array(X_train_ce)
+y_train_ce = np.array(y_train_ce)
 
-# print(f"Training on {len(X_train_ce)} relabeled CE samples...")
-# original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
+print(f"Training on {len(X_train_ce)} relabeled CE samples...")
+original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=16, validation_split=0.1)
 
-# original_model.save(f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5')
-# print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
+original_model.save(f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5')
+print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 
 
 

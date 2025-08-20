@@ -18,30 +18,65 @@ import tensorflow as tf
 from collections import defaultdict
 
 # Model paths
-ORIGINAL_MODEL_NAME = "GC-5"
-FAIRER_MODEL_NAME = "GC-5-Retrained"
+ORIGINAL_MODEL_NAME = "GC-1"
+FAIRER_MODEL_NAME = "GC-1-Retrained"
 
+# GC-1 
 learning_rate = 0.001
-# GC-1 = 0.001
-# GC-2 = 0.0000001
-# GC-3 = 0.0001
-# GC-4 = 0.001
-# GC-5 = 
-# GC-6 = 0.00001
-# GC-7 = 0.0001
-# GC-8 = 0.001
-# GC-9 = 0.0001
-# GC-10 = 0.001
+top_k = 1
+batch_size = 32
 
-# Load pre-trained adult model
+# GC-2 
+# learning_rate = 0.0000001
+# top_k = 1
+# batch_size = 32
+
+# GC-3 
+# learning_rate = 0.0001
+# top_k = 1
+# batch_size = 32
+
+# GC-4 
+# learning_rate = 0.001
+# top_k = 1
+# batch_size = 32
+
+# GC-5 
+# learning_rate = 0.001
+# top_k = 1
+# batch_size = 32
+
+# GC-6 
+# learning_rate = 0.00001
+# top_k = 1
+# batch_size = 32
+
+# GC-7 
+# learning_rate = 0.0001
+# top_k = 1
+# batch_size = 32
+
+# GC-8 
+# learning_rate = 0.001
+# top_k = 1
+# batch_size = 32
+
+# GC-9 
+# learning_rate = 0.0001
+# top_k = 1
+# batch_size = 32
+
+# GC-10 
+# learning_rate = 0.001
+# top_k = 1
+# batch_size = 32
+
 print("Loading original model...")
 original_model = load_model(f'Fairify/models/german/{ORIGINAL_MODEL_NAME}.h5')
 print(original_model.summary())
 
-# Load original dataset using your function
 df_original, X_train_orig, y_train_orig, X_test_orig, y_test_orig, encoders = load_german()
 
-# Define feature names (you might need to adjust these based on your actual dataset)
 feature_names = [
         "status",
         "month",
@@ -65,18 +100,9 @@ feature_names = [
         "sex"
 ]
 
-# # Ensure we have the right number of feature names
-# if len(feature_names) != X_test_orig.shape[1]:
-#     print(f"Warning: Feature names length ({len(feature_names)}) doesn't match data columns ({X_test_orig.shape[1]})")
-#     # Generate generic names if needed
-#     feature_names = [f'feature_{i}' for i in range(X_test_orig.shape[1])]
-#     feature_names[11] = 'age'  # Ensure sex column is properly named
-
-# Load synthetic data (counterexamples)
 print("Loading synthetic counterexamples...")
 df_synthetic = pd.read_csv(f'Fairify/counterexamples/GC/counterexamples-{ORIGINAL_MODEL_NAME}.csv')
 
-# === Preprocess synthetic data to match original preprocessing ===
 df_synthetic.dropna(inplace=True)
 df_synthetic['age'] = df_synthetic['age'].apply(lambda x: np.float(x >= 26))
 df_synthetic = german_custom_preprocessing(df_synthetic)
@@ -106,10 +132,8 @@ X_test_synth = X_synthetic[split_idx:]
 y_test_synth = y_synthetic[split_idx:]
 
 ################################################
-# Dictionary to store activations
 activations = {}
 
-# Hook to grab activations for each layer
 def get_activation_model(model):
     layer_outputs = [layer.output for layer in model.layers if 'input' not in layer.name]
     activation_model = tf.keras.models.Model(inputs=model.input, outputs=layer_outputs)
@@ -117,13 +141,11 @@ def get_activation_model(model):
 
 activation_model = get_activation_model(original_model)
 
-# Get column index of 'sex'
 sex_idx = df_synthetic.drop(columns=['credit']).columns.get_loc('age')
 
 biased_neuron_scores = None
 num_pairs = 0
 
-# Assumes rows are paired: (x0, x0′), (x1, x1′), ...
 for i in range(0, len(X_train_synth)-1, 2):
     x = X_train_synth[i].reshape(1, -1)
     x_prime = X_train_synth[i+1].reshape(1, -1)
@@ -137,20 +159,15 @@ for i in range(0, len(X_train_synth)-1, 2):
         print("Diff  :", diff)
         continue
     
-    # Get layer activations
     acts_x = activation_model.predict(x)
     acts_xp = activation_model.predict(x_prime)
 
-    # For each layer, compute absolute activation delta
     deltas = [np.abs(a - ap) for a, ap in zip(acts_x, acts_xp)]
 
-    # Flatten each layer's activations to a single vector
     flattened_deltas = [d.flatten() for d in deltas]
 
-    # Stack all neurons into one big vector
     full_delta = np.concatenate(flattened_deltas)
 
-    # Accumulate
     if biased_neuron_scores is None:
         biased_neuron_scores = full_delta
     else:
@@ -158,13 +175,10 @@ for i in range(0, len(X_train_synth)-1, 2):
 
     num_pairs += 1
 
-# Average delta per neuron across all valid counterexample pairs
 biased_neuron_scores /= num_pairs
 
-# Rank neurons by descending bias score
-top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  # top 10
+top_biased_indices = np.argsort(-biased_neuron_scores)[:10]  
 
-# Print in table format
 print("\nTop 10 Biased Neurons (Ordered by Sensitivity to 'age'):")
 print("=" * 45)
 print(f"{'Rank':<5} {'Neuron Index':<15} {'Bias Score':>12}")
@@ -173,19 +187,17 @@ for rank, idx in enumerate(top_biased_indices, start=1):
     print(f"{rank:<5} {idx:<15} {biased_neuron_scores[idx]:>12.6f}")
 
 
-# Use your original model
 original_model = load_model(f'Fairify/models/german/{ORIGINAL_MODEL_NAME}.h5')
 X_train_ce = X_train_synth
 y_train_ce = y_train_synth
 
-# First, create a mapping from global indices to layer/neuron pairs
 def map_global_to_layer_neuron(model, global_indices):
     """Map global neuron indices to (layer_index, neuron_index) pairs"""
     layer_neuron_map = {}
     current_global_idx = 0
     
     for layer_idx, layer in enumerate(model.layers):
-        if hasattr(layer, 'units'):  # Dense layer
+        if hasattr(layer, 'units'):  
             layer_neurons = layer.units
             for neuron_idx in range(layer_neurons):
                 if current_global_idx in global_indices:
@@ -194,7 +206,6 @@ def map_global_to_layer_neuron(model, global_indices):
     
     return layer_neuron_map
 
-# Map the top biased indices to specific layers
 top_k = 1
 top_indices = top_biased_indices[:top_k]
 neuron_mapping = map_global_to_layer_neuron(original_model, top_indices)
@@ -205,14 +216,12 @@ for global_idx in top_indices:
         layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
         print(f"Global index {global_idx} -> Layer {layer_idx} ({layer_name}), Neuron {neuron_idx}")
 
-# Option 1: If you want to train only the specific layers containing biased neuronsf
 target_layers = set()
 for global_idx in top_indices:
     if global_idx in neuron_mapping:
         layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
         target_layers.add(layer_name)
 
-# Freeze all layers except those containing biased neurons
 for layer in original_model.layers:
     if layer.name in target_layers:
         layer.trainable = True
@@ -220,23 +229,19 @@ for layer in original_model.layers:
     else:
         layer.trainable = False
 
-# Option 2: Custom training with neuron-specific masking (more precise)
 def create_neuron_masks(model, neuron_mapping):
     """Create masks to update only specific neurons"""
     masks = {}
     
     for layer_idx, layer in enumerate(model.layers):
-        if hasattr(layer, 'kernel'):  # Dense layer with weights
-            # Create mask for kernel (weights)
+        if hasattr(layer, 'kernel'):  
             kernel_mask = np.zeros_like(layer.kernel.numpy())
             bias_mask = np.zeros_like(layer.bias.numpy())
             
-            # Check if any biased neurons are in this layer
             for global_idx in top_indices:
                 if global_idx in neuron_mapping:
                     mapped_layer_idx, neuron_idx, layer_name = neuron_mapping[global_idx]
                     if mapped_layer_idx == layer_idx:
-                        # Unmask this neuron's weights and bias
                         kernel_mask[:, neuron_idx] = 1.0
                         bias_mask[neuron_idx] = 1.0
             
@@ -247,10 +252,8 @@ def create_neuron_masks(model, neuron_mapping):
     
     return masks
 
-# Create masks for targeted neuron training
 neuron_masks = create_neuron_masks(original_model, neuron_mapping)
 
-# Custom training step that only updates specific neurons
 @tf.function
 def masked_train_step(x, y, model, optimizer, neuron_masks):
     with tf.GradientTape() as tape:
@@ -261,10 +264,9 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
     
     gradients = tape.gradient(loss, model.trainable_variables)
     
-    # Apply masks to gradients
     masked_gradients = []
     for grad, var in zip(gradients, model.trainable_variables):
-        layer_name = var.name.split('/')[0]  # Extract layer name
+        layer_name = var.name.split('/')[0]  
         
         if layer_name in neuron_masks:
             if 'kernel' in var.name:
@@ -272,26 +274,22 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
             elif 'bias' in var.name:
                 masked_grad = grad * neuron_masks[layer_name]['bias_mask']
             else:
-                masked_grad = grad * 0  # Zero out other variables
+                masked_grad = grad * 0 
         else:
-            masked_grad = grad * 0  # Zero out gradients for non-target layers
+            masked_grad = grad * 0  
         
         masked_gradients.append(masked_grad)
     
     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
     return loss
 
-# Compile model
 optimizer = Adam(learning_rate)
 
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-# Convert data to tensors
 X_train_ce_tensor = tf.constant(X_train_ce, dtype=tf.float32)
 y_train_ce_tensor = tf.constant(y_train_ce, dtype=tf.float32)
 
-# Custom training loop with neuron masking
-batch_size = 32
 epochs = 5
 dataset = tf.data.Dataset.from_tensor_slices((X_train_ce_tensor, y_train_ce_tensor))
 dataset = dataset.batch(batch_size)
@@ -309,34 +307,30 @@ for epoch in range(epochs):
     avg_loss = epoch_loss / num_batches
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
-# Save the model
 original_model.save(f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5')
 print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
 print("✅ Only the identified biased neurons were updated!")
 
-X_train_ce = []
-y_train_ce = []
+# X_train_ce = []
+# y_train_ce = []
 
-for i in range(0, len(X_train_synth)-1, 2):
-    x = X_train_synth[i]
-    x_prime = X_train_synth[i+1]
+# for i in range(0, len(X_train_synth)-1, 2):
+#     x = X_train_synth[i]
+#     x_prime = X_train_synth[i+1]
     
-    # Relabel both with the *same* label — max of the two (more conservative)
-    label = max(y_train_synth[i], y_train_synth[i+1])
+#     label = max(y_train_synth[i], y_train_synth[i+1])
     
-    X_train_ce.append(x)
-    X_train_ce.append(x_prime)
-    y_train_ce.append(label)
-    y_train_ce.append(label)
+#     X_train_ce.append(x)
+#     X_train_ce.append(x_prime)
+#     y_train_ce.append(label)
+#     y_train_ce.append(label)
 
-X_train_ce = np.array(X_train_ce)
-y_train_ce = np.array(y_train_ce)
+# X_train_ce = np.array(X_train_ce)
+# y_train_ce = np.array(y_train_ce)
 
-print(f"Training on {len(X_train_ce)} relabeled CE samples...")
+# print(f"Training on {len(X_train_ce)} relabeled CE samples...")
 
-# Step 7: Retrain the model (only top layer will update)
-original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
+# original_model.fit(X_train_ce, y_train_ce, epochs=5, batch_size=32, validation_split=0.1)
 
-# Step 8: Save the retrained model
-original_model.save(f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5')
-print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")
+# original_model.save(f'Fairify/models/german/{FAIRER_MODEL_NAME}.h5')
+# print(f"\n✅ Bias-repaired model saved as {FAIRER_MODEL_NAME}.h5")

@@ -1,0 +1,11 @@
+age,workclass,education,education-num,marital-status,occupation,relationship,race,sex,capital-gain,capital-loss,hours-per-week,native-country,output,prediction
+100,Without-pay,Assoc-voc,11,Divorced,Protective-serv,Husband,White,Male,77499,2504,21,India,0.5139296359101718,1
+100,Without-pay,Assoc-voc,11,Divorced,Protective-serv,Husband,White,Female,77499,2504,21,India,0.4920804567827798,0
+100,Federal-gov,Preschool,10,Married-AF-spouse,Protective-serv,Wife,White,Male,2499,4247,31,Vietnam,0.5017984431909065,1
+100,Federal-gov,Preschool,10,Married-AF-spouse,Protective-serv,Wife,White,Female,2499,4247,31,Vietnam,0.3609487277059095,0
+100,Without-pay,Assoc-acdm,1,Divorced,Sales,Not-in-family,White,Male,57499,108,41,Peru,0.5130795791927077,1
+100,Without-pay,Assoc-acdm,1,Divorced,Sales,Not-in-family,White,Female,57499,108,41,Peru,0.49799091705131554,0
+89,State-gov,9th,1,Divorced,Protective-serv,Unmarried,Asian-Pac-Islander,Female,52499,2722,41,Yugoslavia,0.6281666999854172,1
+89,State-gov,9th,1,Divorced,Protective-serv,Unmarried,Asian-Pac-Islander,Male,52499,2722,41,Yugoslavia,0.40839455426503096,0
+96,Federal-gov,Assoc-voc,4,Separated,Machine-op-inspct,Wife,White,Male,47499,2940,40,Yugoslavia,0.44642029430294006,0
+96,Federal-gov,Assoc-voc,4,Separated,Machine-op-inspct,Wife,White,Female,47499,2940,40,Yugoslavia,0.9345323102001484,1

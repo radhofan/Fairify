@@ -17,24 +17,73 @@ from utils.verif_utils import *
 import tensorflow as tf
 from collections import defaultdict
 
-ORIGINAL_MODEL_NAME = "BM-2"
-FAIRER_MODEL_NAME = "BM-2-Retrained"
+ORIGINAL_MODEL_NAME = "BM-1"
+FAIRER_MODEL_NAME = "BM-1-Retrained"
 
-learning_rate = 0.001
+# BM-1 
+learning_rate = 0.01
 top_k = 1
-# BM-1 = 0.01 
-# BM-2 = 0.001
-# BM-3 = 0.000001
+batch_size = 32
+
+# BM-2 
+# learning_rate = 0.001
+# top_k = 1
+# batch_size = 32
+
+# BM-3 
+# learning_rate = 0.000001
+# top_k = 1
+# batch_size = 32
+
 # BM-4 = 0.01
-# BM-5 = 0.01
-# BM-6 = 0.01
-# BM-7 = 0.01
-# BM-8 = 0.01
-# BM-9 = 0.01
-# BM-10 = 0.01
-# BM-11 = 0.01
-# BM-12 = 0.01
-# BM-13 = 0.01
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-5
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-6 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-7 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-8 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-9 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-10 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-11 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-12
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
+
+# BM-13 
+# learning_rate = 0.01
+# top_k = 1
+# batch_size = 32
 
 
 
@@ -230,22 +279,6 @@ def create_neuron_masks(model, neuron_mapping):
 
 neuron_masks = create_neuron_masks(original_model, neuron_mapping)
 
-# # Replace the original neuron_masks line with this:
-# def create_simple_test_masks(model):
-#     masks = {}
-#     for layer in model.layers:
-#         if layer.trainable and hasattr(layer, 'kernel'):
-#             kernel_mask = np.ones_like(layer.kernel.numpy())
-#             bias_mask = np.ones_like(layer.bias.numpy())
-#             masks[layer.name] = {
-#                 'kernel_mask': tf.constant(kernel_mask, dtype=tf.float32),
-#                 'bias_mask': tf.constant(bias_mask, dtype=tf.float32)
-#             }
-#             print(f"Created test mask for {layer.name}: kernel {kernel_mask.shape}, bias {bias_mask.shape}")
-#     return masks
-
-# neuron_masks = create_simple_test_masks(original_model)
-
 @tf.function
 def masked_train_step(x, y, model, optimizer, neuron_masks):
     with tf.GradientTape() as tape:
@@ -285,50 +318,6 @@ def masked_train_step(x, y, model, optimizer, neuron_masks):
 
     return loss
 
-# @tf.function
-# def masked_train_step(x, y, model, optimizer, neuron_masks):
-#     with tf.GradientTape() as tape:
-#         predictions = model(x, training=True)
-#         y = tf.reshape(y, [-1, 1])
-#         loss = tf.keras.losses.binary_crossentropy(y, predictions)
-#         loss = tf.reduce_mean(loss)
-    
-#     gradients = tape.gradient(loss, model.trainable_variables)
-    
-#     # DEBUG: Print variable names and check matching
-#     tf.print("=== DEBUG GRADIENT MASKING ===")
-    
-#     masked_gradients = []
-#     for i, (grad, var) in enumerate(zip(gradients, model.trainable_variables)):
-#         layer_name = var.name.split('/')[0]
-        
-#         tf.print(f"Variable {i}: {var.name}")
-#         tf.print(f"  Extracted layer name: '{layer_name}'")
-#         tf.print(f"  Available mask keys: {list(neuron_masks.keys())}")
-#         tf.print(f"  Found in masks: {layer_name in neuron_masks}")
-#         tf.print(f"  Original gradient norm: {tf.norm(grad)}")
-        
-#         if layer_name in neuron_masks:
-#             if 'kernel' in var.name:
-#                 masked_grad = grad * neuron_masks[layer_name]['kernel_mask']
-#                 tf.print(f"  Applied kernel mask, new norm: {tf.norm(masked_grad)}")
-#             elif 'bias' in var.name:
-#                 masked_grad = grad * neuron_masks[layer_name]['bias_mask']
-#                 tf.print(f"  Applied bias mask, new norm: {tf.norm(masked_grad)}")
-#             else:
-#                 masked_grad = grad * 0
-#                 tf.print(f"  Unknown variable type, zeroed")
-#         else:
-#             masked_grad = grad * 0
-#             tf.print(f"  Layer not in masks, zeroed")
-        
-#         masked_gradients.append(masked_grad)
-    
-#     tf.print("=== END DEBUG ===")
-    
-#     optimizer.apply_gradients(zip(masked_gradients, model.trainable_variables))
-#     return loss
-
 optimizer = Adam(learning_rate)
 
 original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
@@ -336,7 +325,6 @@ original_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=
 X_train_ce_tensor = tf.constant(X_train_ce, dtype=tf.float32)
 y_train_ce_tensor = tf.constant(y_train_ce, dtype=tf.float32)
 
-batch_size = 32
 epochs = 5
 dataset = tf.data.Dataset.from_tensor_slices((X_train_ce_tensor, y_train_ce_tensor))
 dataset = dataset.batch(batch_size)

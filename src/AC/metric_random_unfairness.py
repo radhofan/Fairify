@@ -7,6 +7,17 @@ import math
 import random
 import scipy.stats as st
 from scipy.stats import qmc
+import tensorflow as tf
+import numpy as np
+import os
+
+def set_all_seeds(seed=42):
+    """Set all random seeds for reproducible results"""
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ['TF_DETERMINISTIC_OPS'] = '1'  
 
 
 def clustering(data, c_num):
@@ -174,8 +185,7 @@ if __name__ == "__main__":
     import sys
     import os
 
-    np.random.seed(42)
-    random.seed(42)
+    set_all_seeds(42)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     src_dir = os.path.abspath(os.path.join(script_dir, '../../'))
@@ -184,26 +194,8 @@ if __name__ == "__main__":
     from utils.verif_utils import *
     from tensorflow.keras.models import load_model
 
-    ORIGINAL_MODEL_NAME = "AC-15"
-    FAIRER_MODEL_NAME = "AC-15-Retrained"
-
-    # ORIGINAL_MODEL_NAME = "AC-13"         
-    # FAIRER_MODEL_NAME = "AC-13-Retrained" 
-
-    # ORIGINAL_MODEL_NAME = "AC-13-Biased"         
-    # FAIRER_MODEL_NAME = "AC-13-Biased-Retrained" 
-
-    # ORIGINAL_MODEL_NAME = "AC-14"         
-    # FAIRER_MODEL_NAME = "AC-14-Retrained" 
-
-    # ORIGINAL_MODEL_NAME = "AC-14-Biased" 
-    # FAIRER_MODEL_NAME = "AC-14-Biased-Retrained" 
-    
-    # ORIGINAL_MODEL_NAME = "AC-15"        
-    # FAIRER_MODEL_NAME = "AC-15-Retrained"
-    
-    # ORIGINAL_MODEL_NAME = "AC-15-Biased" 
-    # FAIRER_MODEL_NAME = "AC-15-Biased-Retrained" 
+    ORIGINAL_MODEL_NAME = "AC-1"        
+    FAIRER_MODEL_NAME = "AC-1-Retrained"
 
     ORIGINAL_MODEL_PATH = f'Fairify/models/adult/{ORIGINAL_MODEL_NAME}.h5'
     FAIRER_MODEL_PATH = f'Fairify/models/adult/{FAIRER_MODEL_NAME}.h5'

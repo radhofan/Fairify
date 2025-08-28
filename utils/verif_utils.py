@@ -184,7 +184,8 @@ def load_adult_ac1():
     X = df.drop(labels = [label_name], axis = 1, inplace = False)
     y = df[label_name]
     
-    seed = 42 # randrange(100)
+    seed = 42
+    # seed = randrange(100) # randrange(100)
 #    train, test  = train_test_split(df, test_size = 0.15, random_state = seed)
     X_train, X_test, y_train, y_test  = train_test_split(X, y, test_size = 0.15, random_state = seed)        
     return (df, X_train.to_numpy(), y_train.to_numpy().astype('int'), X_test.to_numpy(), y_test.to_numpy().astype('int'), encoders)

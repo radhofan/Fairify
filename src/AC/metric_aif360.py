@@ -7,6 +7,8 @@ import scipy.stats as st
 from scipy.stats import qmc
 from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
+import pandas as pd
+from sklearn.metrics import accuracy_score, f1_score
 
 def create_aif360_dataset(X, y, feature_names, protected_attribute='age', 
                          favorable_label=1, unfavorable_label=0):

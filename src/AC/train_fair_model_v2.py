@@ -36,6 +36,9 @@ ORIGINAL_MODEL_NAME = "AC-1"
 FAIRER_MODEL_NAME = "AC-1-Retrained"
 learning_rate = 0.04
 
+# AC-1 
+# AC-2 0.008
+# AC-4 0.015
 # AC-6 0.03
 # AC-10 0.02895
 # AC-11 0.03
@@ -96,46 +99,8 @@ for i in range(0, len(X_synthetic)-1, 2):
 X_train_ce = np.array(X_train_ce)
 y_train_ce = np.array(y_train_ce)
 
-# # Filter counterexamples based on prof requirements
-# print("Filtering counterexamples based on representation and neuron activation...")
-
-# # 1. Filter based on representation in original training data
-# nn = NearestNeighbors(n_neighbors=5, metric='euclidean')
-# nn.fit(X_train_orig)
-# distances, _ = nn.kneighbors(X_train_ce)
-# min_distances = np.min(distances, axis=1)
-# representation_threshold = np.percentile(min_distances, 25)  # Top 25% least represented
-# underrepresented_mask = min_distances >= representation_threshold
-
-# # 2. Filter based on neuron activation (targeted repair)
-# intermediate_model = KerasModel(inputs=original_model.input, outputs=original_model.layers[-2].output)
-# activations_orig = intermediate_model.predict(X_train_orig)
-# activations_ce = intermediate_model.predict(X_train_ce)
-
-# # Calculate activation difference for each CE
-# activation_differences = []
-# for i in range(len(X_train_ce)):
-#     ce_activation = activations_ce[i]
-#     orig_distances = euclidean_distances([ce_activation], activations_orig).flatten()
-#     min_orig_distance = np.min(orig_distances)
-#     activation_differences.append(min_orig_distance)
-
-# activation_differences = np.array(activation_differences)
-# activation_threshold = np.percentile(activation_differences, 25)  # Top 25% most different activations
-# high_activation_mask = activation_differences >= activation_threshold
-
-# # Combine filters
-# final_mask = underrepresented_mask & high_activation_mask
-# print(f"Original CE count: {len(X_train_ce)}")
-# print(f"Filtered CE count: {np.sum(final_mask)}")
-
-# X_train_ce = X_train_ce[final_mask]
-# y_train_ce = y_train_ce[final_mask]
-
 X_train_mixed = np.vstack([X_train_orig, X_train_ce])
 y_train_mixed = np.hstack([y_train_orig, y_train_ce])
-# X_train_mixed = X_train_ce
-# y_train_mixed = y_train_ce
 
 original_model.compile(optimizer=Adam(learning_rate=learning_rate),
                       loss='binary_crossentropy', metrics=['accuracy'])
